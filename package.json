@@ -1,0 +1,56 @@
+{
+  "name": "smart-rename",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "smart-rename": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest --watch",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration"
+  },
+  "keywords": [
+    "ai",
+    "rename",
+    "files",
+    "smart",
+    "content",
+    "cli",
+    "automation",
+    "organization",
+    "claude",
+    "openai"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "AI-powered CLI tool that intelligently renames files based on their content using Claude or OpenAI",
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^24.3.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.61.0",
+    "commander": "^14.0.0",
+    "fs-extra": "^11.3.1",
+    "inquirer": "^12.9.4",
+    "mammoth": "^1.10.0",
+    "openai": "^5.19.1",
+    "pdf-extraction": "^1.0.2",
+    "xlsx": "^0.18.5"
+  }
+}

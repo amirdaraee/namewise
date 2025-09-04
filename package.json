@@ -30,8 +30,16 @@
     "claude",
     "openai"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "smart-rename contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/smart-rename.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/smart-rename/issues"
+  },
+  "homepage": "https://github.com/yourusername/smart-rename#readme",
+  "license": "MIT",
   "description": "AI-powered CLI tool that intelligently renames files based on their content using Claude or OpenAI",
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",

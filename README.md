@@ -4,7 +4,7 @@
 [![Coverage](https://img.shields.io/badge/coverage-90%25%20branches-brightgreen.svg)](#-testing--development)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
-[![License](https://img.shields.io/badge/license-ISC-blue.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 🤖 **AI-Powered File Renaming CLI Tool**
 
@@ -203,7 +203,7 @@ The project includes comprehensive tests with 65 test cases covering all functio
 
 ## 📝 License
 
-[ISC License](./LICENSE)
+[MIT License](./LICENSE) - Feel free to use, modify, and distribute this project.
 
 ---
 

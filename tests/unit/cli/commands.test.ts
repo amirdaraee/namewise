@@ -21,7 +21,7 @@ describe('CLI Commands', () => {
       
       const renameCommand = program.commands.find(cmd => cmd.name() === 'rename');
       expect(renameCommand).toBeDefined();
-      expect(renameCommand?.description()).toBe('Rename files in a directory based on their content');
+      expect(renameCommand?.description()).toBe('🚀 Rename files in a directory based on their content using AI analysis');
     });
 
     it('should configure rename command with correct arguments', () => {
@@ -50,18 +50,18 @@ describe('CLI Commands', () => {
       // Check api-key option
       const apiKeyOption = options?.find(opt => opt.long === '--api-key');
       expect(apiKeyOption).toBeDefined();
-      expect(apiKeyOption?.description).toBe('API key for the AI provider');
+      expect(apiKeyOption?.description).toBe('API key for the AI provider (or set CLAUDE_API_KEY/OPENAI_API_KEY)');
 
       // Check dry-run option
       const dryRunOption = options?.find(opt => opt.long === '--dry-run');
       expect(dryRunOption).toBeDefined();
-      expect(dryRunOption?.description).toBe('Preview changes without renaming files');
+      expect(dryRunOption?.description).toBe('Preview changes without actually renaming files (RECOMMENDED first!)');
       expect(dryRunOption?.defaultValue).toBe(false);
 
       // Check max-size option
       const maxSizeOption = options?.find(opt => opt.long === '--max-size');
       expect(maxSizeOption).toBeDefined();
-      expect(maxSizeOption?.description).toBe('Maximum file size in MB');
+      expect(maxSizeOption?.description).toBe('Maximum file size in MB to process');
       expect(maxSizeOption?.defaultValue).toBe('10');
     });
 

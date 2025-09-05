@@ -70,6 +70,6 @@
     "mammoth": "^1.10.0",
     "openai": "^5.19.1",
     "pdf-extraction": "^1.0.2",
-    "xlsx": "^0.18.5"
+    "exceljs": "^4.4.0"
   }
 }

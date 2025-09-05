@@ -1,6 +1,5 @@
-import fs from 'fs';
 import path from 'path';
-import * as XLSX from 'xlsx';
+import Excel from 'exceljs';
 import { DocumentParser, ParseResult, DocumentMetadata } from '../types/index.js';
 
 export class ExcelParser implements DocumentParser {
@@ -11,34 +10,52 @@ export class ExcelParser implements DocumentParser {
 
   async parse(filePath: string): Promise<ParseResult> {
     try {
-      const workbook = XLSX.readFile(filePath);
+      const workbook = new Excel.Workbook();
+      await workbook.xlsx.readFile(filePath);
+      
       const sheets: string[] = [];
       const metadata: DocumentMetadata = {};
 
-      workbook.SheetNames.forEach(sheetName => {
-        const sheet = workbook.Sheets[sheetName];
-        const csvData = XLSX.utils.sheet_to_csv(sheet);
-        if (csvData.trim()) {
-          sheets.push(`Sheet: ${sheetName}\\n${csvData}`);
+      // Extract content from each worksheet
+      workbook.eachSheet((worksheet) => {
+        const sheetName = worksheet.name;
+        const rows: string[] = [];
+        
+        worksheet.eachRow((row) => {
+          const rowData: string[] = [];
+          row.eachCell((cell) => {
+            // Get cell value as string
+            const cellValue = cell.value?.toString() || '';
+            if (cellValue) {
+              rowData.push(cellValue);
+            }
+          });
+          if (rowData.length > 0) {
+            rows.push(rowData.join(','));
+          }
+        });
+        
+        if (rows.length > 0) {
+          sheets.push(`Sheet: ${sheetName}\n${rows.join('\n')}`);
         }
       });
 
-      const content = sheets.join('\\n\\n').trim();
+      const content = sheets.join('\n\n').trim();
       
       // Extract metadata from workbook properties
-      if (workbook.Props) {
-        const props = workbook.Props as any;
-        metadata.title = props.Title;
-        metadata.author = props.Author;
-        metadata.subject = props.Subject;
-        metadata.keywords = props.Keywords ? [props.Keywords] : undefined;
-        metadata.creationDate = props.CreatedDate;
-        metadata.modificationDate = props.ModifiedDate;
+      if (workbook.properties) {
+        const props = workbook.properties as any; // ExcelJS properties typing may vary
+        metadata.title = props.title || props.core?.title;
+        metadata.author = props.creator || props.core?.creator;
+        metadata.subject = props.subject || props.core?.subject;
+        metadata.keywords = props.keywords ? [props.keywords] : undefined;
+        metadata.creationDate = props.created || props.core?.created;
+        metadata.modificationDate = props.modified || props.core?.modified;
       }
       
       // Estimate word count from content
       if (content) {
-        metadata.wordCount = content.split(/\\s+/).filter(word => word.length > 0).length;
+        metadata.wordCount = content.split(/\s+/).filter(word => word.length > 0).length;
       }
 
       return { content, metadata };

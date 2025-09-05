@@ -52,7 +52,7 @@ jobs:
       run: |
         mkdir -p release
         cp -r dist/ package.json README.md LICENSE CHANGELOG.md release/
-        tar -czf smart-rename-${{ steps.version.outputs.VERSION }}.tar.gz -C release .
+        tar -czf ai-rename-${{ steps.version.outputs.VERSION }}.tar.gz -C release .
     
     - name: Create GitHub Release
       id: create_release
@@ -66,7 +66,7 @@ jobs:
         draft: false
         prerelease: ${{ contains(steps.version.outputs.VERSION, '-') || startsWith(steps.version.outputs.VERSION, '0.') }}
         files: |
-          smart-rename-${{ steps.version.outputs.VERSION }}.tar.gz
+          ai-rename-${{ steps.version.outputs.VERSION }}.tar.gz
     
     - name: Publish to npm
       run: npm publish

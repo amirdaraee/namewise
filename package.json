@@ -1,10 +1,10 @@
 {
-  "name": "smart-rename",
+  "name": "ai-rename",
   "version": "0.1.1",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
-    "smart-rename": "./dist/index.js"
+    "ai-rename": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -38,15 +38,15 @@
     "claude",
     "openai"
   ],
-  "author": "smart-rename contributors",
+  "author": "ai-rename contributors",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/smart-rename.git"
+    "url": "https://github.com/yourusername/ai-rename.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/smart-rename/issues"
+    "url": "https://github.com/yourusername/ai-rename/issues"
   },
-  "homepage": "https://github.com/yourusername/smart-rename#readme",
+  "homepage": "https://github.com/yourusername/ai-rename#readme",
   "license": "MIT",
   "description": "AI-powered CLI tool that intelligently renames files based on their content using Claude or OpenAI",
   "devDependencies": {

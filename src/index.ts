@@ -7,7 +7,7 @@ async function main() {
   program
     .name('smart-rename')
     .description('AI-powered tool to intelligently rename files based on their content')
-    .version('1.0.0');
+    .version('0.1.0');
 
   setupCommands(program);
   

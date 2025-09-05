@@ -62,9 +62,10 @@ describe('TextParser', () => {
 
     it('should handle empty files', async () => {
       const filePath = path.join(testDataDir, 'empty-file.txt');
-      const content = await parser.parse(filePath);
+      const result = await parser.parse(filePath);
 
-      expect(content).toBe('');
+      expect(result.content).toBe('');
+      expect(result.metadata).toBeDefined();
     });
 
     it('should throw error for non-existent files', async () => {
@@ -75,10 +76,10 @@ describe('TextParser', () => {
 
     it('should trim whitespace from content', async () => {
       const filePath = path.join(testDataDir, 'sample-text.txt');
-      const content = await parser.parse(filePath);
+      const result = await parser.parse(filePath);
 
-      expect(content).not.toMatch(/^\s/);
-      expect(content).not.toMatch(/\s$/);
+      expect(result.content).not.toMatch(/^\s/);
+      expect(result.content).not.toMatch(/\s$/);
     });
   });
 });

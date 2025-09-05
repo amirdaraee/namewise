@@ -108,8 +108,8 @@ describe('ClaudeService', () => {
       await service.generateFileName(sampleContent, originalName, 'kebab-case');
       
       const call = mockClient.messages.create.mock.calls[0][0];
-      expect(call.messages[0].content).toContain(`Original filename: ${originalName}`);
       expect(call.messages[0].content).toContain(sampleContent.substring(0, 2000));
+      expect(call.messages[0].content).toContain('Document content (first 2000 characters)');
     });
 
     it('should truncate long content to 2000 characters', async () => {

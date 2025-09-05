@@ -282,12 +282,17 @@ describe('FileRenamer', () => {
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(true);
       
-      // Verify AI service was called with the naming convention and category
+      // Verify AI service was called with the naming convention, category, and file info
       expect(generateFileNameSpy).toHaveBeenCalledWith(
         expect.any(String),
         'sample-text.txt',
         'snake_case',
-        'general' // Uses general template since that's the default (no auto-categorization)
+        'general', // Uses general template since that's the default (no auto-categorization)
+        expect.objectContaining({
+          name: 'sample-text.txt',
+          extension: '.txt',
+          documentMetadata: expect.any(Object)
+        })
       );
     });
   });

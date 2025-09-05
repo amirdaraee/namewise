@@ -48,34 +48,27 @@ jobs:
         cat release_notes.md >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
     
-    - name: Create GitHub Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ steps.version.outputs.VERSION }}
-        body: ${{ steps.changelog.outputs.CHANGELOG }}
-        draft: false
-        prerelease: ${{ contains(steps.version.outputs.VERSION, '-') || startsWith(steps.version.outputs.VERSION, '0.') }}
-    
-    - name: Publish to npm
-      run: npm publish
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-    
     - name: Create release archive
       run: |
         mkdir -p release
         cp -r dist/ package.json README.md LICENSE CHANGELOG.md release/
         tar -czf smart-rename-${{ steps.version.outputs.VERSION }}.tar.gz -C release .
     
-    - name: Upload release assets
-      uses: actions/upload-release-asset@v1
+    - name: Create GitHub Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./smart-rename-${{ steps.version.outputs.VERSION }}.tar.gz
-        asset_name: smart-rename-${{ steps.version.outputs.VERSION }}.tar.gz
-        asset_content_type: application/gzip
+        tag_name: ${{ github.ref }}
+        name: Release ${{ steps.version.outputs.VERSION }}
+        body: ${{ steps.changelog.outputs.CHANGELOG }}
+        draft: false
+        prerelease: ${{ contains(steps.version.outputs.VERSION, '-') || startsWith(steps.version.outputs.VERSION, '0.') }}
+        files: |
+          smart-rename-${{ steps.version.outputs.VERSION }}.tar.gz
+    
+    - name: Publish to npm
+      run: npm publish
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

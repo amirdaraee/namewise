@@ -1,4 +1,4 @@
-import { NamingConvention } from '../types/index.js';
+import { NamingConvention, FileInfo } from '../types/index.js';
 import { applyNamingConvention } from './naming-conventions.js';
 
 export type FileCategory = 'document' | 'movie' | 'music' | 'series' | 'photo' | 'book' | 'general' | 'auto';
@@ -89,14 +89,36 @@ export const FILE_TEMPLATES: Record<Exclude<FileCategory, 'auto'>, FileTemplate>
   }
 };
 
-export function categorizeFile(filePath: string, content?: string): FileCategory {
+export function categorizeFile(filePath: string, content?: string, fileInfo?: FileInfo): FileCategory {
   const extension = getFileExtension(filePath).toLowerCase();
   const fileName = getFileName(filePath).toLowerCase();
   const contentLower = content?.toLowerCase() || '';
 
+  // Use metadata for enhanced categorization
+  let metadataHints: string[] = [];
+  if (fileInfo?.documentMetadata) {
+    const meta = fileInfo.documentMetadata;
+    if (meta.title) metadataHints.push(meta.title.toLowerCase());
+    if (meta.author) metadataHints.push(meta.author.toLowerCase());
+    if (meta.creator) metadataHints.push(meta.creator.toLowerCase());
+    if (meta.subject) metadataHints.push(meta.subject.toLowerCase());
+    if (meta.keywords) metadataHints.push(...meta.keywords.map(k => k.toLowerCase()));
+  }
+
+  // Use folder context for better categorization
+  let folderHints: string[] = [];
+  if (fileInfo?.folderPath) {
+    folderHints = fileInfo.folderPath.map(f => f.toLowerCase());
+  }
+  if (fileInfo?.parentFolder) {
+    folderHints.push(fileInfo.parentFolder.toLowerCase());
+  }
+
+  const allHints = [...metadataHints, ...folderHints, contentLower, fileName].join(' ');
+
   // Document types
   const documentExtensions = ['.pdf', '.docx', '.doc', '.txt', '.rtf'];
-  const documentKeywords = ['contract', 'agreement', 'license', 'certificate', 'diploma', 'invoice', 'receipt', 'report', 'application', 'form'];
+  const documentKeywords = ['contract', 'agreement', 'license', 'certificate', 'diploma', 'invoice', 'receipt', 'report', 'application', 'form', 'resume', 'cv', 'letter'];
   
   // Media types
   const movieExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm'];
@@ -104,33 +126,79 @@ export function categorizeFile(filePath: string, content?: string): FileCategory
   const photoExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.heic', '.webp'];
   const bookExtensions = ['.epub', '.mobi', '.azw', '.azw3'];
   
-  // Series/TV keywords
-  const seriesKeywords = ['s01', 's02', 's03', 'season', 'episode', 'e01', 'e02', 'series'];
+  // Enhanced series detection
+  const seriesKeywords = ['s01', 's02', 's03', 's04', 's05', 'season', 'episode', 'e01', 'e02', 'e03', 'series', 'show', 'tv'];
+  
+  // Enhanced movie keywords
+  const movieKeywords = ['movie', 'film', 'cinema', '1080p', '720p', '4k', 'bluray', 'dvdrip', 'webrip'];
+  
+  // Book keywords
+  const bookKeywords = ['chapter', 'author', 'book', 'novel', 'ebook', 'isbn', 'publisher', 'edition'];
+  
+  // Music keywords  
+  const musicKeywords = ['album', 'track', 'artist', 'band', 'singer', 'song', 'music'];
+  
+  // Photo keywords
+  const photoKeywords = ['photo', 'image', 'picture', 'vacation', 'wedding', 'birthday', 'selfie', 'portrait'];
+  
+  // Folder-based hints
+  const folderMovieHints = ['movies', 'films', 'cinema', 'video'];
+  const folderSeriesHints = ['series', 'shows', 'tv', 'television'];
+  const folderMusicHints = ['music', 'audio', 'songs', 'albums'];
+  const folderPhotoHints = ['photos', 'images', 'pictures', 'gallery'];
+  const folderBookHints = ['books', 'ebooks', 'library', 'reading'];
+  const folderDocumentHints = ['documents', 'docs', 'papers', 'files'];
+
+  // Check folder context first for strong hints
+  if (folderHints.some(hint => folderSeriesHints.includes(hint))) return 'series';
+  if (folderHints.some(hint => folderMovieHints.includes(hint))) return 'movie';
+  if (folderHints.some(hint => folderMusicHints.includes(hint))) return 'music';
+  if (folderHints.some(hint => folderPhotoHints.includes(hint))) return 'photo';
+  if (folderHints.some(hint => folderBookHints.includes(hint))) return 'book';
+  if (folderHints.some(hint => folderDocumentHints.includes(hint))) return 'document';
 
   // Check for series first (before movies)
   if (movieExtensions.includes(extension) && (
-    seriesKeywords.some(keyword => fileName.includes(keyword)) ||
-    seriesKeywords.some(keyword => contentLower.includes(keyword))
+    seriesKeywords.some(keyword => allHints.includes(keyword))
   )) {
     return 'series';
   }
 
-  // Check by extension first
+  // Check by extension with enhanced keyword matching
   if (documentExtensions.includes(extension)) {
-    // Check if it's likely a personal document
-    if (documentKeywords.some(keyword => fileName.includes(keyword) || contentLower.includes(keyword))) {
-      return 'document';
-    }
     // Check if it's a book
-    if (bookExtensions.includes(extension) || contentLower.includes('chapter') || contentLower.includes('author')) {
+    if (bookExtensions.includes(extension) || bookKeywords.some(keyword => allHints.includes(keyword))) {
       return 'book';
+    }
+    // Check if it's likely a personal document
+    if (documentKeywords.some(keyword => allHints.includes(keyword))) {
+      return 'document';
     }
     return 'document'; // Default for document extensions
   }
 
-  if (movieExtensions.includes(extension)) return 'movie';
-  if (musicExtensions.includes(extension)) return 'music';
-  if (photoExtensions.includes(extension)) return 'photo';
+  // Enhanced media type detection
+  if (movieExtensions.includes(extension)) {
+    if (movieKeywords.some(keyword => allHints.includes(keyword))) {
+      return 'movie';
+    }
+    return 'movie'; // Default for movie extensions
+  }
+  
+  if (musicExtensions.includes(extension)) {
+    if (musicKeywords.some(keyword => allHints.includes(keyword))) {
+      return 'music';
+    }
+    return 'music';
+  }
+  
+  if (photoExtensions.includes(extension)) {
+    if (photoKeywords.some(keyword => allHints.includes(keyword))) {
+      return 'photo';
+    }
+    return 'photo';
+  }
+  
   if (bookExtensions.includes(extension)) return 'book';
 
   return 'general';

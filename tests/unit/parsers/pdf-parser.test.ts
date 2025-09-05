@@ -31,12 +31,13 @@ describe('PDFParser', () => {
   describe('parse()', () => {
     it('should parse PDF file content correctly', async () => {
       const filePath = path.join(testDataDir, 'sample-pdf.pdf');
-      const content = await parser.parse(filePath);
+      const result = await parser.parse(filePath);
 
-      expect(content.length).toBeGreaterThan(0);
-      expect(typeof content).toBe('string');
+      expect(result.content.length).toBeGreaterThan(0);
+      expect(typeof result.content).toBe('string');
+      expect(result.metadata).toBeDefined();
       // Check for some expected content from the test PDF
-      expect(content.toLowerCase()).toMatch(/trace|type|specialization|dynamic|languages/);
+      expect(result.content.toLowerCase()).toMatch(/trace|type|specialization|dynamic|languages/);
     });
 
     it('should throw error for non-existent files', async () => {
@@ -53,10 +54,10 @@ describe('PDFParser', () => {
 
     it('should trim whitespace from extracted content', async () => {
       const filePath = path.join(testDataDir, 'sample-pdf.pdf');
-      const content = await parser.parse(filePath);
+      const result = await parser.parse(filePath);
 
-      expect(content).not.toMatch(/^\s/);
-      expect(content).not.toMatch(/\s$/);
+      expect(result.content).not.toMatch(/^\s/);
+      expect(result.content).not.toMatch(/\s$/);
     });
   });
 });

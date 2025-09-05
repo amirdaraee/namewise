@@ -100,11 +100,26 @@ async function getFilesToProcess(directory: string, supportedExtensions: string[
       
       if (supportedExtensions.includes(extension)) {
         const stats = await fs.stat(filePath);
+        
+        // Extract folder context
+        const parentFolder = path.basename(directory);
+        const fullPath = path.resolve(filePath);
+        const folderPath = path.dirname(fullPath).split(path.sep).filter(p => p);
+        
         files.push({
           path: filePath,
           name: entry.name,
           extension,
-          size: stats.size
+          size: stats.size,
+          // File system metadata
+          createdAt: stats.birthtime,
+          modifiedAt: stats.mtime,
+          accessedAt: stats.atime,
+          // Context metadata
+          parentFolder,
+          folderPath: folderPath.slice(-3), // Last 3 folder levels for context
+          // Document metadata will be populated by parsers
+          documentMetadata: undefined
         });
       }
     }

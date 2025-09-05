@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-09-05
+
+### Added
+- **Naming Convention Customization**: Added `-c, --case` option to choose naming convention
+  - `kebab-case`: lowercase-with-hyphens (default)
+  - `snake_case`: lowercase_with_underscores  
+  - `camelCase`: camelCaseFormat
+  - `PascalCase`: PascalCaseFormat
+  - `lowercase`: lowercaseformat
+  - `UPPERCASE`: UPPERCASEFORMAT
+- AI services now receive naming convention instructions and generate appropriately formatted filenames
+- Enhanced filename sanitization with convention-aware processing
+
+### Example Usage
+```bash
+# Use snake_case naming
+namewise rename ./docs --case snake_case --dry-run
+
+# Use camelCase naming  
+namewise rename ./docs --case camelCase --provider openai
+```
+
+## [0.1.5] - 2025-09-05
+
+### Improved
+- Enhanced CLI user experience with single-line progress display that updates in place
+- Improved results output format: clear `original-name → new-name` display instead of confusing double checkmarks
+- Added progress counter showing current file being processed `(3/7)`
+- Cleaner console output with proper line clearing after processing
+
+## [0.1.4] - 2025-09-05
+
+### Fixed
+- Fixed console output formatting where `\n` was displayed as literal text instead of newlines
+- Console output now properly displays line breaks for better readability
+
 ## [0.1.3] - 2025-09-05
 
 ### Changed

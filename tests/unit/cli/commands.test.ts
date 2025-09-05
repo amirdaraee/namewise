@@ -110,7 +110,10 @@ describe('CLI Commands', () => {
         apiKey: 'test-key',
         dryRun: true,
         maxSize: '20',
-        case: 'kebab-case'
+        case: 'kebab-case',
+        template: 'general',
+        name: undefined,
+        date: 'none'
       });
     });
 
@@ -127,7 +130,10 @@ describe('CLI Commands', () => {
         apiKey: undefined,
         dryRun: false,
         maxSize: '10',
-        case: 'kebab-case'
+        case: 'kebab-case',
+        template: 'general',
+        name: undefined,
+        date: 'none'
       });
     });
 
@@ -147,7 +153,10 @@ describe('CLI Commands', () => {
         apiKey: 'test-key',
         dryRun: false,
         maxSize: '10',
-        case: 'kebab-case'
+        case: 'kebab-case',
+        template: 'general',
+        name: undefined,
+        date: 'none'
       });
     });
   });

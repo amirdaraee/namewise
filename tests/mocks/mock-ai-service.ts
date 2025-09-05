@@ -29,7 +29,7 @@ export class MockAIService implements AIProvider {
     this.callCount = 0;
   }
 
-  async generateFileName(content: string, originalName: string, namingConvention?: string): Promise<string> {
+  async generateFileName(content: string, originalName: string, namingConvention?: string, category?: string): Promise<string> {
     this.callCount++;
 
     if (this.shouldFail) {

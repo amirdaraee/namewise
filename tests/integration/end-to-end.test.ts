@@ -50,6 +50,9 @@ describe('End-to-End Integration Tests', () => {
       expect(stdout).toContain('-p, --provider');
       expect(stdout).toContain('-k, --api-key');
       expect(stdout).toContain('-c, --case');
+      expect(stdout).toContain('-t, --template');
+      expect(stdout).toContain('-n, --name');
+      expect(stdout).toContain('-d, --date');
       expect(stdout).toContain('--dry-run');
       expect(stdout).toContain('--max-size');
     });
@@ -63,6 +66,27 @@ describe('End-to-End Integration Tests', () => {
       expect(stdout).toContain('PascalCase');
       expect(stdout).toContain('lowercase');
       expect(stdout).toContain('UPPERCASE');
+    });
+
+    it('should show template category options in help', async () => {
+      const { stdout } = await execAsync(`node ${cliPath} rename --help`);
+      
+      expect(stdout).toContain('document');
+      expect(stdout).toContain('movie');
+      expect(stdout).toContain('music');
+      expect(stdout).toContain('series');
+      expect(stdout).toContain('photo');
+      expect(stdout).toContain('book');
+      expect(stdout).toContain('general');
+    });
+
+    it('should show date format options in help', async () => {
+      const { stdout } = await execAsync(`node ${cliPath} rename --help`);
+      
+      expect(stdout).toContain('YYYY-MM-DD');
+      expect(stdout).toContain('YYYY');
+      expect(stdout).toContain('YYYYMMDD');
+      expect(stdout).toContain('none');
     });
 
     it('should show version', async () => {

@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-09-05
+
+### Added
+- **🎯 Personal File Templates**: Customizable templates for different file categories
+  - `document`: Personal docs with name and date (e.g., `driving-license-amirhossein-20250213.pdf`)
+  - `movie`: Movies with release year (e.g., `the-dark-knight-2008.mkv`)
+  - `music`: Music with artist names (e.g., `the-beatles-hey-jude.mp3`)
+  - `series`: TV series with season/episode (e.g., `breaking-bad-s01e01.mkv`)
+  - `photo`: Photos with personal info (e.g., `vacation-paris-john-20240715.jpg`)
+  - `book`: Books with author names (e.g., `george-orwell-1984.pdf`)
+  - `general`: General files without special formatting
+- **🤖 Smart File Categorization**: Automatically detects file type based on extension and content
+- **👤 Personal Name Integration**: `-n, --name` option to include your name in documents
+- **📅 Flexible Date Formats**: `-d, --date` option with formats:
+  - `YYYY-MM-DD`: 2025-09-05
+  - `YYYY`: 2025
+  - `YYYYMMDD`: 20250905
+  - `none`: No date (default)
+- **📂 Category Templates**: `-t, --template` option to specify file category or use auto-detection
+
+### Enhanced
+- AI prompts now include category-specific instructions for better filename generation
+- File processing pipeline includes template application after AI generation
+- Comprehensive test coverage with 131 tests (23 new tests for templates)
+
+### Examples
+```bash
+# Personal documents with your name and date
+namewise rename ./documents -t document -n "amirhossein" -d "YYYYMMDD" --dry-run
+# Result: driving-license-amirhossein-20250905.pdf
+
+# Movies with auto-detection
+namewise rename ./movies --dry-run
+# Result: the-dark-knight-2008.mkv
+
+# Series with season/episode detection
+namewise rename ./shows --dry-run  
+# Result: breaking-bad-s01e01.mkv
+
+# Music with artist names
+namewise rename ./music -t music --dry-run
+# Result: the-beatles-hey-jude.mp3
+```
+
 ## [0.2.0] - 2025-09-05
 
 ### Added

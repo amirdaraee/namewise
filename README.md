@@ -15,6 +15,9 @@ Automatically rename files based on their content using Claude or OpenAI. Transf
 ## Features
 
 - **AI-Powered Renaming**: Uses Claude or OpenAI to generate descriptive filenames based on document content
+- **Personal File Templates**: Customizable templates for different file categories (documents, movies, music, series, photos, books)
+- **Smart Categorization**: Automatic file type detection or manual category selection
+- **Naming Convention Options**: 6 different formats (kebab-case, snake_case, camelCase, PascalCase, lowercase, UPPERCASE)
 - **Multiple File Types**: Supports PDF, DOCX, DOC, XLSX, XLS, TXT, MD, and RTF files
 - **Dry Run Mode**: Preview changes before renaming files
 - **Conflict Detection**: Prevents overwriting existing files
@@ -62,30 +65,49 @@ namewise rename <directory> [options]
 |--------|-------------|---------|
 | `--provider` | AI provider (`claude` or `openai`) | `claude` |
 | `--api-key` | API key for the chosen provider | Interactive prompt |
+| `--case` | Naming convention (kebab-case, snake_case, camelCase, PascalCase, lowercase, UPPERCASE) | `kebab-case` |
+| `--template` | File category template (document, movie, music, series, photo, book, general, auto) | `general` |
+| `--name` | Personal name to include in filenames | - |
+| `--date` | Date format (YYYY-MM-DD, YYYY, YYYYMMDD, none) | `none` |
 | `--dry-run` | Preview changes without renaming | `false` |
 | `--max-size` | Maximum file size in MB | `10` |
 
 ### 💡 Examples
 
-**Preview changes (recommended first step):**
+**Basic usage (general template, no personalization):**
 ```bash
 namewise rename ./documents --dry-run
+# Result: quarterly-financial-report.pdf
 ```
 
-**Rename with Claude (interactive API key):**
+**Personal documents with your name and date:**
 ```bash
-namewise rename ./documents --provider claude
+namewise rename ./documents --template document --name "john" --date "YYYYMMDD" --dry-run
+# Result: driving-license-john-20250905.pdf
 ```
 
-**Rename with environment variable:**
+**Movies with automatic detection:**
 ```bash
-export CLAUDE_API_KEY=your-key-here
-namewise rename ./documents --provider claude --api-key $CLAUDE_API_KEY
+namewise rename ./movies --template auto --dry-run
+# Result: the-dark-knight-2008.mkv
 ```
 
-**Process large files:**
+**TV series with season/episode detection:**
 ```bash
-namewise rename ./reports --max-size 50 --provider openai
+namewise rename ./shows --template auto --dry-run  
+# Result: breaking-bad-s01e01.mkv
+```
+
+**Music with artist names:**
+```bash
+namewise rename ./music --template music --dry-run
+# Result: the-beatles-hey-jude.mp3
+```
+
+**Snake case naming convention:**
+```bash
+namewise rename ./docs --case snake_case --dry-run
+# Result: project_requirements_document.pdf
 ```
 
 **Before and After Example:**
@@ -109,6 +131,21 @@ namewise rename ./reports --max-size 50 --provider openai
 | 📝 Microsoft Word | `.docx`, `.doc` | mammoth |
 | 📊 Microsoft Excel | `.xlsx`, `.xls` | xlsx |
 | 📋 Text Files | `.txt`, `.md`, `.rtf` | Native fs |
+
+## 🎯 File Templates
+
+Choose from specialized templates for different file types:
+
+| Template | Pattern | Example Output | When to Use |
+|----------|---------|----------------|-------------|
+| `general` | `{content}` | `meeting-notes-q4-2024.pdf` | Default - simple descriptive names |
+| `document` | `{content}-{name}-{date}` | `driving-license-john-20250905.pdf` | Personal documents, contracts, certificates |
+| `movie` | `{content}-{year}` | `the-dark-knight-2008.mkv` | Movie files with release year |
+| `series` | `{content}-s{season}e{episode}` | `breaking-bad-s01e01.mkv` | TV series episodes |
+| `music` | `{artist}-{content}` | `the-beatles-hey-jude.mp3` | Music files with artist |
+| `photo` | `{content}-{name}-{date}` | `vacation-paris-john-20240715.jpg` | Personal photos |
+| `book` | `{author}-{content}` | `george-orwell-1984.pdf` | Books and ebooks |
+| `auto` | *Automatic* | *Varies by detected type* | Let AI detect and choose best template |
 
 ## 🔑 API Keys Setup
 

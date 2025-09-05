@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { FileInfo, Config, RenameResult, AIProvider } from '../types/index.js';
 import { DocumentParserFactory } from '../parsers/factory.js';
+import { categorizeFile, applyTemplate } from '../utils/file-templates.js';
 
 export class FileRenamer {
   constructor(
@@ -56,14 +57,32 @@ export class FileRenamer {
       throw new Error('No content could be extracted from the file');
     }
 
-    // Generate new filename using AI with naming convention
-    const suggestedName = await this.aiService.generateFileName(content, file.name, this.config.namingConvention);
-    if (!suggestedName || suggestedName.trim().length === 0) {
+    // Determine file category (use configured category or auto-categorize)
+    const fileCategory = this.config.templateOptions.category === 'auto' 
+      ? categorizeFile(file.path, content)
+      : this.config.templateOptions.category;
+
+    // Generate core filename using AI with naming convention and category
+    const coreFileName = await this.aiService.generateFileName(
+      content, 
+      file.name, 
+      this.config.namingConvention, 
+      fileCategory
+    );
+    if (!coreFileName || coreFileName.trim().length === 0) {
       throw new Error('AI service failed to generate a filename');
     }
 
+    // Apply template to include personal info, dates, etc.
+    const templatedName = applyTemplate(
+      coreFileName,
+      fileCategory,
+      this.config.templateOptions,
+      this.config.namingConvention
+    );
+
     // Create new filename with original extension
-    const newFileName = `${suggestedName}${file.extension}`;
+    const newFileName = `${templatedName}${file.extension}`;
     const newPath = path.join(path.dirname(file.path), newFileName);
 
     // Check if new filename would conflict with existing file

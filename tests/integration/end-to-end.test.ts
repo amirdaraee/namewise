@@ -35,7 +35,7 @@ describe('End-to-End Integration Tests', () => {
     it('should show help message', async () => {
       const { stdout } = await execAsync(`node ${cliPath} --help`);
       
-      expect(stdout).toContain('Rename files based on their content using AI');
+      expect(stdout).toContain('AI-powered tool to intelligently rename files based on their content');
       expect(stdout).toContain('rename [options] <directory>');
       expect(stdout).toContain('Commands:');
     });

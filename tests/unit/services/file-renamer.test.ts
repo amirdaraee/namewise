@@ -296,4 +296,219 @@ describe('FileRenamer', () => {
       );
     });
   });
+
+  describe('Console Output', () => {
+    let originalStdoutWrite: typeof process.stdout.write;
+    let stdoutOutput: string[];
+
+    beforeEach(() => {
+      stdoutOutput = [];
+      originalStdoutWrite = process.stdout.write;
+      
+      // Mock process.stdout.write to capture output
+      process.stdout.write = vi.fn((chunk: any) => {
+        if (typeof chunk === 'string') {
+          stdoutOutput.push(chunk);
+        }
+        return true;
+      }) as any;
+    });
+
+    afterEach(() => {
+      process.stdout.write = originalStdoutWrite;
+    });
+
+    it('should display progress messages during processing', async () => {
+      const testFiles: FileInfo[] = [
+        {
+          path: path.join(testDataDir, 'file1.txt'),
+          name: 'file1.txt',
+          extension: '.txt',
+          size: 1000
+        },
+        {
+          path: path.join(testDataDir, 'file2.txt'),
+          name: 'file2.txt',
+          extension: '.txt',
+          size: 1000
+        },
+        {
+          path: path.join(testDataDir, 'very-long-filename-that-should-be-cleared-properly.txt'),
+          name: 'very-long-filename-that-should-be-cleared-properly.txt',
+          extension: '.txt',
+          size: 1000
+        }
+      ];
+
+      // Mock fs.access to simulate that new file doesn't exist
+      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+      vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+      await fileRenamer.renameFiles(testFiles);
+
+      // Check that progress messages were written
+      const outputString = stdoutOutput.join('');
+      expect(outputString).toContain('🔄 Processing [1/3] file1.txt');
+      expect(outputString).toContain('🔄 Processing [2/3] file2.txt');
+      expect(outputString).toContain('🔄 Processing [3/3] very-long-filename-that-should-be-cleared-prope...');
+    });
+
+    it('should properly clear previous progress lines', async () => {
+      const testFiles: FileInfo[] = [
+        {
+          path: path.join(testDataDir, 'short.txt'),
+          name: 'short.txt',
+          extension: '.txt',
+          size: 1000
+        },
+        {
+          path: path.join(testDataDir, 'much-longer-filename-to-test-clearing.txt'),
+          name: 'much-longer-filename-to-test-clearing.txt',
+          extension: '.txt',
+          size: 1000
+        },
+        {
+          path: path.join(testDataDir, 'x.txt'),
+          name: 'x.txt',
+          extension: '.txt',
+          size: 1000
+        }
+      ];
+
+      // Mock fs.access to simulate that new file doesn't exist
+      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+      vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+      await fileRenamer.renameFiles(testFiles);
+
+      // Should contain clearing sequences (spaces to overwrite previous content)
+      const outputString = stdoutOutput.join('');
+      
+      // Should contain carriage returns and spaces for clearing
+      expect(outputString).toContain('\r');
+      expect(outputString).toMatch(/\s+/); // Should contain spaces for clearing
+      
+      // Final clear should happen at the end
+      const lastOutputs = stdoutOutput.slice(-3);
+      expect(lastOutputs.some(output => output.includes('\r') && output.includes(' '))).toBe(true);
+    });
+
+    it('should handle single file processing correctly', async () => {
+      const testFiles: FileInfo[] = [
+        {
+          path: path.join(testDataDir, 'single-file.txt'),
+          name: 'single-file.txt',
+          extension: '.txt',
+          size: 1000
+        }
+      ];
+
+      // Mock fs.access to simulate that new file doesn't exist
+      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+      vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+      await fileRenamer.renameFiles(testFiles);
+
+      const outputString = stdoutOutput.join('');
+      expect(outputString).toContain('🔄 Processing [1/1] single-file.txt');
+      
+      // Should still clear the line at the end
+      expect(outputString).toContain('\r');
+    });
+
+    it('should handle empty file list without console output', async () => {
+      const testFiles: FileInfo[] = [];
+
+      await fileRenamer.renameFiles(testFiles);
+
+      // With no files, there should be minimal or no output
+      expect(stdoutOutput.length).toBeLessThan(3);
+    });
+
+    it('should show completion message after processing', async () => {
+      const testFiles: FileInfo[] = [
+        {
+          path: path.join(testDataDir, 'file1.txt'),
+          name: 'file1.txt',
+          extension: '.txt',
+          size: 1000
+        },
+        {
+          path: path.join(testDataDir, 'file2.txt'),
+          name: 'file2.txt',
+          extension: '.txt',
+          size: 1000
+        }
+      ];
+
+      // Mock fs.access to simulate that new file doesn't exist
+      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+      vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+      await fileRenamer.renameFiles(testFiles);
+
+      const outputString = stdoutOutput.join('');
+      expect(outputString).toContain('✅ Processed 2 files (2 successful)');
+      expect(outputString).toContain('\n'); // Should end with newline
+    });
+
+    it('should truncate very long filenames in progress display', async () => {
+      const longFilename = 'this-is-a-very-long-filename-that-should-be-truncated-for-better-display-purposes.txt';
+      const testFiles: FileInfo[] = [
+        {
+          path: path.join(testDataDir, longFilename),
+          name: longFilename,
+          extension: '.txt',
+          size: 1000
+        }
+      ];
+
+      // Mock fs.access to simulate that new file doesn't exist
+      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+      vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+      await fileRenamer.renameFiles(testFiles);
+
+      const outputString = stdoutOutput.join('');
+      expect(outputString).toContain('🔄 Processing [1/1] this-is-a-very-long-filename-that-should-be-tru...');
+      expect(outputString).not.toContain(longFilename); // Full name should not appear
+    });
+
+    it('should handle mixed success/failure results in completion message', async () => {
+      const testFiles: FileInfo[] = [
+        {
+          path: path.join(testDataDir, 'success.txt'),
+          name: 'success.txt',
+          extension: '.txt',
+          size: 1000
+        },
+        {
+          path: path.join(testDataDir, 'failure.txt'),
+          name: 'failure.txt',
+          extension: '.txt',
+          size: 1000
+        }
+      ];
+
+      // Mock the first file to succeed and second to fail
+      vi.mocked(fs.access).mockImplementation((path: string) => {
+        if (path.includes('success.txt')) {
+          return Promise.reject({ code: 'ENOENT' }); // File doesn't exist, rename will succeed
+        }
+        return Promise.reject({ code: 'ENOENT' }); // File doesn't exist, rename will succeed
+      });
+
+      vi.mocked(fs.rename).mockImplementation((oldPath: string) => {
+        if (oldPath.includes('failure.txt')) {
+          return Promise.reject(new Error('Permission denied'));
+        }
+        return Promise.resolve(undefined);
+      });
+
+      await fileRenamer.renameFiles(testFiles);
+
+      const outputString = stdoutOutput.join('');
+      expect(outputString).toContain('✅ Processed 2 files (1 successful)');
+    });
+  });
 });

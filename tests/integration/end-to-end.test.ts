@@ -49,8 +49,20 @@ describe('End-to-End Integration Tests', () => {
       expect(stdout).toContain('Options:');
       expect(stdout).toContain('-p, --provider');
       expect(stdout).toContain('-k, --api-key');
+      expect(stdout).toContain('-c, --case');
       expect(stdout).toContain('--dry-run');
       expect(stdout).toContain('--max-size');
+    });
+
+    it('should show naming convention options in help', async () => {
+      const { stdout } = await execAsync(`node ${cliPath} rename --help`);
+      
+      expect(stdout).toContain('kebab-case');
+      expect(stdout).toContain('snake_case');
+      expect(stdout).toContain('camelCase');
+      expect(stdout).toContain('PascalCase');
+      expect(stdout).toContain('lowercase');
+      expect(stdout).toContain('UPPERCASE');
     });
 
     it('should show version', async () => {

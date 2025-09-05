@@ -109,7 +109,8 @@ describe('CLI Commands', () => {
         provider: 'openai',
         apiKey: 'test-key',
         dryRun: true,
-        maxSize: '20'
+        maxSize: '20',
+        case: 'kebab-case'
       });
     });
 
@@ -125,7 +126,8 @@ describe('CLI Commands', () => {
         provider: 'claude',
         apiKey: undefined,
         dryRun: false,
-        maxSize: '10'
+        maxSize: '10',
+        case: 'kebab-case'
       });
     });
 
@@ -144,7 +146,8 @@ describe('CLI Commands', () => {
         provider: 'openai',
         apiKey: 'test-key',
         dryRun: false,
-        maxSize: '10'
+        maxSize: '10',
+        case: 'kebab-case'
       });
     });
   });

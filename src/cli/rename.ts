@@ -34,7 +34,8 @@ export async function renameFiles(directory: string, options: any): Promise<void
       apiKey,
       maxFileSize: parseInt(options.maxSize) * 1024 * 1024, // Convert MB to bytes
       supportedExtensions: ['.pdf', '.docx', '.doc', '.xlsx', '.xls', '.txt'],
-      dryRun: options.dryRun
+      dryRun: options.dryRun,
+      namingConvention: options.case
     };
 
     // Initialize services
@@ -71,7 +72,7 @@ export async function renameFiles(directory: string, options: any): Promise<void
     }
 
     // Process files
-    console.log('\\nProcessing files...');
+    console.log('\nProcessing files...');
     const results = await fileRenamer.renameFiles(files);
 
     // Display results
@@ -111,23 +112,26 @@ function displayResults(results: RenameResult[], dryRun: boolean): void {
   const successful = results.filter(r => r.success);
   const failed = results.filter(r => !r.success);
 
-  console.log(`\\n${dryRun ? 'Preview' : 'Results'}:`);
+  console.log(`\n${dryRun ? 'Preview' : 'Results'}:`);
   console.log(`✅ ${successful.length} files ${dryRun ? 'would be' : 'successfully'} renamed`);
   
   if (failed.length > 0) {
     console.log(`❌ ${failed.length} files failed`);
   }
 
-  console.log('\\nDetails:');
+  console.log('\nDetails:');
   results.forEach(result => {
     const status = result.success ? '✅' : '❌';
     const originalName = path.basename(result.originalPath);
     const newName = path.basename(result.newPath);
     
-    console.log(`${status} ${originalName} ${dryRun ? '→' : '✅'} ${newName}`);
-    
-    if (!result.success && result.error) {
-      console.log(`   Error: ${result.error}`);
+    if (result.success) {
+      console.log(`${status} ${originalName} → ${newName}`);
+    } else {
+      console.log(`${status} ${originalName} (failed)`);
+      if (result.error) {
+        console.log(`   Error: ${result.error}`);
+      }
     }
   });
 }

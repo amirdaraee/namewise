@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import inquirer from 'inquirer';
-import { FileInfo, Config, RenameResult } from '../types/index.js';
+import { FileInfo, Config, RenameResult, FileCategory, DateFormat } from '../types/index.js';
 import { DocumentParserFactory } from '../parsers/factory.js';
 import { AIServiceFactory } from '../services/ai-factory.js';
 import { FileRenamer } from '../services/file-renamer.js';
@@ -35,7 +35,12 @@ export async function renameFiles(directory: string, options: any): Promise<void
       maxFileSize: parseInt(options.maxSize) * 1024 * 1024, // Convert MB to bytes
       supportedExtensions: ['.pdf', '.docx', '.doc', '.xlsx', '.xls', '.txt'],
       dryRun: options.dryRun,
-      namingConvention: options.case
+      namingConvention: options.case,
+      templateOptions: {
+        category: options.template as FileCategory,
+        personalName: options.name,
+        dateFormat: options.date as DateFormat
+      }
     };
 
     // Initialize services

@@ -36,7 +36,13 @@ describe('Workflow Integration Tests', () => {
       apiKey: 'test-key',
       maxFileSize: 10 * 1024 * 1024,
       supportedExtensions: ['.txt', '.pdf', '.docx', '.xlsx', '.md'],
-      dryRun: false
+      dryRun: false,
+      namingConvention: 'kebab-case',
+      templateOptions: {
+        category: 'general',
+        personalName: undefined,
+        dateFormat: 'none'
+      }
     };
 
     fileRenamer = new FileRenamer(parserFactory, mockAIService, config);

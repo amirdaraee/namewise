@@ -7,7 +7,7 @@ async function main() {
   program
     .name('namewise')
     .description('AI-powered tool to intelligently rename files based on their content')
-    .version('0.2.0');
+    .version('0.3.0');
 
   setupCommands(program);
   

@@ -35,7 +35,12 @@ describe('FileRenamer', () => {
       maxFileSize: 10 * 1024 * 1024, // 10MB
       supportedExtensions: ['.txt', '.pdf', '.docx', '.xlsx'],
       dryRun: false,
-      namingConvention: 'kebab-case'
+      namingConvention: 'kebab-case',
+      templateOptions: {
+        category: 'general',
+        personalName: undefined,
+        dateFormat: 'none'
+      }
     };
 
     fileRenamer = new FileRenamer(parserFactory, mockAIService, config);
@@ -277,11 +282,12 @@ describe('FileRenamer', () => {
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(true);
       
-      // Verify AI service was called with the naming convention
+      // Verify AI service was called with the naming convention and category
       expect(generateFileNameSpy).toHaveBeenCalledWith(
         expect.any(String),
         'sample-text.txt',
-        'snake_case'
+        'snake_case',
+        'general' // Uses general template since that's the default (no auto-categorization)
       );
     });
   });

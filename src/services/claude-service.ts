@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AIProvider } from '../types/index.js';
 import { applyNamingConvention, getNamingInstructions, NamingConvention } from '../utils/naming-conventions.js';
+import { getTemplateInstructions, FileCategory } from '../utils/file-templates.js';
 
 export class ClaudeService implements AIProvider {
   name = 'Claude';
@@ -12,16 +13,20 @@ export class ClaudeService implements AIProvider {
     });
   }
 
-  async generateFileName(content: string, originalName: string, namingConvention: string = 'kebab-case'): Promise<string> {
+  async generateFileName(content: string, originalName: string, namingConvention: string = 'kebab-case', category: string = 'general'): Promise<string> {
     const convention = namingConvention as NamingConvention;
+    const fileCategory = category as FileCategory;
     const namingInstructions = getNamingInstructions(convention);
+    const templateInstructions = getTemplateInstructions(fileCategory);
     
     const prompt = `Based on the following document content, generate a descriptive filename that captures the main topic/purpose of the document. The filename should be:
 - Descriptive and meaningful
 - Professional and clean
 - Between 3-8 words
 - ${namingInstructions}
+- ${templateInstructions}
 - Do not include file extension
+- Do not include personal names, dates, or template variables - just the core content description
 - Only use letters, numbers, and appropriate separators for the naming convention
 
 Original filename: ${originalName}
@@ -29,7 +34,7 @@ Original filename: ${originalName}
 Document content (first 2000 characters):
 ${content.substring(0, 2000)}
 
-Respond with only the suggested filename using the specified naming convention, no explanation.`;
+Respond with only the core filename (without personal info or dates) using the specified naming convention, no explanation.`;
 
     try {
       const response = await this.client.messages.create({

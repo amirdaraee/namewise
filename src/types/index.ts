@@ -1,9 +1,30 @@
+export interface DocumentMetadata {
+  title?: string;
+  author?: string;
+  creator?: string;
+  subject?: string;
+  keywords?: string[];
+  creationDate?: Date;
+  modificationDate?: Date;
+  pages?: number;
+  wordCount?: number;
+}
+
 export interface FileInfo {
   path: string;
   name: string;
   extension: string;
   size: number;
   content?: string;
+  // File system metadata
+  createdAt: Date;
+  modifiedAt: Date;
+  accessedAt: Date;
+  // Context metadata  
+  parentFolder: string;
+  folderPath: string[];
+  // Document metadata (extracted from file contents)
+  documentMetadata?: DocumentMetadata;
 }
 
 export interface RenameResult {
@@ -16,7 +37,7 @@ export interface RenameResult {
 
 export interface AIProvider {
   name: string;
-  generateFileName: (content: string, originalName: string, namingConvention?: string, category?: string) => Promise<string>;
+  generateFileName: (content: string, originalName: string, namingConvention?: string, category?: string, fileInfo?: FileInfo) => Promise<string>;
 }
 
 export type NamingConvention = 'kebab-case' | 'snake_case' | 'camelCase' | 'PascalCase' | 'lowercase' | 'UPPERCASE';
@@ -39,7 +60,12 @@ export interface Config {
   templateOptions: TemplateOptions;
 }
 
+export interface ParseResult {
+  content: string;
+  metadata?: DocumentMetadata;
+}
+
 export interface DocumentParser {
   supports: (filePath: string) => boolean;
-  parse: (filePath: string) => Promise<string>;
+  parse: (filePath: string) => Promise<ParseResult>;
 }

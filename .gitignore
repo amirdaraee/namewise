@@ -173,3 +173,4 @@ test-*.ts
 *.bak
 *.backup
 *.tmp
+CLAUDE.md

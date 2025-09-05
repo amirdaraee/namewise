@@ -40,22 +40,24 @@ describe('TextParser', () => {
   describe('parse()', () => {
     it('should parse text file content correctly', async () => {
       const filePath = path.join(testDataDir, 'sample-text.txt');
-      const content = await parser.parse(filePath);
+      const result = await parser.parse(filePath);
 
-      expect(content).toContain('Project Requirements Document');
-      expect(content).toContain('customer management system');
-      expect(content).toContain('React.js');
-      expect(content.length).toBeGreaterThan(0);
+      expect(result.content).toContain('Project Requirements Document');
+      expect(result.content).toContain('customer management system');
+      expect(result.content).toContain('React.js');
+      expect(result.content.length).toBeGreaterThan(0);
+      expect(result.metadata).toBeDefined();
     });
 
     it('should parse markdown file content correctly', async () => {
       const filePath = path.join(testDataDir, 'sample-markdown.md');
-      const content = await parser.parse(filePath);
+      const result = await parser.parse(filePath);
 
-      expect(content).toContain('Meeting Notes');
-      expect(content).toContain('Action Items');
-      expect(content).toContain('John, Sarah, Mike');
-      expect(content.length).toBeGreaterThan(0);
+      expect(result.content).toContain('Meeting Notes');
+      expect(result.content).toContain('Action Items');
+      expect(result.content).toContain('John, Sarah, Mike');
+      expect(result.content.length).toBeGreaterThan(0);
+      expect(result.metadata).toBeDefined();
     });
 
     it('should handle empty files', async () => {

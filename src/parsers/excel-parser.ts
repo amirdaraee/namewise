@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import * as XLSX from 'xlsx';
-import { DocumentParser } from '../types/index.js';
+import { DocumentParser, ParseResult, DocumentMetadata } from '../types/index.js';
 
 export class ExcelParser implements DocumentParser {
   supports(filePath: string): boolean {
@@ -9,10 +9,11 @@ export class ExcelParser implements DocumentParser {
     return ext === '.xlsx' || ext === '.xls';
   }
 
-  async parse(filePath: string): Promise<string> {
+  async parse(filePath: string): Promise<ParseResult> {
     try {
       const workbook = XLSX.readFile(filePath);
       const sheets: string[] = [];
+      const metadata: DocumentMetadata = {};
 
       workbook.SheetNames.forEach(sheetName => {
         const sheet = workbook.Sheets[sheetName];
@@ -22,7 +23,25 @@ export class ExcelParser implements DocumentParser {
         }
       });
 
-      return sheets.join('\\n\\n').trim();
+      const content = sheets.join('\\n\\n').trim();
+      
+      // Extract metadata from workbook properties
+      if (workbook.Props) {
+        const props = workbook.Props as any;
+        metadata.title = props.Title;
+        metadata.author = props.Author;
+        metadata.subject = props.Subject;
+        metadata.keywords = props.Keywords ? [props.Keywords] : undefined;
+        metadata.creationDate = props.CreatedDate;
+        metadata.modificationDate = props.ModifiedDate;
+      }
+      
+      // Estimate word count from content
+      if (content) {
+        metadata.wordCount = content.split(/\\s+/).filter(word => word.length > 0).length;
+      }
+
+      return { content, metadata };
     } catch (error) {
       throw new Error(`Failed to parse Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

@@ -51,23 +51,28 @@ export class FileRenamer {
       throw new Error(`No parser available for file type: ${file.extension}`);
     }
 
-    // Extract content
-    const content = await parser.parse(file.path);
+    // Extract content and metadata
+    const parseResult = await parser.parse(file.path);
+    const content = parseResult.content;
     if (!content || content.trim().length === 0) {
       throw new Error('No content could be extracted from the file');
     }
+    
+    // Update file info with extracted document metadata
+    file.documentMetadata = parseResult.metadata;
 
     // Determine file category (use configured category or auto-categorize)
     const fileCategory = this.config.templateOptions.category === 'auto' 
-      ? categorizeFile(file.path, content)
+      ? categorizeFile(file.path, content, file)
       : this.config.templateOptions.category;
 
-    // Generate core filename using AI with naming convention and category
+    // Generate core filename using AI with all available metadata
     const coreFileName = await this.aiService.generateFileName(
       content, 
       file.name, 
       this.config.namingConvention, 
-      fileCategory
+      fileCategory,
+      file // Pass the entire file info with all metadata
     );
     if (!coreFileName || coreFileName.trim().length === 0) {
       throw new Error('AI service failed to generate a filename');

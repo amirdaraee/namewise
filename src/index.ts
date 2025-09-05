@@ -5,9 +5,9 @@ import { setupCommands } from './cli/commands.js';
 
 async function main() {
   program
-    .name('ai-rename')
+    .name('namewise')
     .description('AI-powered tool to intelligently rename files based on their content')
-    .version('0.1.1');
+    .version('0.1.3');
 
   setupCommands(program);
   

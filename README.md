@@ -1,4 +1,4 @@
-# AI Rename
+# Namewise
 
 [![Tests](https://img.shields.io/badge/tests-65%20passing-brightgreen.svg)](#-testing--development)
 [![Coverage](https://img.shields.io/badge/coverage-90%25%20branches-brightgreen.svg)](#-testing--development)
@@ -24,37 +24,37 @@ Automatically rename files based on their content using Claude or OpenAI. Transf
 
 ```bash
 # Clone and setup
-git clone https://github.com/amirdaraee/ai-rename.git
-cd ai-rename
+git clone https://github.com/amirdaraee/namewise.git
+cd namewise
 npm install
 npm run build
 
 # Rename files (dry run first)
-npx ai-rename rename ./my-documents --dry-run --provider claude
+npx namewise rename ./my-documents --dry-run --provider claude
 
 # Actually rename with your API key
-npx ai-rename rename ./my-documents --provider claude --api-key your-api-key
+npx namewise rename ./my-documents --provider claude --api-key your-api-key
 ```
 
 ## 📦 Installation
 
 ### Option 1: Clone and Build
 ```bash
-git clone https://github.com/amirdaraee/ai-rename.git
-cd ai-rename
+git clone https://github.com/amirdaraee/namewise.git
+cd namewise
 npm install
 npm run build
 npm link  # Optional: for global usage
 ```
 
 ### Option 2: Direct Download
-Download the latest release from [GitHub Releases](https://github.com/amirdaraee/ai-rename/releases)
+Download the latest release from [GitHub Releases](https://github.com/amirdaraee/namewise/releases)
 
 ## 📖 Usage
 
 ### Command Structure
 ```bash
-ai-rename rename <directory> [options]
+namewise rename <directory> [options]
 ```
 
 ### Options Reference
@@ -69,23 +69,23 @@ ai-rename rename <directory> [options]
 
 **Preview changes (recommended first step):**
 ```bash
-ai-rename rename ./documents --dry-run
+namewise rename ./documents --dry-run
 ```
 
 **Rename with Claude (interactive API key):**
 ```bash
-ai-rename rename ./documents --provider claude
+namewise rename ./documents --provider claude
 ```
 
 **Rename with environment variable:**
 ```bash
 export CLAUDE_API_KEY=your-key-here
-ai-rename rename ./documents --provider claude --api-key $CLAUDE_API_KEY
+namewise rename ./documents --provider claude --api-key $CLAUDE_API_KEY
 ```
 
 **Process large files:**
 ```bash
-ai-rename rename ./reports --max-size 50 --provider openai
+namewise rename ./reports --max-size 50 --provider openai
 ```
 
 **Before and After Example:**
@@ -210,5 +210,5 @@ The project includes comprehensive tests with 65 test cases covering all functio
 <div align="center">
 <strong>⭐ Star this repo if it helped you organize your files! ⭐</strong>
 
-[Report Bug](https://github.com/amirdaraee/ai-rename/issues) • [Request Feature](https://github.com/amirdaraee/ai-rename/issues)
+[Report Bug](https://github.com/amirdaraee/namewise/issues) • [Request Feature](https://github.com/amirdaraee/namewise/issues)
 </div>

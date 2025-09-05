@@ -16,7 +16,7 @@ export interface FileTemplate {
   examples: string[];
 }
 
-export const FILE_TEMPLATES: Record<FileCategory, FileTemplate> = {
+export const FILE_TEMPLATES: Record<Exclude<FileCategory, 'auto'>, FileTemplate> = {
   document: {
     category: 'document',
     pattern: '{content}-{personalName}-{date}',
@@ -142,7 +142,10 @@ export function applyTemplate(
   templateOptions: TemplateOptions,
   namingConvention: NamingConvention
 ): string {
-  const template = FILE_TEMPLATES[category];
+  if (category === 'auto') {
+    throw new Error('Cannot apply template for "auto" category. Category should be resolved before calling applyTemplate.');
+  }
+  const template = FILE_TEMPLATES[category as Exclude<FileCategory, 'auto'>];
   let result = template.pattern;
 
   // Replace template variables
@@ -196,6 +199,9 @@ function getFileName(filePath: string): string {
 }
 
 export function getTemplateInstructions(category: FileCategory): string {
-  const template = FILE_TEMPLATES[category];
+  if (category === 'auto') {
+    return 'Generate appropriate filename based on detected file type and content.';
+  }
+  const template = FILE_TEMPLATES[category as Exclude<FileCategory, 'auto'>];
   return `Generate filename for ${category} type files. ${template.description}. Examples: ${template.examples.join(', ')}`;
 }

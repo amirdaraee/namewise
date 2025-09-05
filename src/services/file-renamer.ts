@@ -13,8 +13,10 @@ export class FileRenamer {
   async renameFiles(files: FileInfo[]): Promise<RenameResult[]> {
     const results: RenameResult[] = [];
 
-    for (const file of files) {
-      console.log(`Processing: ${file.name}...`);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      // Use \r to overwrite the same line, show progress counter
+      process.stdout.write(`\rProcessing: ${file.name}... (${i + 1}/${files.length})`);
       
       try {
         const result = await this.renameFile(file);
@@ -29,6 +31,9 @@ export class FileRenamer {
         });
       }
     }
+
+    // Clear the processing line and move to next line
+    process.stdout.write('\r' + ' '.repeat(80) + '\r');
 
     return results;
   }
@@ -51,8 +56,8 @@ export class FileRenamer {
       throw new Error('No content could be extracted from the file');
     }
 
-    // Generate new filename using AI
-    const suggestedName = await this.aiService.generateFileName(content, file.name);
+    // Generate new filename using AI with naming convention
+    const suggestedName = await this.aiService.generateFileName(content, file.name, this.config.namingConvention);
     if (!suggestedName || suggestedName.trim().length === 0) {
       throw new Error('AI service failed to generate a filename');
     }

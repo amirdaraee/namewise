@@ -34,7 +34,8 @@ describe('FileRenamer', () => {
       apiKey: 'test-key',
       maxFileSize: 10 * 1024 * 1024, // 10MB
       supportedExtensions: ['.txt', '.pdf', '.docx', '.xlsx'],
-      dryRun: false
+      dryRun: false,
+      namingConvention: 'kebab-case'
     };
 
     fileRenamer = new FileRenamer(parserFactory, mockAIService, config);
@@ -250,6 +251,38 @@ describe('FileRenamer', () => {
       expect(results[0].originalPath).toBe(results[0].newPath); // Same path
       expect(mockAIService.getCallCount()).toBe(1);
       expect(fs.rename).not.toHaveBeenCalled(); // No rename needed
+    });
+
+    it('should pass naming convention to AI service', async () => {
+      config.namingConvention = 'snake_case';
+      fileRenamer = new FileRenamer(parserFactory, mockAIService, config);
+
+      // Spy on the generateFileName method
+      const generateFileNameSpy = vi.spyOn(mockAIService, 'generateFileName');
+
+      const testFiles: FileInfo[] = [
+        {
+          path: path.join(testDataDir, 'sample-text.txt'),
+          name: 'sample-text.txt',
+          extension: '.txt',
+          size: 1000
+        }
+      ];
+
+      // Mock fs.access to simulate that new file doesn't exist
+      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+
+      const results = await fileRenamer.renameFiles(testFiles);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].success).toBe(true);
+      
+      // Verify AI service was called with the naming convention
+      expect(generateFileNameSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        'sample-text.txt',
+        'snake_case'
+      );
     });
   });
 });

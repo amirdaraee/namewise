@@ -16,8 +16,10 @@ export interface RenameResult {
 
 export interface AIProvider {
   name: string;
-  generateFileName: (content: string, originalName: string) => Promise<string>;
+  generateFileName: (content: string, originalName: string, namingConvention?: string) => Promise<string>;
 }
+
+export type NamingConvention = 'kebab-case' | 'snake_case' | 'camelCase' | 'PascalCase' | 'lowercase' | 'UPPERCASE';
 
 export interface Config {
   aiProvider: 'claude' | 'openai';
@@ -25,6 +27,7 @@ export interface Config {
   maxFileSize: number;
   supportedExtensions: string[];
   dryRun: boolean;
+  namingConvention: NamingConvention;
 }
 
 export interface DocumentParser {

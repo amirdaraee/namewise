@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AIProvider } from '../types/index.js';
+import { applyNamingConvention, getNamingInstructions, NamingConvention } from '../utils/naming-conventions.js';
 
 export class ClaudeService implements AIProvider {
   name = 'Claude';
@@ -11,21 +12,24 @@ export class ClaudeService implements AIProvider {
     });
   }
 
-  async generateFileName(content: string, originalName: string): Promise<string> {
+  async generateFileName(content: string, originalName: string, namingConvention: string = 'kebab-case'): Promise<string> {
+    const convention = namingConvention as NamingConvention;
+    const namingInstructions = getNamingInstructions(convention);
+    
     const prompt = `Based on the following document content, generate a descriptive filename that captures the main topic/purpose of the document. The filename should be:
 - Descriptive and meaningful
 - Professional and clean
 - Between 3-8 words
-- Use kebab-case (lowercase with hyphens)
+- ${namingInstructions}
 - Do not include file extension
-- Avoid special characters except hyphens
+- Only use letters, numbers, and appropriate separators for the naming convention
 
 Original filename: ${originalName}
 
 Document content (first 2000 characters):
 ${content.substring(0, 2000)}
 
-Respond with only the suggested filename, no explanation.`;
+Respond with only the suggested filename using the specified naming convention, no explanation.`;
 
     try {
       const response = await this.client.messages.create({
@@ -43,31 +47,33 @@ Respond with only the suggested filename, no explanation.`;
         ? response.content[0].text.trim()
         : 'untitled-document';
 
-      // Clean and validate the suggested name
-      return this.sanitizeFileName(suggestedName);
+      // Apply naming convention and clean the suggested name
+      return this.sanitizeFileName(suggestedName, convention);
     } catch (error) {
       console.error('Claude API error:', error);
       throw new Error(`Failed to generate filename with Claude: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  private sanitizeFileName(name: string): string {
+  private sanitizeFileName(name: string, convention: NamingConvention): string {
     // Remove any potential file extensions from the suggestion
     const nameWithoutExt = name.replace(/\.[^/.]+$/, '');
     
-    // Convert to lowercase and replace spaces with hyphens
-    let cleaned = nameWithoutExt
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '') // Remove special chars except spaces and hyphens
-      .replace(/\s+/g, '-') // Replace spaces with hyphens
-      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-      .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+    // Apply the naming convention
+    let cleaned = applyNamingConvention(nameWithoutExt, convention);
 
     // Ensure it's not empty and not too long
     if (!cleaned) {
-      cleaned = 'untitled-document';
+      cleaned = applyNamingConvention('untitled document', convention);
     } else if (cleaned.length > 100) {
-      cleaned = cleaned.substring(0, 100).replace(/-[^-]*$/, ''); // Cut at word boundary
+      // Truncate while preserving naming convention structure
+      cleaned = cleaned.substring(0, 100);
+      // Clean up any broken separators at the end
+      if (convention === 'kebab-case') {
+        cleaned = cleaned.replace(/-[^-]*$/, '');
+      } else if (convention === 'snake_case') {
+        cleaned = cleaned.replace(/_[^_]*$/, '');
+      }
     }
 
     return cleaned;

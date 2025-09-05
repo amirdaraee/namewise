@@ -24,7 +24,7 @@ Automatically rename files based on their content using Claude or OpenAI. Transf
 
 ```bash
 # Clone and setup
-git clone https://github.com/yourusername/ai-rename.git
+git clone https://github.com/amirdaraee/ai-rename.git
 cd ai-rename
 npm install
 npm run build
@@ -40,7 +40,7 @@ npx ai-rename rename ./my-documents --provider claude --api-key your-api-key
 
 ### Option 1: Clone and Build
 ```bash
-git clone https://github.com/yourusername/ai-rename.git
+git clone https://github.com/amirdaraee/ai-rename.git
 cd ai-rename
 npm install
 npm run build
@@ -48,7 +48,7 @@ npm link  # Optional: for global usage
 ```
 
 ### Option 2: Direct Download
-Download the latest release from [GitHub Releases](https://github.com/yourusername/ai-rename/releases)
+Download the latest release from [GitHub Releases](https://github.com/amirdaraee/ai-rename/releases)
 
 ## 📖 Usage
 
@@ -210,5 +210,5 @@ The project includes comprehensive tests with 65 test cases covering all functio
 <div align="center">
 <strong>⭐ Star this repo if it helped you organize your files! ⭐</strong>
 
-[Report Bug](https://github.com/yourusername/ai-rename/issues) • [Request Feature](https://github.com/yourusername/ai-rename/issues)
+[Report Bug](https://github.com/amirdaraee/ai-rename/issues) • [Request Feature](https://github.com/amirdaraee/ai-rename/issues)
 </div>

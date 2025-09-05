@@ -7,10 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2025-09-05
+
+### Changed
+- Package renamed from `smart-rename` to `ai-rename` (original name was taken on NPM)
+- CLI binary name changed from `smart-rename` to `ai-rename`
+- All documentation and references updated to reflect new name
+
 ## [0.1.0] - 2025-09-05
 
 ### Added
-- Initial beta release of Smart Rename
+- Initial beta release of AI Rename
 - AI-powered file renaming using Claude or OpenAI
 - Support for PDF, Word, Excel, and text files
 - Dry-run mode for safe previewing

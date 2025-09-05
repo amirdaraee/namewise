@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2025-09-05
+
+### Changed
+- Package renamed from `ai-rename` to `namewise` (clearer branding and avoids confusion with existing ai-renamer package)
+- CLI binary name changed from `ai-rename` to `namewise`
+- All documentation and references updated to reflect new name
+
 ## [0.1.1] - 2025-09-05
 
 ### Changed

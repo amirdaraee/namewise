@@ -105,8 +105,8 @@ describe('OpenAIService', () => {
       await service.generateFileName(sampleContent, originalName, 'kebab-case');
       
       const call = mockClient.chat.completions.create.mock.calls[0][0];
-      expect(call.messages[0].content).toContain(`Original filename: ${originalName}`);
       expect(call.messages[0].content).toContain(sampleContent.substring(0, 2000));
+      expect(call.messages[0].content).toContain('Document content (first 2000 characters)');
     });
 
     it('should use correct OpenAI parameters', async () => {

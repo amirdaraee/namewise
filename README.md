@@ -8,13 +8,15 @@
 
 🤖 **AI-Powered File Renaming CLI Tool**
 
-Automatically rename files based on their content using Claude or OpenAI. Transform messy filenames like `document1.pdf` or `IMG_20240315_143022.pdf` into descriptive names like `project-requirements-document.pdf` or `quarterly-sales-report-q4-2023.pdf`.
+Automatically rename files based on their content using AI providers (Claude, OpenAI, Ollama, LMStudio). Transform messy filenames like `document1.pdf` or `IMG_20240315_143022.pdf` into descriptive names like `project-requirements-document.pdf` or `quarterly-sales-report-q4-2023.pdf`.
 
 > **Perfect for**: Document management, file organization, bulk renaming based on content analysis
 
 ## Features
 
-- **AI-Powered Renaming**: Uses Claude or OpenAI to generate descriptive filenames based on document content
+- **AI-Powered Renaming**: Uses cloud providers (Claude, OpenAI) or local LLMs (Ollama, LMStudio) to generate descriptive filenames
+- **Privacy First**: Local LLM support means your files never leave your machine
+- **Cost Effective**: Use free local models or pay-per-use cloud APIs
 - **Personal File Templates**: Customizable templates for different file categories (documents, movies, music, series, photos, books)
 - **Smart Categorization**: Automatic file type detection or manual category selection
 - **Naming Convention Options**: 6 different formats (kebab-case, snake_case, camelCase, PascalCase, lowercase, UPPERCASE)
@@ -63,7 +65,9 @@ namewise rename <directory> [options]
 ### Options Reference
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--provider` | AI provider (`claude` or `openai`) | `claude` |
+| `--provider` | AI provider (`claude`, `openai`, `ollama`, `lmstudio`) | `claude` |
+| `--base-url` | Base URL for local LLM providers | Auto-detected |
+| `--model` | Model name for local LLM providers | Provider default |
 | `--api-key` | API key for the chosen provider | Interactive prompt |
 | `--case` | Naming convention (kebab-case, snake_case, camelCase, PascalCase, lowercase, UPPERCASE) | `kebab-case` |
 | `--template` | File category template (document, movie, music, series, photo, book, general, auto) | `general` |
@@ -110,6 +114,35 @@ namewise rename ./docs --case snake_case --dry-run
 # Result: project_requirements_document.pdf
 ```
 
+**Local LLMs (Privacy-First, No API Keys):**
+```bash
+# Ollama - requires 'ollama serve' running
+namewise rename ./documents --provider ollama --dry-run
+# Result: quarterly-financial-report.pdf
+
+# Custom Ollama model
+namewise rename ./code --provider ollama --model codellama --dry-run
+# Result: user-authentication-service.js
+
+# LMStudio - requires local server enabled
+namewise rename ./contracts --provider lmstudio --dry-run
+# Result: employment-agreement-template.docx
+
+# Remote Ollama server
+namewise rename ./files --provider ollama --base-url http://192.168.1.100:11434 --model llama3.1
+```
+
+**Cloud Providers (API Keys Required):**
+```bash
+# Claude (recommended for accuracy)
+export CLAUDE_API_KEY=your-key
+namewise rename ./documents --provider claude --dry-run
+
+# OpenAI  
+export OPENAI_API_KEY=your-key
+namewise rename ./files --provider openai --max-size 20 --dry-run
+```
+
 **Before and After Example:**
 ```
 📁 Before:
@@ -147,19 +180,54 @@ Choose from specialized templates for different file types:
 | `book` | `{author}-{content}` | `george-orwell-1984.pdf` | Books and ebooks |
 | `auto` | *Automatic* | *Varies by detected type* | Let AI detect and choose best template |
 
-## 🔑 API Keys Setup
+## 🔑 AI Provider Setup
 
-### Claude (Anthropic) - Recommended
+### 🏠 Local LLMs (Privacy-First, No API Keys)
+
+**Ollama** - Recommended for privacy
+1. Install: Download from [ollama.ai](https://ollama.ai)
+2. Start server: `ollama serve`
+3. Pull model: `ollama pull llama3.1` (or your preferred model)
+4. Use: `--provider ollama`
+
+**LMStudio** - User-friendly interface
+1. Install: Download from [lmstudio.ai](https://lmstudio.ai)
+2. Download and load a model in LMStudio
+3. Enable "Local Server" mode in LMStudio
+4. Use: `--provider lmstudio`
+
+### ☁️ Cloud Providers (Require API Keys)
+
+**Claude (Anthropic)** - Recommended for accuracy
 1. Visit [Anthropic Console](https://console.anthropic.com/)
 2. Create an account and generate an API key
 3. Set as environment variable: `export CLAUDE_API_KEY=your-key`
 
-### OpenAI
+**OpenAI**
 1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)  
 2. Create an API key
 3. Set as environment variable: `export OPENAI_API_KEY=your-key`
 
-> 💡 **Tip**: The tool will prompt for API keys if not provided via command line or environment variables.
+### 🚀 Quick Start by Privacy Preference
+
+**Maximum Privacy (Local Processing):**
+```bash
+# Setup Ollama
+ollama serve
+ollama pull llama3.1
+
+# Use locally - no data leaves your machine
+namewise rename ./documents --provider ollama --dry-run
+```
+
+**Balanced (Cloud with API key):**
+```bash
+# Use Claude for best accuracy
+export CLAUDE_API_KEY=your-key
+namewise rename ./documents --provider claude --dry-run
+```
+
+> 💡 **Tip**: Local LLMs require no API keys and keep your data private. Cloud providers may offer better accuracy but require API keys and send data externally.
 
 ## ⚙️ How It Works
 
@@ -214,7 +282,9 @@ The project includes comprehensive tests with 65 test cases covering all functio
 
 - **Node.js**: 18.0.0 or higher
 - **TypeScript**: 5.0.0 or higher  
-- **API Key**: Claude (Anthropic) or OpenAI
+- **AI Provider**: Choose one:
+  - **Local**: Ollama or LMStudio (no API key needed)
+  - **Cloud**: Claude (Anthropic) or OpenAI API key
 
 ## 🐛 Troubleshooting
 
@@ -226,10 +296,16 @@ The project includes comprehensive tests with 65 test cases covering all functio
 - Check file is not corrupted
 - Try reducing max-size limit
 
-**API errors:**
+**API errors (Cloud providers):**
 - Verify API key is valid
 - Check internet connection
 - Ensure sufficient API credits
+
+**Local LLM connection errors:**
+- Ensure Ollama server is running (`ollama serve`)
+- Check LMStudio local server is enabled
+- Verify correct base URL and port
+- Confirm model is loaded/available
 
 **Permission errors:**
 - Check file permissions

@@ -44,13 +44,13 @@ describe('CLI Commands', () => {
       // Check provider option
       const providerOption = options?.find(opt => opt.long === '--provider');
       expect(providerOption).toBeDefined();
-      expect(providerOption?.description).toBe('AI provider (claude|openai)');
+      expect(providerOption?.description).toBe('AI provider (claude|openai|ollama|lmstudio)');
       expect(providerOption?.defaultValue).toBe('claude');
 
       // Check api-key option
       const apiKeyOption = options?.find(opt => opt.long === '--api-key');
       expect(apiKeyOption).toBeDefined();
-      expect(apiKeyOption?.description).toBe('API key for the AI provider (or set CLAUDE_API_KEY/OPENAI_API_KEY)');
+      expect(apiKeyOption?.description).toBe('API key for cloud providers (or set CLAUDE_API_KEY/OPENAI_API_KEY)');
 
       // Check dry-run option
       const dryRunOption = options?.find(opt => opt.long === '--dry-run');

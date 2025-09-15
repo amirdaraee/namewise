@@ -51,13 +51,18 @@ export interface TemplateOptions {
 }
 
 export interface Config {
-  aiProvider: 'claude' | 'openai';
-  apiKey: string;
+  aiProvider: 'claude' | 'openai' | 'ollama' | 'lmstudio';
+  apiKey?: string; // Optional for local providers
   maxFileSize: number;
   supportedExtensions: string[];
   dryRun: boolean;
   namingConvention: NamingConvention;
   templateOptions: TemplateOptions;
+  // Local LLM specific options
+  localLLMConfig?: {
+    baseUrl?: string;
+    model?: string;
+  };
 }
 
 export interface ParseResult {

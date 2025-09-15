@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2025-09-15
+
+### Enhanced
+- **🔧 Reliability Improvements**: Enhanced stability and consistency across all AI providers
+- **📋 Documentation**: Improved examples and usage documentation
+
+## [0.4.0] - 2025-09-15
+
+### Added
+- **🤖 Local LLM Provider Support**: Full integration with local AI services
+  - **Ollama**: Local LLM support with customizable models (llama3.1, codellama, etc.)
+  - **LMStudio**: Local model hosting with OpenAI-compatible API
+  - Support for custom base URLs and model selection
+  - Availability checking and model listing for local providers
+
+### Enhanced
+- **🎯 Intelligent Person Name Detection**: Major AI prompting improvements
+  - AI now extracts person names from document content and places them at filename beginning
+  - Smart folder name filtering to ignore irrelevant names like "no", "temp", "downloads"
+  - Enhanced prompts that focus on document content rather than metadata
+  - Support for detecting visa applications, contracts, medical records, certificates
+
+### Architecture
+- **📋 Centralized Prompt System**: Single source of truth for all AI prompts
+  - Model-agnostic prompting that works across Claude, OpenAI, LMStudio, and Ollama
+  - Consolidated prompt building in `/src/utils/ai-prompts.ts`
+  - Consistent behavior across all AI providers
+  - Easier maintenance and updates
+
+### Examples
+```bash
+# Use local Ollama service
+namewise rename ./documents --provider ollama --dry-run
+
+# Use LMStudio with custom model
+namewise rename ./files --provider lmstudio --base-url http://localhost:1234 --model codellama
+
+# Enhanced person name detection (Sarah example)
+# Input: visitor-visa-application-for-family-in-canada.pdf (in folder "no")
+# Output: sarah-visitor-visa-application-for-family-members-in-canada.pdf
+```
+
+### Technical
+- Enhanced CLI with new provider options and base URL configuration
+- Added availability checking and model discovery for local providers
+
+## [0.3.1] - 2025-09-05
+
+### Security
+- **🔒 Vulnerability Fix**: Replaced vulnerable `xlsx` package with secure `exceljs`
+- Enhanced Excel file parsing with improved security and reliability
+
+### Infrastructure
+- **⚙️ CI/CD Improvements**: Enhanced GitHub Actions workflows
+- Updated Node.js versions in CI pipelines
+- Improved test workflow reliability and build process
+
 ## [0.3.0] - 2025-09-05
 
 ### Added

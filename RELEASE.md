@@ -84,7 +84,11 @@ Your project has three separate, independently runnable workflows:
 
 ### 3. Publish Pipeline (`publish.yml`)
 - **Triggers**: GitHub releases, manual dispatch
-- **Purpose**: Publish to NPM and GitHub Packages
+- **Purpose**: Publish to NPM and GitHub Packages using build artifacts
+- **Features**: 
+  - Uses artifacts from build pipeline (no rebuilding)
+  - Can use existing artifacts from previous builds
+  - Option to specify which artifact to use
 - **Manual run**: Go to Actions → Publish Pipeline → "Run workflow"
 
 ### 4. Auto Release (`auto-release.yml`)
@@ -126,6 +130,13 @@ Follow [Semantic Versioning](https://semver.org/):
 - NPM doesn't allow republishing the same version
 - Bump the version: `npm version patch`
 - Push: `git push origin main`
+
+### Using Existing Build Artifacts
+
+You can publish using previously built artifacts:
+
+1. **Use latest build**: Go to Actions → Publish Pipeline → Run workflow → Use artifact: `latest`
+2. **Use specific build**: Find the artifact name from a previous build run → Run workflow → Use artifact: `build-artifacts-abc123def`
 
 ### Manual Publishing
 If workflows fail, you can publish manually:

@@ -1,0 +1,49 @@
+name: Build Pipeline
+
+on:
+  workflow_dispatch: # Allows manual triggering
+  push:
+    branches: [ main ]
+  workflow_call: # Allows this workflow to be called by other workflows
+
+jobs:
+  build:
+    name: Build Project
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build project
+        run: npm run build
+      
+      - name: Test CLI build
+        run: |
+          node dist/index.js --help
+          node dist/index.js --version
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-${{ github.sha }}
+          path: |
+            dist/
+            package.json
+            package-lock.json
+            README.md
+            LICENSE
+            CHANGELOG.md
+          retention-days: 30
+          
+      - name: Build success notification
+        run: echo "✅ Build completed successfully for commit ${{ github.sha }}"

@@ -19,13 +19,61 @@ describe('AIServiceFactory', () => {
       expect(typeof service.generateFileName).toBe('function');
     });
 
+    it('should create OllamaService for ollama provider', () => {
+      const service = AIServiceFactory.create('ollama');
+      
+      expect(service).toBeDefined();
+      expect(service.name).toBe('Ollama');
+      expect(typeof service.generateFileName).toBe('function');
+    });
+
+    it('should create LMStudioService for lmstudio provider', () => {
+      const service = AIServiceFactory.create('lmstudio');
+      
+      expect(service).toBeDefined();
+      expect(service.name).toBe('LMStudio');
+      expect(typeof service.generateFileName).toBe('function');
+    });
+
+    it('should create Ollama service with custom config', () => {
+      const service = AIServiceFactory.create('ollama', undefined, {
+        baseUrl: 'http://custom:8080',
+        model: 'custom-model'
+      });
+      
+      expect(service).toBeDefined();
+      expect(service.name).toBe('Ollama');
+    });
+
+    it('should create LMStudio service with custom config', () => {
+      const service = AIServiceFactory.create('lmstudio', undefined, {
+        baseUrl: 'http://custom:9000',
+        model: 'custom-model'
+      });
+      
+      expect(service).toBeDefined();
+      expect(service.name).toBe('LMStudio');
+    });
+
     it('should throw error for unsupported provider', () => {
       expect(() => {
         AIServiceFactory.create('unsupported' as any, 'test-api-key');
       }).toThrow('Unsupported AI provider: unsupported');
     });
 
-    it('should pass API key to created services', () => {
+    it('should require API key for Claude provider', () => {
+      expect(() => {
+        AIServiceFactory.create('claude');
+      }).toThrow('API key is required for Claude provider');
+    });
+
+    it('should require API key for OpenAI provider', () => {
+      expect(() => {
+        AIServiceFactory.create('openai');
+      }).toThrow('API key is required for OpenAI provider');
+    });
+
+    it('should pass API key to created cloud services', () => {
       const claudeService = AIServiceFactory.create('claude', 'claude-key');
       const openaiService = AIServiceFactory.create('openai', 'openai-key');
       

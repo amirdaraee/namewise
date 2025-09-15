@@ -14,18 +14,27 @@ export async function renameFiles(directory: string, options: any): Promise<void
       throw new Error(`${directory} is not a directory`);
     }
 
-    // Get API key
+    // Get API key for cloud providers only
     let apiKey = options.apiKey;
-    if (!apiKey) {
-      const keyPrompt = await inquirer.prompt([
-        {
-          type: 'password',
-          name: 'apiKey',
-          message: `Enter your ${options.provider} API key:`,
-          mask: '*'
-        }
-      ]);
-      apiKey = keyPrompt.apiKey;
+    const requiresApiKey = ['claude', 'openai'].includes(options.provider);
+    
+    if (requiresApiKey && !apiKey) {
+      // Check environment variables first
+      if (options.provider === 'claude' && process.env.CLAUDE_API_KEY) {
+        apiKey = process.env.CLAUDE_API_KEY;
+      } else if (options.provider === 'openai' && process.env.OPENAI_API_KEY) {
+        apiKey = process.env.OPENAI_API_KEY;
+      } else {
+        const keyPrompt = await inquirer.prompt([
+          {
+            type: 'password',
+            name: 'apiKey',
+            message: `Enter your ${options.provider} API key:`,
+            mask: '*'
+          }
+        ]);
+        apiKey = keyPrompt.apiKey;
+      }
     }
 
     // Create config
@@ -40,12 +49,17 @@ export async function renameFiles(directory: string, options: any): Promise<void
         category: options.template as FileCategory,
         personalName: options.name,
         dateFormat: options.date as DateFormat
+      },
+      // Local LLM specific configuration
+      localLLMConfig: {
+        baseUrl: options.baseUrl,
+        model: options.model
       }
     };
 
     // Initialize services
     const parserFactory = new DocumentParserFactory();
-    const aiService = AIServiceFactory.create(config.aiProvider, apiKey);
+    const aiService = AIServiceFactory.create(config.aiProvider, apiKey, config.localLLMConfig);
     const fileRenamer = new FileRenamer(parserFactory, aiService, config);
 
     // Get files to process

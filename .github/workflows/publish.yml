@@ -2,13 +2,25 @@ name: Publish Pipeline
 
 on:
   workflow_dispatch: # Allows manual triggering
+    inputs:
+      use_artifact:
+        description: 'Use build artifact (provide artifact name or "latest")'
+        required: false
+        default: ''
   release:
     types: [published]
 
 jobs:
+  build:
+    name: Build for Publishing
+    uses: ./.github/workflows/build.yml
+    if: ${{ github.event.inputs.use_artifact == '' }}
+
   publish:
     name: Publish Package
     runs-on: ubuntu-latest
+    needs: [build]
+    if: ${{ always() && (needs.build.result == 'success' || github.event.inputs.use_artifact != '') }}
     environment: production # Requires environment approval for production
     
     steps:
@@ -22,14 +34,30 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
       
-      - name: Install dependencies
-        run: npm ci
+      - name: Download build artifacts (from current run)
+        if: ${{ github.event.inputs.use_artifact == '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts-${{ github.sha }}
+          path: ./
       
-      - name: Run tests
-        run: npm run test:run
+      - name: Download build artifacts (from specific run)
+        if: ${{ github.event.inputs.use_artifact != '' && github.event.inputs.use_artifact != 'latest' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.event.inputs.use_artifact }}
+          path: ./
       
-      - name: Build project
-        run: npm run build
+      - name: Download latest build artifacts
+        if: ${{ github.event.inputs.use_artifact == 'latest' }}
+        run: |
+          echo "Downloading latest build artifacts..."
+          gh run download --name "build-artifacts-*" --limit 1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Install dependencies (only for package.json)
+        run: npm ci --production
       
       - name: Publish to NPM
         run: npm publish
@@ -42,7 +70,8 @@ jobs:
   publish-github:
     name: Publish to GitHub Packages
     runs-on: ubuntu-latest
-    needs: publish
+    needs: [build, publish]
+    if: ${{ always() && needs.publish.result == 'success' }}
     permissions:
       contents: read
       packages: write
@@ -58,11 +87,30 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           cache: 'npm'
       
-      - name: Install dependencies
-        run: npm ci
+      - name: Download build artifacts (reuse from publish job)
+        if: ${{ github.event.inputs.use_artifact == '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts-${{ github.sha }}
+          path: ./
       
-      - name: Build project
-        run: npm run build
+      - name: Download build artifacts (from specific run)
+        if: ${{ github.event.inputs.use_artifact != '' && github.event.inputs.use_artifact != 'latest' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.event.inputs.use_artifact }}
+          path: ./
+      
+      - name: Download latest build artifacts
+        if: ${{ github.event.inputs.use_artifact == 'latest' }}
+        run: |
+          echo "Downloading latest build artifacts..."
+          gh run download --name "build-artifacts-*" --limit 1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Install dependencies (only for package.json)
+        run: npm ci --production
       
       - name: Configure package for GitHub Packages
         run: |

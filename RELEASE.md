@@ -73,13 +73,14 @@ This triggers the `publish.yml` workflow.
 Your project has three separate, independently runnable workflows:
 
 ### 1. Test Pipeline (`test.yml`)
-- **Triggers**: Push to main/develop, PRs, manual dispatch
+- **Triggers**: Push to main/develop, PRs, manual dispatch, called by other workflows
 - **Purpose**: Run tests and linting across Node.js versions
 - **Manual run**: Go to Actions → Test Pipeline → "Run workflow"
 
 ### 2. Build Pipeline (`build.yml`)
 - **Triggers**: Push to main, manual dispatch, or called by other workflows
-- **Purpose**: Build the project and create artifacts
+- **Purpose**: Run tests first, then build the project and create artifacts
+- **Dependencies**: Calls Test Pipeline automatically
 - **Manual run**: Go to Actions → Build Pipeline → "Run workflow"
 
 ### 3. Publish Pipeline (`publish.yml`)

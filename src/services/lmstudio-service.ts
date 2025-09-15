@@ -1,4 +1,7 @@
 import { AIProvider, FileInfo } from '../types/index.js';
+import { buildFileNamePrompt, AI_SYSTEM_PROMPT } from '../utils/ai-prompts.js';
+import { NamingConvention } from '../utils/naming-conventions.js';
+import { FileCategory } from '../utils/file-templates.js';
 
 interface OpenAICompatibleResponse {
   choices: Array<{
@@ -55,7 +58,7 @@ export class LMStudioService implements AIProvider {
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful assistant that generates descriptive filenames based on document content. Always respond with just the filename, no explanation or additional text.'
+            content: AI_SYSTEM_PROMPT
           },
           {
             role: 'user',
@@ -85,25 +88,13 @@ export class LMStudioService implements AIProvider {
     category: string,
     fileInfo?: FileInfo
   ): string {
-    let prompt = `Based on the following document content, generate a descriptive filename using ${namingConvention} naming convention. `;
-    prompt += `The file category is: ${category}. `;
-    
-    if (fileInfo?.documentMetadata) {
-      const meta = fileInfo.documentMetadata;
-      if (meta.title) prompt += `Document title: "${meta.title}". `;
-      if (meta.author) prompt += `Author: "${meta.author}". `;
-      if (meta.subject) prompt += `Subject: "${meta.subject}". `;
-    }
-    
-    if (fileInfo?.parentFolder && fileInfo.parentFolder !== '.') {
-      prompt += `Located in folder: "${fileInfo.parentFolder}". `;
-    }
-
-    prompt += `\nOriginal filename: ${originalName}\n`;
-    prompt += `\nDocument content (first 2000 characters):\n${content.substring(0, 2000)}`;
-    prompt += `\n\nGenerate ONLY a descriptive filename (without extension) using ${namingConvention} format. Do not include any explanation or additional text.`;
-
-    return prompt;
+    return buildFileNamePrompt({
+      content,
+      originalName,
+      namingConvention: namingConvention as NamingConvention,
+      category: category as FileCategory,
+      fileInfo
+    });
   }
 
   private sanitizeFilename(filename: string): string {

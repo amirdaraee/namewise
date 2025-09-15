@@ -92,10 +92,10 @@ describe('OllamaService', () => {
       const requestBody = JSON.parse(fetchCall[1].body);
       const userMessage = requestBody.messages.find((m: any) => m.role === 'user');
       
-      expect(userMessage.content).toContain('Document title: "Contract Agreement"');
-      expect(userMessage.content).toContain('Author: "John Doe"');
-      expect(userMessage.content).toContain('Subject: "Service Contract"');
-      expect(userMessage.content).toContain('Located in folder: "contracts"');
+      expect(userMessage.content).toContain('- Title: Contract Agreement');
+      expect(userMessage.content).toContain('- Author: John Doe');
+      expect(userMessage.content).toContain('- Subject: Service Contract');
+      expect(userMessage.content).toContain('- Parent folder: contracts');
     });
 
     it('should sanitize response content', async () => {

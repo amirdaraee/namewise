@@ -1,7 +1,8 @@
 import OpenAI from 'openai';
 import { AIProvider, FileInfo } from '../types/index.js';
-import { applyNamingConvention, getNamingInstructions, NamingConvention } from '../utils/naming-conventions.js';
-import { getTemplateInstructions, FileCategory } from '../utils/file-templates.js';
+import { applyNamingConvention, NamingConvention } from '../utils/naming-conventions.js';
+import { FileCategory } from '../utils/file-templates.js';
+import { buildFileNamePrompt } from '../utils/ai-prompts.js';
 
 export class OpenAIService implements AIProvider {
   name = 'OpenAI';
@@ -16,53 +17,14 @@ export class OpenAIService implements AIProvider {
   async generateFileName(content: string, originalName: string, namingConvention: string = 'kebab-case', category: string = 'general', fileInfo?: FileInfo): Promise<string> {
     const convention = namingConvention as NamingConvention;
     const fileCategory = category as FileCategory;
-    const namingInstructions = getNamingInstructions(convention);
-    const templateInstructions = getTemplateInstructions(fileCategory);
     
-    // Build comprehensive context from all metadata
-    let metadataContext = '';
-    if (fileInfo) {
-      metadataContext += `File Information:
-- Original filename: ${originalName}
-- File size: ${Math.round(fileInfo.size / 1024)}KB
-- Created: ${fileInfo.createdAt.toLocaleDateString()}
-- Modified: ${fileInfo.modifiedAt.toLocaleDateString()}
-- Parent folder: ${fileInfo.parentFolder}
-- Folder path: ${fileInfo.folderPath.join(' > ')}`;
-
-      if (fileInfo.documentMetadata) {
-        const meta = fileInfo.documentMetadata;
-        metadataContext += `
-Document Properties:`;
-        if (meta.title) metadataContext += `\n- Title: ${meta.title}`;
-        if (meta.author) metadataContext += `\n- Author: ${meta.author}`;
-        if (meta.creator) metadataContext += `\n- Creator: ${meta.creator}`;
-        if (meta.subject) metadataContext += `\n- Subject: ${meta.subject}`;
-        if (meta.keywords?.length) metadataContext += `\n- Keywords: ${meta.keywords.join(', ')}`;
-        if (meta.creationDate) metadataContext += `\n- Created: ${meta.creationDate.toLocaleDateString()}`;
-        if (meta.modificationDate) metadataContext += `\n- Modified: ${meta.modificationDate.toLocaleDateString()}`;
-        if (meta.pages) metadataContext += `\n- Pages: ${meta.pages}`;
-        if (meta.wordCount) metadataContext += `\n- Word count: ${meta.wordCount}`;
-      }
-    }
-
-    const prompt = `Based on the following document information, generate a descriptive filename that captures the main topic/purpose of the document. The filename should be:
-- Descriptive and meaningful
-- Professional and clean
-- Between 3-8 words
-- ${namingInstructions}
-- ${templateInstructions}
-- Do not include file extension
-- Do not include personal names, dates, or template variables - just the core content description
-- Only use letters, numbers, and appropriate separators for the naming convention
-- Use all available context (metadata, folder context, document properties) to create the most accurate filename
-
-${metadataContext}
-
-Document content (first 2000 characters):
-${content.substring(0, 2000)}
-
-Respond with only the core filename (without personal info or dates) using the specified naming convention, no explanation.`;
+    const prompt = buildFileNamePrompt({
+      content,
+      originalName,
+      namingConvention: convention,
+      category: fileCategory,
+      fileInfo
+    });
 
     try {
       const response = await this.client.chat.completions.create({

@@ -1,9 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { createCanvas } from 'canvas';
 
-// Configure PDF.js for Node.js environment - disable worker
-(pdfjsLib.GlobalWorkerOptions as any).workerSrc = false;
-
 export interface PDFToImageOptions {
   scale?: number;
   format?: 'png' | 'jpeg';
@@ -25,7 +22,10 @@ export class PDFToImageConverter {
       // Load PDF document
       const loadingTask = pdfjsLib.getDocument({
         data: new Uint8Array(pdfBuffer),
-        verbosity: 0 // Suppress console output
+        verbosity: 0, // Suppress console output
+        useWorkerFetch: false,
+        isEvalSupported: false,
+        useSystemFonts: true
       });
       
       const pdfDocument = await loadingTask.promise;

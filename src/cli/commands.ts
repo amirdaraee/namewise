@@ -5,7 +5,7 @@ export function setupCommands(program: Command): void {
   program
     .command('rename')
     .description('🚀 Rename files in a directory based on their content using AI analysis')
-    .argument('<directory>', 'Directory containing files to rename')
+    .argument('[directory]', 'Directory containing files to rename (default: current directory)', '.')
     .option('-p, --provider <provider>', 'AI provider (claude|openai|ollama|lmstudio)', 'claude')
     .option('-k, --api-key <key>', 'API key for cloud providers (or set CLAUDE_API_KEY/OPENAI_API_KEY)')
     .option('-c, --case <convention>', 'Naming convention (kebab-case|snake_case|camelCase|PascalCase|lowercase|UPPERCASE)', 'kebab-case')
@@ -39,7 +39,11 @@ export function setupCommands(program: Command): void {
   • LMStudio: Enable local server mode (default: http://localhost:1234)
 
 📝 Examples:
-  # Safe preview first
+  # Current directory (no directory argument needed)
+  namewise rename --dry-run
+  namewise rename --provider claude --template document --name "alice"
+
+  # Specific directory
   namewise rename ./documents --dry-run
 
   # Cloud providers (require API keys)
@@ -47,9 +51,10 @@ export function setupCommands(program: Command): void {
   namewise rename ./media --provider openai --template auto
 
   # Local LLMs (no API key needed)
-  namewise rename ./documents --provider ollama --model llama3.1 --dry-run
+  namewise rename --provider ollama --model llama3.1 --dry-run
+  namewise rename ./documents --provider ollama --model llama3.1
   namewise rename ./contracts --provider lmstudio --base-url http://localhost:1234
-  
+
   # Custom Ollama setup
   namewise rename ./files --provider ollama --base-url http://192.168.1.100:11434 --model codellama
 `)

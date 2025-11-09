@@ -16,6 +16,7 @@ interface OllamaResponse {
 interface OllamaChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
+  images?: string[]; // For vision models
 }
 
 export class OllamaService implements AIProvider {
@@ -39,22 +40,61 @@ export class OllamaService implements AIProvider {
     fileInfo?: FileInfo
   ): Promise<string> {
     try {
-      const prompt = this.buildPrompt(content, originalName, namingConvention, category, fileInfo);
+      // Check if this is a scanned PDF image
+      const isScannedPDF = content.startsWith('[SCANNED_PDF_IMAGE]:');
       
-      const response = await this.makeRequest('/api/chat', {
-        model: this.model,
-        messages: [
-          {
-            role: 'system',
-            content: AI_SYSTEM_PROMPT
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ] as OllamaChatMessage[],
-        stream: false
-      });
+      let response;
+      
+      if (isScannedPDF) {
+        // Extract base64 image data and use a vision model
+        const imageBase64 = content.replace('[SCANNED_PDF_IMAGE]:', '');
+        const imageData = imageBase64.split(',')[1]; // Remove data:image/format;base64, prefix
+        
+        const prompt = this.buildPrompt(
+          'This is a scanned PDF document converted to an image. Please analyze the image and extract the main content to generate an appropriate filename.',
+          originalName, 
+          namingConvention, 
+          category, 
+          fileInfo
+        );
+        
+        // Use LLaVA model for vision capabilities
+        const visionModel = this.getVisionModel();
+        
+        response = await this.makeRequest('/api/chat', {
+          model: visionModel,
+          messages: [
+            {
+              role: 'system',
+              content: AI_SYSTEM_PROMPT
+            },
+            {
+              role: 'user',
+              content: prompt,
+              images: [imageData]
+            }
+          ] as OllamaChatMessage[],
+          stream: false
+        });
+      } else {
+        // Standard text processing
+        const prompt = this.buildPrompt(content, originalName, namingConvention, category, fileInfo);
+        
+        response = await this.makeRequest('/api/chat', {
+          model: this.model,
+          messages: [
+            {
+              role: 'system',
+              content: AI_SYSTEM_PROMPT
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ] as OllamaChatMessage[],
+          stream: false
+        });
+      }
 
       if (response.message?.content) {
         return this.sanitizeFilename(response.message.content);
@@ -81,6 +121,19 @@ export class OllamaService implements AIProvider {
       category: category as FileCategory,
       fileInfo
     });
+  }
+
+  private getVisionModel(): string {
+    // Try to use a vision-capable model, fallback to default if not specified
+    const visionModels = ['llava', 'llava:7b', 'llava:13b', 'llava:34b', 'llama3.2-vision', 'qwen2-vl'];
+    
+    // If the current model is already a vision model, use it
+    if (visionModels.some(vm => this.model.toLowerCase().includes(vm.split(':')[0]))) {
+      return this.model;
+    }
+    
+    // Otherwise, default to llava (most common vision model in Ollama)
+    return 'llava';
   }
 
   private sanitizeFilename(filename: string): string {

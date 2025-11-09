@@ -58,7 +58,7 @@ export async function renameFiles(directory: string, options: any): Promise<void
     };
 
     // Initialize services
-    const parserFactory = new DocumentParserFactory();
+    const parserFactory = new DocumentParserFactory(config);
     const aiService = AIServiceFactory.create(config.aiProvider, apiKey, config.localLLMConfig);
     const fileRenamer = new FileRenamer(parserFactory, aiService, config);
 

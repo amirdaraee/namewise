@@ -21,14 +21,16 @@ export function setupCommands(program: Command): void {
 🔍 How it works:
   1. Scans directory for supported files (PDF, DOCX, XLSX, TXT, MD, RTF)
   2. Extracts content and metadata from each file
-  3. Uses AI to analyze content and generate descriptive names
-  4. Applies your chosen template and naming convention
-  5. Renames files (or shows preview with --dry-run)
+  3. For scanned PDFs with no text, converts to image for AI vision analysis
+  4. Uses AI to analyze content and generate descriptive names
+  5. Applies your chosen template and naming convention
+  6. Renames files (or shows preview with --dry-run)
 
 💡 Pro Tips:
   • Always use --dry-run first to preview changes
   • Use 'auto' template for smart file type detection
   • Personal templates work great for documents and photos
+  • Scanned PDFs are automatically handled via AI vision (Claude/OpenAI/Ollama)
   • Set API keys as environment variables for cloud providers
   • Local LLMs (Ollama/LMStudio) require running servers first
 

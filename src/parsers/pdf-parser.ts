@@ -1,8 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import { DocumentParser, ParseResult, DocumentMetadata } from '../types/index.js';
+import { PDFToImageConverter } from '../utils/pdf-to-image.js';
 
 export class PDFParser implements DocumentParser {
+  constructor() {
+    // No constructor parameters needed anymore
+  }
+
   supports(filePath: string): boolean {
     return path.extname(filePath).toLowerCase() === '.pdf';
   }
@@ -16,7 +21,23 @@ export class PDFParser implements DocumentParser {
       const dataBuffer = fs.readFileSync(filePath);
       const data = await extract(dataBuffer, {});
       
-      const content = data.text?.trim() || '';
+      let content = data.text?.trim() || '';
+      
+      // Check if this is a scanned PDF and convert to image for AI analysis
+      if (PDFToImageConverter.isScannedPDF(content)) {
+        try {
+          console.log('🔍 Detected scanned PDF, converting to image for AI analysis...');
+          const imageBase64 = await PDFToImageConverter.convertFirstPageToBase64(dataBuffer);
+          
+          // Store the image data as a special marker for the AI service to detect
+          content = `[SCANNED_PDF_IMAGE]:${imageBase64}`;
+          console.log('✅ PDF converted to image successfully');
+        } catch (conversionError) {
+          console.warn('⚠️ PDF to image conversion failed:', conversionError instanceof Error ? conversionError.message : 'Unknown error');
+          console.log('💡 PDF-poppler requires system dependencies. Falling back to empty content.');
+          // Continue with empty content - AI services will handle this gracefully
+        }
+      }
       
       // Extract PDF metadata if available
       const metadata: DocumentMetadata = {};

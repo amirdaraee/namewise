@@ -64,12 +64,14 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.61.0",
+    "canvas": "3.2.0",
     "commander": "^14.0.0",
+    "exceljs": "^4.4.0",
     "fs-extra": "^11.3.1",
     "inquirer": "^12.9.4",
     "mammoth": "^1.10.0",
     "openai": "^5.19.1",
     "pdf-extraction": "^1.0.2",
-    "exceljs": "^4.4.0"
+    "pdfjs-dist": "5.4.149"
   }
 }

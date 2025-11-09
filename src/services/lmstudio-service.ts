@@ -51,6 +51,15 @@ export class LMStudioService implements AIProvider {
     fileInfo?: FileInfo
   ): Promise<string> {
     try {
+      // Check if this is a scanned PDF image
+      const isScannedPDF = content.startsWith('[SCANNED_PDF_IMAGE]:');
+      
+      if (isScannedPDF) {
+        // LM Studio has limited vision support, so we'll fall back to using the original filename
+        console.log('⚠️ Scanned PDF detected but LMStudio has limited vision support. Using original filename.');
+        return this.sanitizeFilename(originalName);
+      }
+      
       const prompt = this.buildPrompt(content, originalName, namingConvention, category, fileInfo);
       
       const response = await this.makeRequest('/v1/chat/completions', {

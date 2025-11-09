@@ -113,7 +113,9 @@ describe('CLI Commands', () => {
         case: 'kebab-case',
         template: 'general',
         name: undefined,
-        date: 'none'
+        date: 'none',
+        baseUrl: undefined,
+        model: undefined
       });
     });
 
@@ -133,7 +135,9 @@ describe('CLI Commands', () => {
         case: 'kebab-case',
         template: 'general',
         name: undefined,
-        date: 'none'
+        date: 'none',
+        baseUrl: undefined,
+        model: undefined
       });
     });
 
@@ -156,7 +160,9 @@ describe('CLI Commands', () => {
         case: 'kebab-case',
         template: 'general',
         name: undefined,
-        date: 'none'
+        date: 'none',
+        baseUrl: undefined,
+        model: undefined
       });
     });
   });

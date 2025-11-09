@@ -1,16 +1,20 @@
-import { DocumentParser } from '../types/index.js';
+import { DocumentParser, Config } from '../types/index.js';
 import { PDFParser } from './pdf-parser.js';
 import { WordParser } from './word-parser.js';
 import { ExcelParser } from './excel-parser.js';
 import { TextParser } from './text-parser.js';
 
 export class DocumentParserFactory {
-  private parsers: DocumentParser[] = [
-    new PDFParser(),
-    new WordParser(),
-    new ExcelParser(),
-    new TextParser()
-  ];
+  private parsers: DocumentParser[];
+  
+  constructor(config?: Config) {
+    this.parsers = [
+      new PDFParser(),
+      new WordParser(),
+      new ExcelParser(),
+      new TextParser()
+    ];
+  }
 
   getParser(filePath: string): DocumentParser | null {
     return this.parsers.find(parser => parser.supports(filePath)) || null;

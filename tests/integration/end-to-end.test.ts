@@ -34,9 +34,9 @@ describe('End-to-End Integration Tests', () => {
   describe('CLI Integration', () => {
     it('should show help message', async () => {
       const { stdout } = await execAsync(`node ${cliPath} --help`);
-      
+
       expect(stdout).toContain('AI-powered CLI tool that intelligently renames files based on their content');
-      expect(stdout).toContain('rename [options] <directory>');
+      expect(stdout).toContain('rename [options] [directory]');
       expect(stdout).toContain('Commands:');
     });
 
@@ -95,13 +95,13 @@ describe('End-to-End Integration Tests', () => {
       expect(stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
     });
 
-    it('should require directory argument', async () => {
-      try {
-        await execAsync(`node ${cliPath} rename`);
-        expect.fail('Should have thrown an error');
-      } catch (error: any) {
-        expect(error.stderr || error.stdout).toContain('error: missing required argument');
-      }
+    it('should accept optional directory argument', async () => {
+      const { stdout } = await execAsync(`node ${cliPath} rename --help`);
+
+      // Verify directory is shown as optional (in brackets) in help
+      expect(stdout).toContain('[directory]');
+      expect(stdout).toContain('current directory');
+      expect(stdout).toContain('(default: ".")');
     });
 
     it('should handle non-existent directory', async () => {

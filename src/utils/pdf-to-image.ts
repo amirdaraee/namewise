@@ -1,9 +1,22 @@
 import { pdfToPng } from 'pdf-to-png-converter';
 import { createCanvas, loadImage, DOMMatrix } from 'canvas';
+import { createRequire } from 'module';
 
 // Polyfill DOMMatrix for Node.js environments (required by pdf-to-png-converter)
 if (typeof global !== 'undefined' && !global.DOMMatrix) {
   global.DOMMatrix = DOMMatrix as any;
+}
+
+// Polyfill process.getBuiltinModule for Node.js < 22.3.0
+if (typeof process !== 'undefined' && !process.getBuiltinModule) {
+  const require = createRequire(import.meta.url);
+  (process as any).getBuiltinModule = (id: string) => {
+    try {
+      return require(id);
+    } catch (error) {
+      return null;
+    }
+  };
 }
 
 export interface PDFToImageOptions {

@@ -1,5 +1,10 @@
 import { pdfToPng } from 'pdf-to-png-converter';
-import { createCanvas, loadImage } from 'canvas';
+import { createCanvas, loadImage, DOMMatrix } from 'canvas';
+
+// Polyfill DOMMatrix for Node.js environments (required by pdf-to-png-converter)
+if (typeof global !== 'undefined' && !global.DOMMatrix) {
+  global.DOMMatrix = DOMMatrix as any;
+}
 
 export interface PDFToImageOptions {
   scale?: number;

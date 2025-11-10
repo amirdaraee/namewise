@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-11-10
+
+### Added
+- **📄 Scanned PDF Support**: Full support for image-only (scanned) PDFs with vision AI
+  - Automatic detection of scanned PDFs (documents with minimal or no text)
+  - Converts first page to image and sends to AI for content analysis
+  - Intelligent image optimization to stay under Claude's 5MB limit
+  - Progressive JPEG compression with multiple quality levels (0.85 → 0.3)
+  - Automatic dimension scaling if needed (100% → 70% → 50%)
+  - Smart size calculation to ensure API compatibility
+
+### Enhanced
+- **🔄 PDF Processing**: Replaced PDF.js with pdf-to-png-converter for better Node.js compatibility
+  - Resolves canvas rendering issues in Node.js environment
+  - More reliable PDF-to-image conversion
+  - Better error handling and debugging
+- **🤖 AI Model**: Updated to Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
+  - Latest Claude model with enhanced vision capabilities
+  - Improved accuracy for document analysis
+  - Better understanding of complex document layouts
+
+### Technical
+- Replaced `pdfjs-dist` with `pdf-to-png-converter` package
+- Enhanced PDFToImageConverter with size optimization algorithms
+- Added comprehensive test suite for PDF-to-image conversion (12 new tests)
+- Improved error logging with detailed stack traces
+
+### Fixed
+- **🐛 Critical**: Fixed "Image or Canvas expected" errors when processing scanned PDFs
+- **🐛 Critical**: Fixed "image exceeds 5 MB maximum" errors with large scanned documents
+- **🐛 Model**: Fixed deprecated model warnings by updating to latest Claude API
+
+### Examples
+```bash
+# Process directory with scanned PDFs
+namewise rename ./documents --dry-run
+
+# Scanned PDFs are automatically detected and processed:
+# Input:  Iran-criminal-record-2.pdf (scanned, no text)
+# Output: iran-criminal-record-certificate.pdf
+#
+# Input:  Luxembourg-identity-2025.pdf (scanned, 14.7MB image)
+# Output: luxembourg-identity-card-2025.pdf (optimized to <5MB)
+```
+
 ## [0.4.1] - 2025-09-15
 
 ### Enhanced

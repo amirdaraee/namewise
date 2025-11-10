@@ -37,7 +37,7 @@ export class ClaudeService implements AIProvider {
         });
 
         response = await this.client.messages.create({
-          model: 'claude-3-5-sonnet-20241022', // Use Sonnet for vision capabilities
+          model: 'claude-sonnet-4-5-20250929', // Use Claude Sonnet 4.5 for vision capabilities
           max_tokens: 100,
           messages: [
             {

@@ -1,5 +1,5 @@
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
-import { createCanvas } from 'canvas';
+import { pdfToPng } from 'pdf-to-png-converter';
+import { createCanvas, loadImage } from 'canvas';
 
 export interface PDFToImageOptions {
   scale?: number;
@@ -8,62 +8,98 @@ export interface PDFToImageOptions {
 }
 
 export class PDFToImageConverter {
+  // Claude's maximum image size is 5MB
+  private static readonly MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+
   static async convertFirstPageToBase64(
     pdfBuffer: Buffer,
     options: PDFToImageOptions = {}
   ): Promise<string> {
     const {
-      scale = 2.0, // Higher scale for better quality
-      format = 'png',
-      firstPageOnly = true
+      scale = 2.0, // Higher scale for better quality (1-3 recommended)
+      format = 'png'
     } = options;
 
     try {
-      // Load PDF document
-      const loadingTask = pdfjsLib.getDocument({
-        data: new Uint8Array(pdfBuffer),
-        verbosity: 0, // Suppress console output
-        useWorkerFetch: false,
-        isEvalSupported: false,
-        useSystemFonts: true
+      // Convert PDF to PNG using pdf-to-png-converter
+      // This package handles all the canvas/image compatibility issues
+      const pngPages = await pdfToPng(pdfBuffer as any, {
+        disableFontFace: false,
+        useSystemFonts: false,
+        pagesToProcess: [1], // Only convert first page
+        verbosityLevel: 0,
+        viewportScale: scale
       });
-      
-      const pdfDocument = await loadingTask.promise;
-      
-      // Get first page
-      const page = await pdfDocument.getPage(1);
-      
-      // Get page viewport
-      const viewport = page.getViewport({ scale });
-      
-      // Create canvas
-      const canvas = createCanvas(viewport.width, viewport.height);
-      const context = canvas.getContext('2d');
-      
-      // Render page to canvas
-      const renderTask = page.render({
-        canvasContext: context as any,
-        viewport: viewport,
-        canvas: canvas as any
-      });
-      
-      await renderTask.promise;
-      
-      // Convert canvas to base64
-      let dataUrl: string;
-      if (format === 'png') {
-        dataUrl = canvas.toDataURL('image/png');
-      } else {
-        dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+
+      if (!pngPages || pngPages.length === 0) {
+        throw new Error('No pages could be converted from PDF');
       }
-      
-      // Clean up
-      await pdfDocument.destroy();
-      
-      return dataUrl;
-      
+
+      // Get the first page
+      const firstPage = pngPages[0];
+
+      if (!firstPage || !firstPage.content) {
+        throw new Error('First page conversion failed');
+      }
+
+      // Load the PNG image for optimization
+      const img = await loadImage(firstPage.content);
+
+      // Always use JPEG for better compression and size control
+      // Try different quality levels to fit under the size limit
+      const qualities = [0.85, 0.7, 0.6, 0.5, 0.4, 0.3];
+
+      for (const quality of qualities) {
+        const canvas = createCanvas(img.width, img.height);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        const sizeInBytes = Math.ceil((dataUrl.length - 'data:image/jpeg;base64,'.length) * 0.75);
+
+        if (sizeInBytes <= this.MAX_IMAGE_SIZE_BYTES) {
+          return dataUrl;
+        }
+      }
+
+      // If still too large, reduce dimensions
+      const scaleFactor = 0.7;
+      const newWidth = Math.floor(img.width * scaleFactor);
+      const newHeight = Math.floor(img.height * scaleFactor);
+
+      const canvas = createCanvas(newWidth, newHeight);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, newWidth, newHeight);
+
+      // Try with reduced dimensions
+      for (const quality of qualities) {
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        const sizeInBytes = Math.ceil((dataUrl.length - 'data:image/jpeg;base64,'.length) * 0.75);
+
+        if (sizeInBytes <= this.MAX_IMAGE_SIZE_BYTES) {
+          return dataUrl;
+        }
+      }
+
+      // Last resort: heavily compressed small image
+      const smallCanvas = createCanvas(Math.floor(newWidth * 0.5), Math.floor(newHeight * 0.5));
+      const smallCtx = smallCanvas.getContext('2d');
+      smallCtx.drawImage(img, 0, 0, smallCanvas.width, smallCanvas.height);
+
+      return smallCanvas.toDataURL('image/jpeg', 0.3);
+
     } catch (error) {
-      throw new Error(`PDF to image conversion failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Enhanced error logging for debugging
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : '';
+
+      console.error('PDF to image conversion detailed error:', {
+        message: errorMessage,
+        stack: errorStack,
+        errorType: error?.constructor?.name
+      });
+
+      throw new Error(`PDF to image conversion failed: ${errorMessage}`);
     }
   }
   

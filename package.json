@@ -72,6 +72,7 @@
     "mammoth": "^1.10.0",
     "openai": "^5.19.1",
     "pdf-extraction": "^1.0.2",
+    "pdf-to-png-converter": "3.11.0",
     "pdfjs-dist": "5.4.149"
   }
 }

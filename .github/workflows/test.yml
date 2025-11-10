@@ -3,8 +3,6 @@ name: Test Pipeline
 on:
   workflow_dispatch: # Allows manual triggering
   workflow_call: # Allows this workflow to be called by other workflows
-  push:
-    branches: [ main, develop ]
   pull_request:
     branches: [ main ]
 

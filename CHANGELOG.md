@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-03-31
+
+### Improved
+- **🧪 Test Coverage**: Achieved 100% coverage across all metrics (statements, branches, functions, lines)
+  - 325 tests across 26 test files
+  - Added tests for all error branches including non-Error exception paths
+  - Full coverage for scanned PDF handling, folder-based categorization, and naming convention truncation
+  - Added polyfill tests for `process.getBuiltinModule` in Node.js < 22.3.0 environments
+
 ## [0.5.0] - 2025-11-10
 
 ### Added

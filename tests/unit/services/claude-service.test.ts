@@ -127,9 +127,17 @@ describe('ClaudeService', () => {
   describe('Error Handling', () => {
     it('should handle API errors gracefully', async () => {
       mockClient.messages.create.mockRejectedValue(new Error('API Error'));
-      
+
       await expect(service.generateFileName('content', 'file.txt')).rejects.toThrow(
         'Failed to generate filename with Claude: API Error'
+      );
+    });
+
+    it('should handle non-Error exceptions with unknown error message', async () => {
+      mockClient.messages.create.mockRejectedValue('string error');
+
+      await expect(service.generateFileName('content', 'file.txt')).rejects.toThrow(
+        'Failed to generate filename with Claude: Unknown error'
       );
     });
 
@@ -168,7 +176,7 @@ describe('ClaudeService', () => {
       mockClient.messages.create.mockResolvedValue({
         content: [{ type: 'text', text: 'a'.repeat(150) }]
       });
-      
+
       const result = await service.generateFileName('content', 'file.txt', 'kebab-case');
       expect(result.length).toBeLessThanOrEqual(100);
     });
@@ -177,12 +185,79 @@ describe('ClaudeService', () => {
       mockClient.messages.create.mockResolvedValue({
         content: [{ type: 'text', text: 'very long filename that should be truncated properly' }]
       });
-      
+
       const kebabResult = await service.generateFileName('content', 'file.txt', 'kebab-case');
       expect(kebabResult).not.toMatch(/-$/); // Should not end with hyphen
-      
+
       const snakeResult = await service.generateFileName('content', 'file.txt', 'snake_case');
       expect(snakeResult).not.toMatch(/_$/); // Should not end with underscore
+    });
+
+    it('should handle snake_case truncation removing partial word at end', async () => {
+      // This name becomes exactly 101 chars in snake_case, so truncation is triggered
+      // After substring(0, 100), it ends with '_' which gets cleaned up
+      mockClient.messages.create.mockResolvedValue({
+        content: [{ type: 'text', text: 'a_very_long_filename_that_exceeds_the_one_hundred_character_limit_and_needs_truncation_applied_here_x' }]
+      });
+
+      const result = await service.generateFileName('content', 'file.txt', 'snake_case');
+      expect(result.length).toBeLessThanOrEqual(100);
+      expect(result).not.toMatch(/_$/);
+    });
+  });
+
+  describe('Scanned PDF handling', () => {
+    it('should handle scanned PDF with JPEG image using vision model', async () => {
+      mockClient.messages.create.mockResolvedValue({
+        content: [{ type: 'text', text: 'visa-application' }]
+      });
+
+      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fakebase64data';
+      const result = await service.generateFileName(scannedContent, 'scan.pdf');
+
+      expect(mockClient.messages.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: 'claude-sonnet-4-5-20250929',
+          messages: [expect.objectContaining({
+            content: expect.arrayContaining([
+              expect.objectContaining({ type: 'text' }),
+              expect.objectContaining({
+                type: 'image',
+                source: expect.objectContaining({ media_type: 'image/jpeg' })
+              })
+            ])
+          })]
+        })
+      );
+      expect(result).toBe('visa-application');
+    });
+
+    it('should handle scanned PDF with PNG image', async () => {
+      mockClient.messages.create.mockResolvedValue({
+        content: [{ type: 'text', text: 'document-scan' }]
+      });
+
+      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/png;base64,iVBORwfakedata';
+      const result = await service.generateFileName(scannedContent, 'scan.pdf');
+
+      const call = mockClient.messages.create.mock.calls[0][0];
+      const imageContent = call.messages[0].content.find((c: any) => c.type === 'image');
+      expect(imageContent.source.media_type).toBe('image/png');
+      expect(result).toBe('document-scan');
+    });
+
+    it('should extract base64 data correctly from scanned PDF content', async () => {
+      mockClient.messages.create.mockResolvedValue({
+        content: [{ type: 'text', text: 'scanned-document' }]
+      });
+
+      const base64Data = '/9j/4AAQSkZJRgABAQ==';
+      const scannedContent = `[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,${base64Data}`;
+      await service.generateFileName(scannedContent, 'scan.pdf');
+
+      const call = mockClient.messages.create.mock.calls[0][0];
+      const imageContent = call.messages[0].content.find((c: any) => c.type === 'image');
+      expect(imageContent.source.data).toBe(base64Data);
     });
   });
 });

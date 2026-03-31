@@ -6,6 +6,7 @@ on:
   pull_request:
     branches: [ main ]
 
+
 jobs:
   test:
     name: Run Tests
@@ -13,7 +14,7 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [18, 20, 22]
+        node-version: [20, 22, 24]
     
     steps:
       - name: Checkout code
@@ -36,10 +37,10 @@ jobs:
       
       - name: Generate coverage report
         run: npm run test:coverage
-        if: matrix.node-version == '22'
+        if: matrix.node-version == '24'
       
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
-        if: matrix.node-version == '22'
+        if: matrix.node-version == '24'
         with:
           fail_ci_if_error: false

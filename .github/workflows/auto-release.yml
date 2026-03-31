@@ -94,3 +94,9 @@ jobs:
         gh release create "v$VERSION" \
           --title "v$VERSION" \
           --notes-file release-notes.txt
+
+    - name: Trigger Publish Pipeline
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh workflow run publish.yml --ref main

@@ -59,12 +59,15 @@ jobs:
       
       - name: Install dependencies (only for package.json)
         run: npm ci --production
-      
+
+      - name: Set bin executable permission
+        run: chmod +x dist/index.js
+
       - name: Publish to NPM
         run: npm publish --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      
+
       - name: Publish success notification
         run: echo "✅ Package published to NPM successfully"
 
@@ -122,6 +125,9 @@ jobs:
             require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
           "
       
+      - name: Set bin executable permission
+        run: chmod +x dist/index.js
+
       - name: Publish to GitHub Packages
         run: npm publish --ignore-scripts
         env:

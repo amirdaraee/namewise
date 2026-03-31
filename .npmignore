@@ -1,0 +1,20 @@
+# Source files (dist/ is what gets published)
+src/
+
+# Tests
+tests/
+
+# CI/CD
+.github/
+
+# Dev config
+vitest.config.ts
+tsconfig.json
+
+# Legacy unused artifact
+eng.traineddata
+.ocr-cache/
+
+# Dev files
+*.log
+.env*

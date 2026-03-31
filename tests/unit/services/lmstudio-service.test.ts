@@ -185,6 +185,15 @@ describe('LMStudioService', () => {
       ).rejects.toThrow('LMStudio service failed');
     });
 
+    it('should handle non-Error exceptions with unknown error message', async () => {
+      // Throw a non-Error object to test the `error instanceof Error` false branch
+      mockFetch.mockRejectedValueOnce('string error');
+
+      await expect(
+        lmstudioService.generateFileName('content', 'file.txt')
+      ).rejects.toThrow('LMStudio service failed: Unknown error');
+    });
+
     it('should handle empty response', async () => {
       const mockResponse = {
         choices: [{
@@ -321,6 +330,41 @@ describe('LMStudioService', () => {
       const result = await lmstudioService.listModels();
 
       expect(result).toEqual([]);
+    });
+
+    it('should return empty array when network error occurs', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+      const result = await lmstudioService.listModels();
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('Scanned PDF handling', () => {
+    it('should return sanitized original filename for scanned PDFs (no API call)', async () => {
+      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fakedata';
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const result = await lmstudioService.generateFileName(scannedContent, 'My Scan File.pdf');
+
+      // Should not call fetch for scanned PDFs
+      expect(mockFetch).not.toHaveBeenCalled();
+      // Should return sanitized original name
+      expect(result).toBe('my-scan-file');
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should log warning message for scanned PDFs', async () => {
+      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fakedata';
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await lmstudioService.generateFileName(scannedContent, 'test.pdf');
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Scanned PDF detected')
+      );
+
+      consoleSpy.mockRestore();
     });
   });
 });

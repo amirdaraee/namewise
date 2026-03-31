@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { 
-  categorizeFile, 
-  applyTemplate, 
-  getTemplateInstructions, 
+import {
+  categorizeFile,
+  applyTemplate,
+  getTemplateInstructions,
   FILE_TEMPLATES,
-  FileCategory 
+  FileCategory
 } from '../../../src/utils/file-templates.js';
+import { FileInfo } from '../../../src/types/index.js';
 
 describe('File Templates', () => {
   describe('categorizeFile()', () => {
@@ -56,9 +57,136 @@ describe('File Templates', () => {
       expect(categorizeFile('/path/file')).toBe('general');
     });
 
+    it('should categorize .pdf file as document even without matching keywords', () => {
+      // A plain PDF file with no keywords → hits the default 'document' return (line 177)
+      expect(categorizeFile('/path/somefile.pdf')).toBe('document');
+    });
+
+    it('should categorize .png file as photo even without matching keywords', () => {
+      // A plain PNG with no photo keywords → hits the default 'photo' return (lines 199-200)
+      expect(categorizeFile('/path/screenshot.png')).toBe('photo');
+    });
+
     it('should prioritize series over movie for video files with series keywords', () => {
       expect(categorizeFile('/path/breaking-bad.s01e01.mp4')).toBe('series');
       expect(categorizeFile('/path/movie.mkv', 'This is season 1 episode 1')).toBe('series');
+    });
+
+    it('should use parentFolder hint when provided in fileInfo', () => {
+      // Exercises the fileInfo?.parentFolder branch (lines 113-115 of file-templates.ts)
+      const fileInfo = {
+        path: '/home/user/movies/film.mp4',
+        name: 'film.mp4',
+        extension: '.mp4',
+        size: 1000,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        accessedAt: new Date(),
+        parentFolder: 'movies',
+        folderPath: ['home', 'user']
+      } as FileInfo;
+      expect(categorizeFile('/home/user/movies/film.mp4', '', fileInfo)).toBe('movie');
+    });
+
+    it('should categorize PDF with book keywords as book', () => {
+      // Exercises the document-extension + bookKeywords branch (lines 170-172 of file-templates.ts)
+      expect(categorizeFile('/path/my-book.pdf', 'This is chapter 1 of a novel by the author')).toBe('book');
+    });
+
+    it('should use documentMetadata fields (author/creator/subject/keywords) for categorization', () => {
+      // Exercises lines 102-105: true branches for author, creator, subject, keywords
+      const fileInfo = {
+        path: '/path/file.mp4',
+        name: 'file.mp4',
+        extension: '.mp4',
+        size: 1000,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        accessedAt: new Date(),
+        documentMetadata: {
+          title: 'My Show',
+          author: 'Someone',
+          creator: 'Studio',
+          subject: 'Entertainment',
+          keywords: ['season', 'episode']
+        }
+      } as FileInfo;
+      expect(categorizeFile('/path/file.mp4', '', fileInfo)).toBe('series');
+    });
+
+    it('should categorize by series folder hint', () => {
+      // Exercises line 153: folderSeriesHints match
+      const fileInfo = {
+        path: '/home/user/tv/show.mkv',
+        name: 'show.mkv',
+        extension: '.mkv',
+        size: 1000,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        accessedAt: new Date(),
+        folderPath: ['home', 'user', 'tv']
+      } as FileInfo;
+      expect(categorizeFile('/home/user/tv/show.mkv', '', fileInfo)).toBe('series');
+    });
+
+    it('should categorize by music folder hint', () => {
+      // Exercises line 155: folderMusicHints match
+      const fileInfo = {
+        path: '/home/user/music/song.mp3',
+        name: 'song.mp3',
+        extension: '.mp3',
+        size: 1000,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        accessedAt: new Date(),
+        folderPath: ['home', 'user', 'music']
+      } as FileInfo;
+      expect(categorizeFile('/home/user/music/song.mp3', '', fileInfo)).toBe('music');
+    });
+
+    it('should categorize by photo folder hint', () => {
+      // Exercises line 156: folderPhotoHints match
+      const fileInfo = {
+        path: '/home/user/photos/img.jpg',
+        name: 'img.jpg',
+        extension: '.jpg',
+        size: 1000,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        accessedAt: new Date(),
+        folderPath: ['home', 'user', 'photos']
+      } as FileInfo;
+      expect(categorizeFile('/home/user/photos/img.jpg', '', fileInfo)).toBe('photo');
+    });
+
+    it('should categorize by book folder hint', () => {
+      // Exercises line 157: folderBookHints match
+      const fileInfo = {
+        path: '/home/user/books/novel.pdf',
+        name: 'novel.pdf',
+        extension: '.pdf',
+        size: 1000,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        accessedAt: new Date(),
+        folderPath: ['home', 'user', 'books']
+      } as FileInfo;
+      expect(categorizeFile('/home/user/books/novel.pdf', '', fileInfo)).toBe('book');
+    });
+
+    it('should categorize by document folder hint', () => {
+      // Exercises line 158: folderDocumentHints match
+      const fileInfo = {
+        path: '/home/user/documents/report.pdf',
+        name: 'report.pdf',
+        extension: '.pdf',
+        size: 1000,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        accessedAt: new Date(),
+        folderPath: ['home', 'user', 'documents']
+      } as FileInfo;
+      expect(categorizeFile('/home/user/documents/report.pdf', '', fileInfo)).toBe('document');
     });
   });
 
@@ -151,15 +279,34 @@ describe('File Templates', () => {
         { category: 'general', personalName: 'admin', dateFormat: 'YYYY' },
         'kebab-case'
       );
-      
+
       expect(result).toBe('meeting-notes');
+    });
+
+    it('should throw error when category is auto', () => {
+      expect(() => applyTemplate('test', 'auto', {}, 'kebab-case')).toThrow(
+        'Cannot apply template for "auto" category'
+      );
+    });
+
+    it('should handle unknown dateFormat via default case', () => {
+      // Pass an unknown dateFormat by casting to bypass TypeScript type checking
+      // This exercises the 'default' branch in the formatDate switch statement
+      const result = applyTemplate(
+        'contract',
+        'document',
+        { category: 'document', personalName: 'john', dateFormat: 'UNKNOWN' as any },
+        'kebab-case'
+      );
+      // The default case returns YYYYMMDD format: year + month + day
+      expect(result).toMatch(/^contract-john-\d{8}$/);
     });
   });
 
   describe('getTemplateInstructions()', () => {
     it('should return instructions for each category', () => {
       const categories: FileCategory[] = ['document', 'movie', 'music', 'series', 'photo', 'book', 'general'];
-      
+
       categories.forEach(category => {
         const instructions = getTemplateInstructions(category);
         expect(instructions).toContain(category);
@@ -170,9 +317,14 @@ describe('File Templates', () => {
     it('should include examples in instructions', () => {
       const documentInstructions = getTemplateInstructions('document');
       expect(documentInstructions).toContain('driving-license-amirhossein');
-      
+
       const movieInstructions = getTemplateInstructions('movie');
       expect(movieInstructions).toContain('the-dark-knight-2008');
+    });
+
+    it('should return early auto message for auto category', () => {
+      const result = getTemplateInstructions('auto');
+      expect(result).toBe('Generate appropriate filename based on detected file type and content.');
     });
   });
 

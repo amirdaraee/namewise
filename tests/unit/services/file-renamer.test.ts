@@ -258,6 +258,81 @@ describe('FileRenamer', () => {
       expect(fs.rename).not.toHaveBeenCalled(); // No rename needed
     });
 
+    it('should use auto-categorization when templateOptions.category is "auto"', async () => {
+      // Exercises the categorizeFile(file.path, content, file) branch at line 84
+      config.templateOptions.category = 'auto';
+      fileRenamer = new FileRenamer(parserFactory, mockAIService, config);
+
+      const testFiles: FileInfo[] = [
+        {
+          path: path.join(testDataDir, 'sample-text.txt'),
+          name: 'sample-text.txt',
+          extension: '.txt',
+          size: 1000
+        }
+      ];
+
+      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+      vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+      const results = await fileRenamer.renameFiles(testFiles);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].success).toBe(true);
+    });
+
+    it('should report failure when AI service returns empty filename', async () => {
+      // Exercises the `!coreFileName || coreFileName.trim().length === 0` branch (lines 95-97)
+      const emptyAIService = {
+        name: 'EmptyAI',
+        generateFileName: vi.fn().mockResolvedValue('')
+      };
+      fileRenamer = new FileRenamer(parserFactory, emptyAIService as any, config);
+
+      const testFiles: FileInfo[] = [
+        {
+          path: path.join(testDataDir, 'sample-text.txt'),
+          name: 'sample-text.txt',
+          extension: '.txt',
+          size: 1000
+        }
+      ];
+
+      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+
+      const results = await fileRenamer.renameFiles(testFiles);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].success).toBe(false);
+      expect(results[0].error).toContain('AI service failed to generate a filename');
+    });
+
+    it('should use "Unknown error" when a non-Error is thrown during rename', async () => {
+      // Exercises the `error instanceof Error` false branch (line 42 of file-renamer.ts)
+      const nonErrorAIService = {
+        name: 'NonErrorAI',
+        generateFileName: vi.fn().mockRejectedValue('plain string error')
+      };
+      fileRenamer = new FileRenamer(parserFactory, nonErrorAIService as any, config);
+
+      const testFiles: FileInfo[] = [
+        {
+          path: path.join(testDataDir, 'sample-text.txt'),
+          name: 'sample-text.txt',
+          extension: '.txt',
+          size: 1000
+        }
+      ];
+
+      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+
+      const results = await fileRenamer.renameFiles(testFiles);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].success).toBe(false);
+      expect(results[0].error).toBe('Unknown error');
+    });
+
     it('should pass naming convention to AI service', async () => {
       config.namingConvention = 'snake_case';
       fileRenamer = new FileRenamer(parserFactory, mockAIService, config);

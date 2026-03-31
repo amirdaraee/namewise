@@ -125,9 +125,17 @@ describe('OpenAIService', () => {
   describe('Error Handling', () => {
     it('should handle API errors gracefully', async () => {
       mockClient.chat.completions.create.mockRejectedValue(new Error('OpenAI API Error'));
-      
+
       await expect(service.generateFileName('content', 'file.txt')).rejects.toThrow(
         'Failed to generate filename with OpenAI: OpenAI API Error'
+      );
+    });
+
+    it('should handle non-Error exceptions with unknown error message', async () => {
+      mockClient.chat.completions.create.mockRejectedValue('string error');
+
+      await expect(service.generateFileName('content', 'file.txt')).rejects.toThrow(
+        'Failed to generate filename with OpenAI: Unknown error'
       );
     });
 
@@ -187,10 +195,77 @@ describe('OpenAIService', () => {
       const kebabResult = await service.generateFileName('content', 'file.txt', 'kebab-case');
       const snakeResult = await service.generateFileName('content', 'file.txt', 'snake_case');
       const camelResult = await service.generateFileName('content', 'file.txt', 'camelCase');
-      
+
       expect(kebabResult).toBe('testdocumentwithspecialcharacters');
       expect(snakeResult).toBe('testdocumentwithspecialcharacters');
       expect(camelResult).toBe('testdocumentwithspecialcharacters');
+    });
+
+    it('should use untitled-document when sanitized name is empty', async () => {
+      // Special chars that are not alphanumeric, spaces, or hyphens → empty after normalization
+      mockClient.chat.completions.create.mockResolvedValue({
+        choices: [{ message: { content: '@@@###$$$' } }]
+      });
+      const result = await service.generateFileName('content', 'file.txt', 'kebab-case');
+      expect(result).toBe('untitled-document');
+    });
+
+    it('should truncate long kebab-case filenames removing partial word at end', async () => {
+      // This name becomes exactly 101 chars in kebab-case, triggering truncation
+      mockClient.chat.completions.create.mockResolvedValue({
+        choices: [{ message: { content: 'a-very-long-kebab-case-filename-that-is-definitely-over-one-hundred-characters-in-total-length-yes-xy' } }]
+      });
+      const result = await service.generateFileName('content', 'file.txt', 'kebab-case');
+      expect(result.length).toBeLessThanOrEqual(100);
+      expect(result).not.toMatch(/-$/);
+    });
+
+    it('should truncate long snake_case filenames removing partial word at end', async () => {
+      // 102-char snake_case string → triggers the > 100 truncation branch
+      mockClient.chat.completions.create.mockResolvedValue({
+        choices: [{ message: { content: 'a_very_long_snake_case_name_that_is_definitely_over_one_hundred_characters_in_total_length_yes_yes_x_z' } }]
+      });
+      const result = await service.generateFileName('content', 'file.txt', 'snake_case');
+      expect(result.length).toBeLessThanOrEqual(100);
+      expect(result).not.toMatch(/_$/);
+    });
+  });
+
+  describe('Scanned PDF handling', () => {
+    it('should handle scanned PDF with image_url using gpt-4o', async () => {
+      mockClient.chat.completions.create.mockResolvedValue({
+        choices: [{ message: { content: 'visa-document' } }]
+      });
+
+      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fakebase64data';
+      const result = await service.generateFileName(scannedContent, 'scan.pdf');
+
+      expect(mockClient.chat.completions.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: 'gpt-4o',
+          messages: [expect.objectContaining({
+            content: expect.arrayContaining([
+              expect.objectContaining({ type: 'text' }),
+              expect.objectContaining({ type: 'image_url' })
+            ])
+          })]
+        })
+      );
+      expect(result).toBe('visa-document');
+    });
+
+    it('should pass the full base64 URL to image_url', async () => {
+      mockClient.chat.completions.create.mockResolvedValue({
+        choices: [{ message: { content: 'scanned-doc' } }]
+      });
+
+      const imageUrl = 'data:image/jpeg;base64,/9j/fakebase64data';
+      const scannedContent = `[SCANNED_PDF_IMAGE]:${imageUrl}`;
+      await service.generateFileName(scannedContent, 'scan.pdf');
+
+      const call = mockClient.chat.completions.create.mock.calls[0][0];
+      const imageContent = call.messages[0].content.find((c: any) => c.type === 'image_url');
+      expect(imageContent.image_url.url).toBe(imageUrl);
     });
   });
 });

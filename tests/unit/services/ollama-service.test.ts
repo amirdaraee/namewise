@@ -142,6 +142,15 @@ describe('OllamaService', () => {
       ).rejects.toThrow('Ollama service failed');
     });
 
+    it('should handle non-Error exceptions with unknown error message', async () => {
+      // Throw a non-Error object to test the `error instanceof Error` false branch
+      mockFetch.mockRejectedValueOnce('string error');
+
+      await expect(
+        ollamaService.generateFileName('content', 'file.txt')
+      ).rejects.toThrow('Ollama service failed: Unknown error');
+    });
+
     it('should handle empty response', async () => {
       const mockResponse = {
         message: {
@@ -259,6 +268,89 @@ describe('OllamaService', () => {
       const result = await ollamaService.listModels();
 
       expect(result).toEqual([]);
+    });
+
+    it('should return empty array when network error occurs', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+      const result = await ollamaService.listModels();
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('Scanned PDF handling', () => {
+    it('should use llava for scanned PDF when default model is not vision-capable', async () => {
+      const mockResponse = {
+        message: { content: 'scanned-doc', role: 'assistant' },
+        done: true
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse
+      });
+
+      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fakedata';
+      await ollamaService.generateFileName(scannedContent, 'scan.pdf');
+
+      const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(requestBody.model).toBe('llava');
+      const userMsg = requestBody.messages.find((m: any) => m.role === 'user');
+      expect(userMsg.images).toBeDefined();
+      expect(Array.isArray(userMsg.images)).toBe(true);
+    });
+
+    it('should use current model when it is already a vision model', async () => {
+      const visionService = new OllamaService('http://localhost:11434', 'llava:7b');
+      const mockResponse = {
+        message: { content: 'scanned-doc', role: 'assistant' },
+        done: true
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse
+      });
+
+      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fakedata';
+      await visionService.generateFileName(scannedContent, 'scan.pdf');
+
+      const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(requestBody.model).toBe('llava:7b');
+    });
+
+    it('should use llama3.2-vision model when current model contains it', async () => {
+      const visionService = new OllamaService('http://localhost:11434', 'llama3.2-vision:latest');
+      const mockResponse = {
+        message: { content: 'scanned-doc', role: 'assistant' },
+        done: true
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse
+      });
+
+      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fakedata';
+      await visionService.generateFileName(scannedContent, 'scan.pdf');
+
+      const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(requestBody.model).toBe('llama3.2-vision:latest');
+    });
+
+    it('should strip base64 prefix and pass only raw base64 data as images array', async () => {
+      const mockResponse = {
+        message: { content: 'scanned-doc', role: 'assistant' },
+        done: true
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse
+      });
+
+      const rawBase64 = 'ABCDEF123456';
+      const scannedContent = `[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,${rawBase64}`;
+      await ollamaService.generateFileName(scannedContent, 'scan.pdf');
+
+      const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const userMsg = requestBody.messages.find((m: any) => m.role === 'user');
+      expect(userMsg.images[0]).toBe(rawBase64);
     });
   });
 });

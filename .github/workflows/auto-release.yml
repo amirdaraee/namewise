@@ -77,8 +77,9 @@ jobs:
 
     - name: Extract release notes from CHANGELOG
       id: release-notes
+      env:
+        VERSION: ${{ needs.check-version.outputs.new-version }}
       run: |
-        VERSION="${{ needs.check-version.outputs.new-version }}"
         # Extract the section for this version from CHANGELOG.md
         NOTES=$(awk "/^## \[$VERSION\]/,/^## \[/" CHANGELOG.md | sed '1d;$d')
         # Save to file to handle multiline content
@@ -86,12 +87,10 @@ jobs:
         echo "Release notes extracted for version $VERSION"
 
     - name: Create GitHub Release
-      uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v${{ needs.check-version.outputs.new-version }}
-        release_name: v${{ needs.check-version.outputs.new-version }}
-        body_path: release-notes.txt
-        draft: false
-        prerelease: false
+        VERSION: ${{ needs.check-version.outputs.new-version }}
+      run: |
+        gh release create "v$VERSION" \
+          --title "v$VERSION" \
+          --notes-file release-notes.txt

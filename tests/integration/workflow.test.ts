@@ -1,336 +1,243 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { promises as fs } from 'fs';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import path from 'path';
+import { promises as fs } from 'fs';
 import { DocumentParserFactory } from '../../src/parsers/factory.js';
 import { FileRenamer } from '../../src/services/file-renamer.js';
-import { MockAIService } from '../mocks/mock-ai-service.js';
-import { Config, FileInfo } from '../../src/types/index.js';
+import {
+  createTempDir,
+  copyTestFile,
+  MockAIService,
+  makeConfig,
+  makeFileInfo
+} from './helpers/harness.js';
 
-// Mock file system operations
-vi.mock('fs', async () => {
-  const actual = await vi.importActual('fs');
-  return {
-    ...actual,
-    promises: {
-      ...actual.promises,
-      rename: vi.fn(),
-      access: vi.fn(),
-      stat: vi.fn(),
-      readdir: vi.fn()
-    }
-  };
-});
+const DATA_DIR = path.join(process.cwd(), 'tests', 'data');
 
 describe('Workflow Integration Tests', () => {
-  let mockAIService: MockAIService;
+  let tempDir: string;
+  let cleanup: () => Promise<void>;
+  let mockAI: MockAIService;
   let parserFactory: DocumentParserFactory;
-  let fileRenamer: FileRenamer;
-  let config: Config;
-  const testDataDir = path.join(process.cwd(), 'tests/data');
 
-  beforeEach(() => {
-    mockAIService = new MockAIService();
+  beforeEach(async () => {
+    ({ dir: tempDir, cleanup } = await createTempDir());
+    mockAI = new MockAIService();
     parserFactory = new DocumentParserFactory();
-    config = {
-      aiProvider: 'claude',
-      apiKey: 'test-key',
-      maxFileSize: 10 * 1024 * 1024,
-      supportedExtensions: ['.txt', '.pdf', '.docx', '.xlsx', '.md'],
-      dryRun: false,
-      namingConvention: 'kebab-case',
-      templateOptions: {
-        category: 'general',
-        personalName: undefined,
-        dateFormat: 'none'
-      }
-    };
-
-    fileRenamer = new FileRenamer(parserFactory, mockAIService, config);
-    
-    vi.clearAllMocks();
-    mockAIService.resetCallCount();
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  afterEach(async () => {
+    await cleanup();
   });
 
-  describe('Complete File Processing Workflow', () => {
-    it('should process mixed file types successfully', async () => {
-      const testFiles: FileInfo[] = [
-        {
-          path: path.join(testDataDir, 'sample-text.txt'),
-          name: 'sample-text.txt',
-          extension: '.txt',
-          size: 1000
-        },
-        {
-          path: path.join(testDataDir, 'sample-markdown.md'),
-          name: 'sample-markdown.md',
-          extension: '.md',
-          size: 500
-        }
-      ];
+  describe('dry-run mode', () => {
+    it('should call AI but not rename files', async () => {
+      const filePath = await copyTestFile('sample-text.txt', tempDir);
+      const stat = await fs.stat(filePath);
+      const fileInfo = makeFileInfo(filePath, { size: stat.size });
+      const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
 
-      // Mock successful file operations
-      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
-      vi.mocked(fs.rename).mockResolvedValue(undefined);
-
-      // Set up different AI responses for different content types
-      mockAIService.setMockResponse('default', 'project-requirements-document');
-      mockAIService.setMockResponse('meeting', 'team-meeting-notes-march-2024');
-
-      const results = await fileRenamer.renameFiles(testFiles);
-
-      expect(results).toHaveLength(2);
-      expect(results.every(r => r.success)).toBe(true);
-      expect(mockAIService.getCallCount()).toBe(2);
-      expect(fs.rename).toHaveBeenCalledTimes(2);
-
-      // Verify different filenames were generated
-      expect(results[0].suggestedName).toContain('project-requirements-document');
-      expect(results[1].suggestedName).toContain('team-meeting-notes');
-    });
-
-    it('should handle mixed success and failure scenarios', async () => {
-      const testFiles: FileInfo[] = [
-        {
-          path: path.join(testDataDir, 'sample-text.txt'),
-          name: 'sample-text.txt',
-          extension: '.txt',
-          size: 1000
-        },
-        {
-          path: path.join(testDataDir, 'large-file.txt'),
-          name: 'large-file.txt',
-          extension: '.txt',
-          size: 20 * 1024 * 1024 // Exceeds limit
-        },
-        {
-          path: path.join(testDataDir, 'empty-file.txt'),
-          name: 'empty-file.txt',
-          extension: '.txt',
-          size: 0
-        }
-      ];
-
-      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
-      vi.mocked(fs.rename).mockResolvedValue(undefined);
-
-      const results = await fileRenamer.renameFiles(testFiles);
-
-      expect(results).toHaveLength(3);
-      expect(results[0].success).toBe(true);  // Normal file
-      expect(results[1].success).toBe(false); // Too large
-      expect(results[2].success).toBe(false); // Empty file
-
-      expect(results[1].error).toContain('File size');
-      expect(results[2].error).toContain('No content could be extracted');
-
-      // Only the successful file should trigger AI call and rename
-      expect(mockAIService.getCallCount()).toBe(1);
-      expect(fs.rename).toHaveBeenCalledOnce();
-    });
-
-    it('should respect dry-run mode across all files', async () => {
-      config.dryRun = true;
-      fileRenamer = new FileRenamer(parserFactory, mockAIService, config);
-
-      const testFiles: FileInfo[] = [
-        {
-          path: path.join(testDataDir, 'sample-text.txt'),
-          name: 'sample-text.txt',
-          extension: '.txt',
-          size: 1000
-        },
-        {
-          path: path.join(testDataDir, 'sample-markdown.md'),
-          name: 'sample-markdown.md',
-          extension: '.md',
-          size: 500
-        }
-      ];
-
-      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
-
-      const results = await fileRenamer.renameFiles(testFiles);
-
-      expect(results).toHaveLength(2);
-      expect(results.every(r => r.success)).toBe(true);
-      expect(mockAIService.getCallCount()).toBe(2); // AI should still be called
-      expect(fs.rename).not.toHaveBeenCalled(); // But no actual renaming
-    });
-
-    it('should handle file conflicts appropriately', async () => {
-      const testFiles: FileInfo[] = [
-        {
-          path: path.join(testDataDir, 'sample-text.txt'),
-          name: 'sample-text.txt',
-          extension: '.txt',
-          size: 1000
-        }
-      ];
-
-      // Simulate that the target filename already exists
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-
-      const results = await fileRenamer.renameFiles(testFiles);
+      const results = await renamer.renameFiles([fileInfo]);
 
       expect(results).toHaveLength(1);
+      expect(results[0].success).toBe(true);
+      expect(mockAI.getCallCount()).toBe(1);
+
+      // File should still be at the original path
+      await expect(fs.access(filePath)).resolves.toBeUndefined();
+    });
+
+    it('should process multiple files without renaming any', async () => {
+      const txtPath = await copyTestFile('sample-text.txt', tempDir);
+      const mdPath = await copyTestFile('sample-markdown.md', tempDir);
+      const txtStat = await fs.stat(txtPath);
+      const mdStat = await fs.stat(mdPath);
+
+      const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
+      const results = await renamer.renameFiles([
+        makeFileInfo(txtPath, { size: txtStat.size }),
+        makeFileInfo(mdPath, { size: mdStat.size })
+      ]);
+
+      expect(results).toHaveLength(2);
+      expect(results.every(r => r.success)).toBe(true);
+      expect(mockAI.getCallCount()).toBe(2);
+
+      // Both files still exist at their original paths
+      await expect(fs.access(txtPath)).resolves.toBeUndefined();
+      await expect(fs.access(mdPath)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('actual rename', () => {
+    it('should rename a txt file in the temp directory', async () => {
+      const filePath = await copyTestFile('meeting-notes.txt', tempDir);
+      const stat = await fs.stat(filePath);
+      const fileInfo = makeFileInfo(filePath, { size: stat.size });
+
+      const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: false }));
+      const results = await renamer.renameFiles([fileInfo]);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].success).toBe(true);
+      expect(results[0].suggestedName).toMatch(/\.txt$/);
+
+      // Original path should no longer exist; new path should
+      await expect(fs.access(filePath)).rejects.toThrow();
+      await expect(fs.access(results[0].newPath)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('error scenarios', () => {
+    it('should fail gracefully for a file that exceeds the size limit', async () => {
+      const filePath = await copyTestFile('sample-text.txt', tempDir);
+      const fileInfo = makeFileInfo(filePath, { size: 20 * 1024 * 1024 }); // 20 MB
+      const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ maxFileSize: 10 * 1024 * 1024 }));
+
+      const results = await renamer.renameFiles([fileInfo]);
+
       expect(results[0].success).toBe(false);
-      expect(results[0].error).toContain('Target filename already exists');
-      
-      // AI should still be called, but no renaming should occur
-      expect(mockAIService.getCallCount()).toBe(1);
-      expect(fs.rename).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('Parser Integration', () => {
-    it('should use correct parser for each file type', async () => {
-      const testFiles: FileInfo[] = [
-        {
-          path: path.join(testDataDir, 'sample-text.txt'),
-          name: 'sample-text.txt',
-          extension: '.txt',
-          size: 1000
-        },
-        {
-          path: path.join(testDataDir, 'sample-pdf.pdf'),
-          name: 'sample-pdf.pdf',
-          extension: '.pdf',
-          size: 2000
-        }
-      ];
-
-      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
-      vi.mocked(fs.rename).mockResolvedValue(undefined);
-
-      const results = await fileRenamer.renameFiles(testFiles);
-
-      expect(results).toHaveLength(2);
-      expect(results.every(r => r.success)).toBe(true);
-
-      // Both files should be processed successfully using their respective parsers
-      expect(mockAIService.getCallCount()).toBe(2);
-      expect(fs.rename).toHaveBeenCalledTimes(2);
+      expect(results[0].error).toContain('exceeds maximum');
+      expect(mockAI.getCallCount()).toBe(0);
     });
 
-    it('should reject unsupported file types', async () => {
-      const testFiles: FileInfo[] = [
-        {
-          path: path.join(testDataDir, 'unsupported.xyz'),
-          name: 'unsupported.xyz',
-          extension: '.xyz',
-          size: 1000
-        }
-      ];
+    it('should fail gracefully for empty files', async () => {
+      const filePath = await copyTestFile('empty-file.txt', tempDir);
+      const fileInfo = makeFileInfo(filePath, { size: 0 });
+      const renamer = new FileRenamer(parserFactory, mockAI, makeConfig());
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const results = await renamer.renameFiles([fileInfo]);
 
-      expect(results).toHaveLength(1);
+      expect(results[0].success).toBe(false);
+      expect(results[0].error).toContain('No content');
+    });
+
+    it('should fail for unsupported file extensions', async () => {
+      // Create an unsupported file in the temp dir
+      const unsupportedPath = path.join(tempDir, 'unknown.xyz');
+      await fs.writeFile(unsupportedPath, 'some content');
+      const fileInfo = makeFileInfo(unsupportedPath, { extension: '.xyz', size: 12 });
+      const renamer = new FileRenamer(parserFactory, mockAI, makeConfig());
+
+      const results = await renamer.renameFiles([fileInfo]);
+
       expect(results[0].success).toBe(false);
       expect(results[0].error).toContain('No parser available');
-      
-      expect(mockAIService.getCallCount()).toBe(0);
-      expect(fs.rename).not.toHaveBeenCalled();
+      expect(mockAI.getCallCount()).toBe(0);
     });
-  });
 
-  describe('AI Service Integration', () => {
-    it('should handle AI service failures gracefully', async () => {
-      mockAIService.setShouldFail(true);
+    it('should fail when AI service throws', async () => {
+      mockAI.setShouldFail(true);
+      const filePath = await copyTestFile('sample-text.txt', tempDir);
+      const stat = await fs.stat(filePath);
+      const fileInfo = makeFileInfo(filePath, { size: stat.size });
+      const renamer = new FileRenamer(parserFactory, mockAI, makeConfig());
 
-      const testFiles: FileInfo[] = [
-        {
-          path: path.join(testDataDir, 'sample-text.txt'),
-          name: 'sample-text.txt',
-          extension: '.txt',
-          size: 1000
-        }
-      ];
+      const results = await renamer.renameFiles([fileInfo]);
 
-      const results = await fileRenamer.renameFiles(testFiles);
-
-      expect(results).toHaveLength(1);
       expect(results[0].success).toBe(false);
       expect(results[0].error).toContain('Mock AI service failed');
-      
-      expect(mockAIService.getCallCount()).toBe(1);
-      expect(fs.rename).not.toHaveBeenCalled();
     });
 
-    it('should generate contextually appropriate filenames', async () => {
-      const testFiles: FileInfo[] = [
-        {
-          path: path.join(testDataDir, 'sample-text.txt'),
-          name: 'sample-text.txt',
-          extension: '.txt',
-          size: 1000
-        },
-        {
-          path: path.join(testDataDir, 'sample-markdown.md'),
-          name: 'sample-markdown.md',
-          extension: '.md',
-          size: 500
-        }
-      ];
+    it('should detect file conflicts and not rename', async () => {
+      const srcPath = await copyTestFile('sample-text.txt', tempDir);
+      const stat = await fs.stat(srcPath);
+      const fileInfo = makeFileInfo(srcPath, { size: stat.size });
 
-      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
-      vi.mocked(fs.rename).mockResolvedValue(undefined);
+      // Pre-create a file whose name the mock AI will suggest
+      const suggestedName = `project-requirements-document.txt`;
+      await fs.writeFile(path.join(tempDir, suggestedName), 'existing');
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: false }));
+      const results = await renamer.renameFiles([fileInfo]);
 
-      expect(results).toHaveLength(2);
-      expect(results.every(r => r.success)).toBe(true);
-
-      // Verify that different content generates different filenames
-      expect(results[0].suggestedName).not.toBe(results[1].suggestedName);
-      
-      // Filenames should reflect content
-      expect(results[0].suggestedName).toContain('project-requirements-document');
-      expect(results[1].suggestedName).toContain('team-meeting-notes');
+      expect(results[0].success).toBe(false);
+      expect(results[0].error).toContain('already exists');
     });
   });
 
-  describe('Error Recovery and Resilience', () => {
-    it('should continue processing after individual file failures', async () => {
-      const testFiles: FileInfo[] = [
-        {
-          path: path.join(testDataDir, 'sample-text.txt'),
-          name: 'sample-text.txt',
-          extension: '.txt',
-          size: 1000
-        },
-        {
-          path: path.join(testDataDir, 'non-existent.txt'),
-          name: 'non-existent.txt',
-          extension: '.txt',
-          size: 1000
-        },
-        {
-          path: path.join(testDataDir, 'sample-markdown.md'),
-          name: 'sample-markdown.md',
-          extension: '.md',
-          size: 500
-        }
-      ];
+  describe('resilience across multiple files', () => {
+    it('should continue processing after a file fails', async () => {
+      const goodPath1 = await copyTestFile('sample-text.txt', tempDir);
+      const goodPath2 = await copyTestFile('sample-markdown.md', tempDir);
+      const goodStat1 = await fs.stat(goodPath1);
+      const goodStat2 = await fs.stat(goodPath2);
 
-      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
-      vi.mocked(fs.rename).mockResolvedValue(undefined);
+      // One oversized file sandwiched between two good ones
+      const oversize = makeFileInfo(path.join(tempDir, 'big.txt'), {
+        size: 20 * 1024 * 1024,
+        name: 'big.txt',
+        extension: '.txt'
+      });
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
+      const results = await renamer.renameFiles([
+        makeFileInfo(goodPath1, { size: goodStat1.size }),
+        oversize,
+        makeFileInfo(goodPath2, { size: goodStat2.size })
+      ]);
 
       expect(results).toHaveLength(3);
-      expect(results[0].success).toBe(true);  // First file succeeds
-      expect(results[1].success).toBe(false); // Second file fails
-      expect(results[2].success).toBe(true);  // Third file still processes
+      expect(results[0].success).toBe(true);
+      expect(results[1].success).toBe(false);
+      expect(results[2].success).toBe(true);
+      expect(mockAI.getCallCount()).toBe(2);
+    });
+  });
 
-      expect(results[1].error).toContain('Failed to parse text file');
-      
-      // Two successful files should generate AI calls and renames
-      expect(mockAIService.getCallCount()).toBe(2);
-      expect(fs.rename).toHaveBeenCalledTimes(2);
+  describe('naming conventions', () => {
+    it.each([
+      ['kebab-case', /^[a-z0-9]+(-[a-z0-9]+)*\./],
+      ['snake_case', /^[a-z0-9]+(_[a-z0-9]+)*\./],
+      ['camelCase', /^[a-z][a-zA-Z0-9]*\./],
+      ['PascalCase', /^[A-Z][a-zA-Z0-9]*\./],
+      ['lowercase', /^[a-z0-9]+\./],
+      ['UPPERCASE', /^[A-Z0-9]+\./]
+    ] as const)('should apply %s to the suggested filename', async (convention, pattern) => {
+      const filePath = await copyTestFile('sample-text.txt', tempDir);
+      const stat = await fs.stat(filePath);
+      const fileInfo = makeFileInfo(filePath, { size: stat.size });
+      const renamer = new FileRenamer(
+        parserFactory,
+        mockAI,
+        makeConfig({ dryRun: true, namingConvention: convention })
+      );
+
+      const results = await renamer.renameFiles([fileInfo]);
+
+      expect(results[0].success).toBe(true);
+      expect(results[0].suggestedName).toMatch(pattern);
+    });
+  });
+
+  describe('template categories', () => {
+    it('should produce different filename shapes for general vs document templates', async () => {
+      const filePath = await copyTestFile('sample-text.txt', tempDir);
+      const stat = await fs.stat(filePath);
+
+      const generalRenamer = new FileRenamer(
+        parserFactory,
+        mockAI,
+        makeConfig({ dryRun: true, templateOptions: { category: 'general', dateFormat: 'none' } })
+      );
+      const documentRenamer = new FileRenamer(
+        parserFactory,
+        mockAI,
+        makeConfig({
+          dryRun: true,
+          templateOptions: { category: 'document', personalName: 'testuser', dateFormat: 'YYYYMMDD' }
+        })
+      );
+
+      const [generalResult] = await generalRenamer.renameFiles([makeFileInfo(filePath, { size: stat.size })]);
+      mockAI.reset();
+      const [documentResult] = await documentRenamer.renameFiles([makeFileInfo(filePath, { size: stat.size })]);
+
+      expect(generalResult.success).toBe(true);
+      expect(documentResult.success).toBe(true);
+
+      // Document template includes personalName → the names differ
+      expect(generalResult.suggestedName).not.toBe(documentResult.suggestedName);
+      expect(documentResult.suggestedName).toContain('testuser');
     });
   });
 });

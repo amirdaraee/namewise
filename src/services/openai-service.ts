@@ -27,6 +27,9 @@ export class OpenAIService implements AIProvider {
       if (isScannedPDF) {
         // Extract base64 image data
         const imageBase64 = content.replace('[SCANNED_PDF_IMAGE]:', '');
+        if (!imageBase64.startsWith('data:image/') || !imageBase64.includes(',')) {
+          throw new Error('Invalid scanned PDF image data format');
+        }
         
         const prompt = buildFileNamePrompt({
           content: 'This is a scanned PDF document converted to an image. Please analyze the image and extract the main content to generate an appropriate filename.',

@@ -37,20 +37,20 @@ describe('AIServiceFactory', () => {
 
     it('should create Ollama service with custom config', () => {
       const service = AIServiceFactory.create('ollama', undefined, {
-        baseUrl: 'http://custom:8080',
+        baseUrl: 'http://localhost:8080',
         model: 'custom-model'
       });
-      
+
       expect(service).toBeDefined();
       expect(service.name).toBe('Ollama');
     });
 
     it('should create LMStudio service with custom config', () => {
       const service = AIServiceFactory.create('lmstudio', undefined, {
-        baseUrl: 'http://custom:9000',
+        baseUrl: 'http://localhost:9000',
         model: 'custom-model'
       });
-      
+
       expect(service).toBeDefined();
       expect(service.name).toBe('LMStudio');
     });

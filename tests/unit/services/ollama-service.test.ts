@@ -171,8 +171,8 @@ describe('OllamaService', () => {
     });
 
     it('should use custom base URL and model', async () => {
-      const customService = new OllamaService('http://custom:8080', 'custom-model');
-      
+      const customService = new OllamaService('http://localhost:8080', 'custom-model');
+
       const mockResponse = {
         message: {
           content: 'test-filename',
@@ -189,7 +189,7 @@ describe('OllamaService', () => {
       await customService.generateFileName('content', 'file.txt');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://custom:8080/api/chat',
+        'http://localhost:8080/api/chat',
         expect.objectContaining({
           body: expect.stringContaining('"model":"custom-model"')
         })

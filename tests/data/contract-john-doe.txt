@@ -1,0 +1,22 @@
+EMPLOYMENT CONTRACT
+
+This Employment Contract ("Agreement") is entered into as of January 15, 2024,
+between Acme Corporation ("Employer") and John Doe ("Employee").
+
+POSITION: Senior Software Engineer
+
+TERMS:
+The Employee, John Doe, agrees to perform software engineering duties as defined
+by the Employer. This contract governs the employment relationship between
+Acme Corporation and John Doe.
+
+COMPENSATION:
+John Doe shall receive an annual salary of $120,000, payable bi-weekly.
+
+DURATION:
+This agreement commences on February 1, 2024, and continues indefinitely
+unless terminated in accordance with the provisions herein.
+
+SIGNATURES:
+Employer: Acme Corporation
+Employee: John Doe

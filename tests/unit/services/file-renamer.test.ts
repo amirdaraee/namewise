@@ -3,7 +3,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { FileRenamer } from '../../../src/services/file-renamer.js';
 import { DocumentParserFactory } from '../../../src/parsers/factory.js';
-import { MockAIService } from '../../mocks/mock-ai-service.js';
+import { MockAIService } from '../../integration/helpers/harness.js';
 import { Config, FileInfo } from '../../../src/types/index.js';
 
 // Mock fs.rename to avoid actual file operations

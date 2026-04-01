@@ -1,0 +1,31 @@
+TEAM MEETING NOTES
+Date: March 15, 2024
+Time: 2:00 PM - 3:00 PM
+
+ATTENDEES:
+- Alice Johnson (Product Manager)
+- Bob Smith (Engineering Lead)
+- Carol Davis (Design Lead)
+- David Lee (QA Engineer)
+
+AGENDA:
+1. Sprint review
+2. Roadmap discussion
+3. Action items
+
+DISCUSSION:
+
+Sprint Review:
+The team completed 18 out of 20 story points. Two items were deferred to
+the next sprint due to external dependencies.
+
+Roadmap:
+Alice presented the Q2 roadmap. Key features include improved onboarding
+flow and mobile app redesign. Design team to provide mockups by March 22.
+
+ACTION ITEMS:
+- Bob: Set up CI pipeline for mobile by March 20
+- Carol: Deliver onboarding mockups by March 22
+- David: Create test plan for new features by March 25
+
+NEXT MEETING: March 22, 2024 at 2:00 PM

@@ -5,6 +5,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    globalSetup: ['tests/integration/helpers/generate-fixtures.ts'],
     include: ['tests/**/*.test.{ts,js}'],
     exclude: ['node_modules', 'dist'],
     coverage: {

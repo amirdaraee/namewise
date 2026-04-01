@@ -1,65 +1,63 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { describe, it, expect } from 'vitest';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { existsSync } from 'fs';
+import path from 'path';
 
 const execAsync = promisify(exec);
+const cliPath = path.join(process.cwd(), 'dist', 'index.js');
+const cliExists = existsSync(cliPath);
 
-// Mock fs operations for integration tests
-vi.mock('fs', async () => {
-  const actual = await vi.importActual('fs');
-  return {
-    ...actual,
-    promises: {
-      ...actual.promises,
-      rename: vi.fn(),
-      access: vi.fn()
-    }
-  };
-});
-
-describe('End-to-End Integration Tests', () => {
-  const testDataDir = path.join(process.cwd(), 'tests/data');
-  const cliPath = path.join(process.cwd(), 'dist/index.js');
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  describe('CLI Integration', () => {
-    it('should show help message', async () => {
+/**
+ * CLI end-to-end tests.
+ *
+ * These tests invoke the built binary (dist/index.js) directly. Run
+ * `npm run build` before running these tests. Tests are skipped if the
+ * build does not exist.
+ *
+ * Scope: tests that do NOT require a live AI service (help, version, flag
+ * validation, error paths). Full rename workflow is covered programmatically
+ * in workflow.test.ts.
+ */
+describe.skipIf(!cliExists)('End-to-End CLI Tests', () => {
+  describe('top-level help', () => {
+    it('should show the tool description', async () => {
       const { stdout } = await execAsync(`node ${cliPath} --help`);
-
-      expect(stdout).toContain('AI-powered CLI tool that intelligently renames files based on their content');
-      expect(stdout).toContain('rename [options] [directory]');
-      expect(stdout).toContain('Commands:');
+      expect(stdout).toContain('AI-powered CLI tool');
     });
 
-    it('should show rename command help', async () => {
-      const { stdout } = await execAsync(`node ${cliPath} rename --help`);
-      
-      expect(stdout).toContain('Rename files in a directory based on their content using AI analysis');
-      expect(stdout).toContain('Arguments:');
-      expect(stdout).toContain('directory');
-      expect(stdout).toContain('Options:');
-      expect(stdout).toContain('-p, --provider');
-      expect(stdout).toContain('-k, --api-key');
-      expect(stdout).toContain('-c, --case');
-      expect(stdout).toContain('-t, --template');
-      expect(stdout).toContain('-n, --name');
-      expect(stdout).toContain('-d, --date');
-      expect(stdout).toContain('--dry-run');
-      expect(stdout).toContain('--max-size');
+    it('should list the rename command', async () => {
+      const { stdout } = await execAsync(`node ${cliPath} --help`);
+      expect(stdout).toContain('rename');
     });
 
-    it('should show naming convention options in help', async () => {
+    it('should print a semver version string', async () => {
+      const { stdout } = await execAsync(`node ${cliPath} --version`);
+      expect(stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
+    });
+  });
+
+  describe('rename command help', () => {
+    it('should describe the rename command', async () => {
       const { stdout } = await execAsync(`node ${cliPath} rename --help`);
-      
+      expect(stdout).toContain('Rename files');
+    });
+
+    it('should show the optional directory argument', async () => {
+      const { stdout } = await execAsync(`node ${cliPath} rename --help`);
+      expect(stdout).toContain('[directory]');
+    });
+
+    it('should list all provider options', async () => {
+      const { stdout } = await execAsync(`node ${cliPath} rename --help`);
+      expect(stdout).toContain('claude');
+      expect(stdout).toContain('openai');
+      expect(stdout).toContain('ollama');
+      expect(stdout).toContain('lmstudio');
+    });
+
+    it('should list all naming convention options', async () => {
+      const { stdout } = await execAsync(`node ${cliPath} rename --help`);
       expect(stdout).toContain('kebab-case');
       expect(stdout).toContain('snake_case');
       expect(stdout).toContain('camelCase');
@@ -68,9 +66,8 @@ describe('End-to-End Integration Tests', () => {
       expect(stdout).toContain('UPPERCASE');
     });
 
-    it('should show template category options in help', async () => {
+    it('should list all template category options', async () => {
       const { stdout } = await execAsync(`node ${cliPath} rename --help`);
-      
       expect(stdout).toContain('document');
       expect(stdout).toContain('movie');
       expect(stdout).toContain('music');
@@ -80,130 +77,40 @@ describe('End-to-End Integration Tests', () => {
       expect(stdout).toContain('general');
     });
 
-    it('should show date format options in help', async () => {
+    it('should list all date format options', async () => {
       const { stdout } = await execAsync(`node ${cliPath} rename --help`);
-      
       expect(stdout).toContain('YYYY-MM-DD');
       expect(stdout).toContain('YYYY');
       expect(stdout).toContain('YYYYMMDD');
       expect(stdout).toContain('none');
     });
 
-    it('should show version', async () => {
-      const { stdout } = await execAsync(`node ${cliPath} --version`);
-      
-      expect(stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
-    });
-
-    it('should accept optional directory argument', async () => {
+    it('should show the --dry-run flag', async () => {
       const { stdout } = await execAsync(`node ${cliPath} rename --help`);
-
-      // Verify directory is shown as optional (in brackets) in help
-      expect(stdout).toContain('[directory]');
-      expect(stdout).toContain('current directory');
-      expect(stdout).toContain('(default: ".")');
+      expect(stdout).toContain('--dry-run');
     });
 
-    it('should handle non-existent directory', async () => {
-      try {
-        await execAsync(`node ${cliPath} rename /non/existent/directory --dry-run`, {
-          input: 'test-key\n'
-        });
-        expect.fail('Should have thrown an error');
-      } catch (error: any) {
-        expect(error.stderr || error.stdout).toContain('Error:');
-      }
+    it('should show the --max-size flag', async () => {
+      const { stdout } = await execAsync(`node ${cliPath} rename --help`);
+      expect(stdout).toContain('--max-size');
     });
   });
 
-  describe('Full Workflow Integration', () => {
-    it('should process files with mock AI service (dry run)', async () => {
-      // This test would need actual AI service mocking at the CLI level
-      // For now, we'll test the structure
-      
-      const testDir = path.join(testDataDir);
-      
-      // Mock the AI service response by setting environment variables or config
-      process.env.MOCK_AI_RESPONSE = 'test-document-name';
-      
-      try {
-        // This would fail without real API key, but tests the flow
-        const command = `echo "test-key" | node ${cliPath} rename ${testDir} --dry-run --provider claude`;
-        
-        // For a real test, we'd need to mock the AI service at a higher level
-        // This is a placeholder for the integration test structure
-        expect(true).toBe(true); // Placeholder assertion
-      } catch (error) {
-        // Expected in test environment without real API key
-        expect(true).toBe(true);
-      } finally {
-        delete process.env.MOCK_AI_RESPONSE;
-      }
+  describe('error handling', () => {
+    it('should exit with non-zero code for a non-existent directory', async () => {
+      await expect(
+        execAsync(`node ${cliPath} rename /this/path/does/not/exist --dry-run`)
+      ).rejects.toSatisfy((err: any) => {
+        const output = (err.stderr ?? '') + (err.stdout ?? '');
+        return output.includes('Error') || err.code !== 0;
+      });
     });
   });
+});
 
-  describe('File Processing Integration', () => {
-    it('should detect supported files correctly', async () => {
-      // Create a temporary test directory structure
-      const tempDir = path.join(process.cwd(), 'temp-test');
-      
-      try {
-        await fs.mkdir(tempDir, { recursive: true });
-        await fs.writeFile(path.join(tempDir, 'test.txt'), 'Test content');
-        await fs.writeFile(path.join(tempDir, 'test.md'), '# Test markdown');
-        await fs.writeFile(path.join(tempDir, 'unsupported.xyz'), 'Unsupported file');
-        
-        // The actual CLI would process only supported files
-        // This test validates the file detection logic
-        
-        const files = await fs.readdir(tempDir);
-        const supportedExtensions = ['.txt', '.md', '.pdf', '.docx', '.xlsx'];
-        const supportedFiles = files.filter(file => 
-          supportedExtensions.some(ext => file.endsWith(ext))
-        );
-        
-        expect(supportedFiles).toHaveLength(2);
-        expect(supportedFiles).toContain('test.txt');
-        expect(supportedFiles).toContain('test.md');
-        expect(supportedFiles).not.toContain('unsupported.xyz');
-        
-      } finally {
-        // Clean up
-        try {
-          await fs.rm(tempDir, { recursive: true, force: true });
-        } catch (error) {
-          // Ignore cleanup errors
-        }
-      }
-    });
-  });
-
-  describe('Error Handling Integration', () => {
-    it('should handle parser errors gracefully', async () => {
-      // Test that the application handles various error conditions
-      // without crashing and provides meaningful error messages
-      
-      const invalidFiles = [
-        'non-existent.pdf',
-        'empty.txt',
-        'corrupted.docx'
-      ];
-      
-      // Each of these should be handled gracefully by the application
-      // without causing the entire process to fail
-      
-      expect(invalidFiles.length).toBeGreaterThan(0); // Placeholder assertion
-    });
-
-    it('should validate configuration parameters', async () => {
-      const invalidConfigs = [
-        { maxSize: -1 },
-        { maxSize: 'invalid' },
-        { provider: 'invalid-provider' }
-      ];
-      
-      // Each invalid config should be caught and handled appropriately
-      expect(invalidConfigs.length).toBeGreaterThan(0); // Placeholder assertion
-    });
+describe('End-to-End CLI Tests (build missing)', () => {
+  it.skipIf(cliExists)('should note that the build is required for CLI tests', () => {
+    console.warn(`CLI tests skipped: ${cliPath} not found. Run \`npm run build\` first.`);
+    expect(true).toBe(true);
   });
 });

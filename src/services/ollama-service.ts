@@ -28,8 +28,23 @@ export class OllamaService implements AIProvider {
     baseUrl = 'http://localhost:11434',
     model = 'llama3.1'
   ) {
-    this.baseUrl = baseUrl;
+    this.baseUrl = this.validateLocalUrl(baseUrl);
     this.model = model;
+  }
+
+  private validateLocalUrl(url: string): string {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      throw new Error(`Invalid Ollama base URL: ${url}`);
+    }
+    const hostname = parsed.hostname.toLowerCase();
+    const allowed = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]';
+    if (!allowed) {
+      throw new Error(`Ollama base URL must point to localhost (got: ${hostname})`);
+    }
+    return url;
   }
 
   async generateFileName(

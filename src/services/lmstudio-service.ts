@@ -39,8 +39,23 @@ export class LMStudioService implements AIProvider {
     baseUrl = 'http://localhost:1234',
     model = 'local-model'
   ) {
-    this.baseUrl = baseUrl;
+    this.baseUrl = this.validateLocalUrl(baseUrl);
     this.model = model;
+  }
+
+  private validateLocalUrl(url: string): string {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      throw new Error(`Invalid LMStudio base URL: ${url}`);
+    }
+    const hostname = parsed.hostname.toLowerCase();
+    const allowed = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]';
+    if (!allowed) {
+      throw new Error(`LMStudio base URL must point to localhost (got: ${hostname})`);
+    }
+    return url;
   }
 
   async generateFileName(

@@ -231,8 +231,8 @@ describe('LMStudioService', () => {
     });
 
     it('should use custom base URL and model', async () => {
-      const customService = new LMStudioService('http://custom:8080', 'custom-model');
-      
+      const customService = new LMStudioService('http://localhost:8080', 'custom-model');
+
       const mockResponse = {
         choices: [{
           message: {
@@ -251,7 +251,7 @@ describe('LMStudioService', () => {
       await customService.generateFileName('content', 'file.txt');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://custom:8080/v1/chat/completions',
+        'http://localhost:8080/v1/chat/completions',
         expect.objectContaining({
           body: expect.stringContaining('"model":"custom-model"')
         })

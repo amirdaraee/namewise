@@ -76,10 +76,35 @@ describe('AIServiceFactory', () => {
     it('should pass API key to created cloud services', () => {
       const claudeService = AIServiceFactory.create('claude', 'claude-key');
       const openaiService = AIServiceFactory.create('openai', 'openai-key');
-      
+
       // Services should be created without throwing errors
       expect(claudeService).toBeDefined();
       expect(openaiService).toBeDefined();
+    });
+
+    it('should forward localLLMConfig.model to ClaudeService', () => {
+      const service = AIServiceFactory.create('claude', 'test-key', { model: 'claude-opus-4-6' });
+      expect(service).toBeDefined();
+      expect(service.name).toBe('Claude');
+      // Verify the model was stored (accessible via private field)
+      expect((service as any).model).toBe('claude-opus-4-6');
+    });
+
+    it('should forward localLLMConfig.model to OpenAIService', () => {
+      const service = AIServiceFactory.create('openai', 'test-key', { model: 'gpt-4-turbo' });
+      expect(service).toBeDefined();
+      expect(service.name).toBe('OpenAI');
+      expect((service as any).model).toBe('gpt-4-turbo');
+    });
+
+    it('should use provider default when localLLMConfig.model is not set for Claude', () => {
+      const service = AIServiceFactory.create('claude', 'test-key');
+      expect((service as any).model).toBe('claude-sonnet-4-5-20250929');
+    });
+
+    it('should use provider default when localLLMConfig.model is not set for OpenAI', () => {
+      const service = AIServiceFactory.create('openai', 'test-key');
+      expect((service as any).model).toBe('gpt-4o');
     });
   });
 });

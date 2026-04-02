@@ -62,8 +62,8 @@ Document Properties:`;
 
 ${metadataContext}
 
-Document content (first 2000 characters):
-${content.substring(0, 2000)}
+Document content (first 5000 characters):
+${content.substring(0, 5000)}
 
 Important: If this document is specifically for or about a particular person mentioned in the content, start the filename with their name. Otherwise, focus on the document's main purpose and content.
 

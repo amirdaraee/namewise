@@ -21,18 +21,9 @@ export class DocumentParserFactory {
   }
 
   getSupportedExtensions(): string[] {
-    const extensions = new Set<string>();
-    
-    // Add known extensions based on parser implementations
-    extensions.add('.pdf');
-    extensions.add('.docx');
-    extensions.add('.doc');
-    extensions.add('.xlsx');
-    extensions.add('.xls');
-    extensions.add('.txt');
-    extensions.add('.md');
-    extensions.add('.rtf');
-    
-    return Array.from(extensions);
+    const candidates = ['.pdf', '.docx', '.doc', '.xlsx', '.xls', '.txt', '.md', '.rtf'];
+    return candidates.filter(ext =>
+      this.parsers.some(parser => parser.supports(`file${ext}`))
+    );
   }
 }

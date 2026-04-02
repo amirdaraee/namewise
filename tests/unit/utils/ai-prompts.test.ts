@@ -150,9 +150,9 @@ describe('AI Prompts', () => {
       expect(moviePrompt).toContain('movie');
     });
 
-    it('should truncate content to 2000 characters', () => {
-      const longContent = 'a'.repeat(3000);
-      
+    it('should truncate content to 5000 characters', () => {
+      const longContent = 'a'.repeat(6000);
+
       const prompt = buildFileNamePrompt({
         content: longContent,
         originalName: 'long.txt',
@@ -161,8 +161,8 @@ describe('AI Prompts', () => {
       });
 
       const contentSection = prompt.substring(prompt.indexOf('Document content'));
-      expect(contentSection).toContain('a'.repeat(2000));
-      expect(contentSection).not.toContain('a'.repeat(2001));
+      expect(contentSection).toContain('a'.repeat(5000));
+      expect(contentSection).not.toContain('a'.repeat(5001));
     });
 
     it('should handle missing optional metadata gracefully', () => {

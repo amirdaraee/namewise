@@ -29,8 +29,8 @@ export const FILE_TEMPLATES: Record<Exclude<FileCategory, 'auto'>, FileTemplate>
   },
   movie: {
     category: 'movie',
-    pattern: '{content}-{year}',
-    description: 'Movies with release year',
+    pattern: '{content}',
+    description: 'Movies — include release year in the name',
     examples: [
       'the-dark-knight-2008.mkv',
       'inception-2010.mp4',
@@ -39,8 +39,8 @@ export const FILE_TEMPLATES: Record<Exclude<FileCategory, 'auto'>, FileTemplate>
   },
   music: {
     category: 'music',
-    pattern: '{artist}-{content}',
-    description: 'Music files with artist name',
+    pattern: '{content}',
+    description: 'Music files — include artist name at the start',
     examples: [
       'the-beatles-hey-jude.mp3',
       'queen-bohemian-rhapsody.flac',
@@ -49,8 +49,8 @@ export const FILE_TEMPLATES: Record<Exclude<FileCategory, 'auto'>, FileTemplate>
   },
   series: {
     category: 'series',
-    pattern: '{content}-s{season}e{episode}',
-    description: 'TV series with season and episode',
+    pattern: '{content}',
+    description: 'TV series — include show name, season, and episode number',
     examples: [
       'breaking-bad-s01e01.mkv',
       'game-of-thrones-s04e09.mp4',
@@ -69,8 +69,8 @@ export const FILE_TEMPLATES: Record<Exclude<FileCategory, 'auto'>, FileTemplate>
   },
   book: {
     category: 'book',
-    pattern: '{author}-{content}',
-    description: 'Books with author name',
+    pattern: '{content}',
+    description: 'Books — include author name at the start',
     examples: [
       'george-orwell-1984.pdf',
       'j-k-rowling-harry-potter-philosophers-stone.epub',
@@ -208,7 +208,8 @@ export function applyTemplate(
   aiGeneratedName: string,
   category: FileCategory,
   templateOptions: TemplateOptions,
-  namingConvention: NamingConvention
+  namingConvention: NamingConvention,
+  fileInfo?: FileInfo
 ): string {
   if (category === 'auto') {
     throw new Error('Cannot apply template for "auto" category. Category should be resolved before calling applyTemplate.');
@@ -224,7 +225,8 @@ export function applyTemplate(
   }
 
   if (templateOptions.dateFormat && templateOptions.dateFormat !== 'none') {
-    const date = formatDate(new Date(), templateOptions.dateFormat);
+    const dateToUse = fileInfo?.documentMetadata?.creationDate ?? new Date();
+    const date = formatDate(dateToUse, templateOptions.dateFormat);
     result = result.replace('{date}', date);
   }
 
@@ -271,5 +273,19 @@ export function getTemplateInstructions(category: FileCategory): string {
     return 'Generate appropriate filename based on detected file type and content.';
   }
   const template = FILE_TEMPLATES[category as Exclude<FileCategory, 'auto'>];
-  return `Generate filename for ${category} type files. ${template.description}. Examples: ${template.examples.join(', ')}`;
+  const baseInstruction = `Generate filename for ${category} type files. ${template.description}.`;
+  const exampleInstruction = `Examples (without extension): ${template.examples.map(e => e.replace(/\.[^.]+$/, '')).join(', ')}`;
+
+  switch (category) {
+    case 'movie':
+      return `${baseInstruction} The complete name must include the release year at the end. ${exampleInstruction}`;
+    case 'music':
+      return `${baseInstruction} The complete name must start with the artist name followed by the track title. ${exampleInstruction}`;
+    case 'series':
+      return `${baseInstruction} The complete name must include the season and episode numbers (e.g. s01e01). ${exampleInstruction}`;
+    case 'book':
+      return `${baseInstruction} The complete name must start with the author name followed by the book title. ${exampleInstruction}`;
+    default:
+      return `${baseInstruction} ${exampleInstruction}`;
+  }
 }

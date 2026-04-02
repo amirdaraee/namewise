@@ -7,11 +7,11 @@ import { buildFileNamePrompt } from '../utils/ai-prompts.js';
 export class ClaudeService implements AIProvider {
   name = 'Claude';
   private client: Anthropic;
+  private model: string;
 
-  constructor(apiKey: string) {
-    this.client = new Anthropic({
-      apiKey: apiKey
-    });
+  constructor(apiKey: string, model?: string) {
+    this.client = new Anthropic({ apiKey });
+    this.model = model ?? 'claude-sonnet-4-5-20250929';
   }
 
   async generateFileName(content: string, originalName: string, namingConvention: string = 'kebab-case', category: string = 'general', fileInfo?: FileInfo): Promise<string> {
@@ -40,7 +40,7 @@ export class ClaudeService implements AIProvider {
         });
 
         response = await this.client.messages.create({
-          model: 'claude-sonnet-4-5-20250929', // Use Claude Sonnet 4.5 for vision capabilities
+          model: this.model,
           max_tokens: 100,
           messages: [
             {
@@ -73,7 +73,7 @@ export class ClaudeService implements AIProvider {
         });
 
         response = await this.client.messages.create({
-          model: 'claude-3-haiku-20240307',
+          model: this.model,
           max_tokens: 100,
           messages: [
             {

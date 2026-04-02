@@ -121,7 +121,8 @@ export class FileRenamer {
       coreFileName,
       fileCategory,
       this.config.templateOptions,
-      this.config.namingConvention
+      this.config.namingConvention,
+      file
     );
 
     // Create new filename with original extension

@@ -203,16 +203,43 @@ describe('File Templates', () => {
       expect(result).toMatch(/^driving-license-amirhossein-\d{8}$/);
     });
 
-    it('should apply movie template with year', () => {
+    it('should apply movie template (AI provides the full name including year)', () => {
+      // The movie template pattern is {content}; the AI is responsible for
+      // including the year in the generated name (e.g. "the-dark-knight-2008").
       const result = applyTemplate(
-        'the-dark-knight',
+        'the-dark-knight-2008',
         'movie',
-        { category: 'movie', dateFormat: 'YYYY' },
+        { category: 'movie', dateFormat: 'none' },
         'kebab-case'
       );
-      
-      // Movies don't use personal names in their template pattern
-      expect(result).toBe('the-dark-knight');
+      expect(result).toBe('the-dark-knight-2008');
+    });
+
+    it('should use document metadata creationDate for {date} when fileInfo is provided', () => {
+      const fileInfo: FileInfo = {
+        path: '/docs/contract.pdf',
+        name: 'contract.pdf',
+        extension: '.pdf',
+        size: 1024,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        accessedAt: new Date(),
+        parentFolder: 'docs',
+        folderPath: ['docs'],
+        documentMetadata: {
+          creationDate: new Date('2023-06-15')
+        }
+      };
+
+      const result = applyTemplate(
+        'employment-contract',
+        'document',
+        { category: 'document', personalName: 'alice', dateFormat: 'YYYYMMDD' },
+        'kebab-case',
+        fileInfo
+      );
+
+      expect(result).toBe('employment-contract-alice-20230615');
     });
 
     it('should apply different date formats', () => {
@@ -325,6 +352,151 @@ describe('File Templates', () => {
     it('should return early auto message for auto category', () => {
       const result = getTemplateInstructions('auto');
       expect(result).toBe('Generate appropriate filename based on detected file type and content.');
+    });
+
+    it('should tell AI to include release year in movie filenames', () => {
+      const instructions = getTemplateInstructions('movie');
+      expect(instructions).toContain('release year');
+    });
+
+    it('should tell AI to include artist name for music filenames', () => {
+      const instructions = getTemplateInstructions('music');
+      expect(instructions).toContain('artist name');
+      expect(instructions).toContain('track title');
+    });
+
+    it('should tell AI to include season and episode numbers for series filenames', () => {
+      const instructions = getTemplateInstructions('series');
+      expect(instructions).toContain('season');
+      expect(instructions).toContain('episode');
+      expect(instructions).toContain('s01e01');
+    });
+
+    it('should tell AI to include author name for book filenames', () => {
+      const instructions = getTemplateInstructions('book');
+      expect(instructions).toContain('author name');
+      expect(instructions).toContain('book title');
+    });
+
+    it('should not include media-specific instructions for document category', () => {
+      const instructions = getTemplateInstructions('document');
+      expect(instructions).not.toContain('release year');
+      expect(instructions).not.toContain('artist name');
+      expect(instructions).not.toContain('s01e01');
+    });
+
+    it('should not include media-specific instructions for general category', () => {
+      const instructions = getTemplateInstructions('general');
+      expect(instructions).not.toContain('release year');
+      expect(instructions).not.toContain('artist name');
+      expect(instructions).not.toContain('s01e01');
+    });
+  });
+
+  describe('FILE_TEMPLATES patterns', () => {
+    it('should use {content} only for movie (AI provides full name including year)', () => {
+      expect(FILE_TEMPLATES.movie.pattern).toBe('{content}');
+    });
+
+    it('should use {content} only for music (AI provides full name including artist)', () => {
+      expect(FILE_TEMPLATES.music.pattern).toBe('{content}');
+    });
+
+    it('should use {content} only for series (AI provides full name including season/episode)', () => {
+      expect(FILE_TEMPLATES.series.pattern).toBe('{content}');
+    });
+
+    it('should use {content} only for book (AI provides full name including author)', () => {
+      expect(FILE_TEMPLATES.book.pattern).toBe('{content}');
+    });
+
+    it('should apply music template — AI-generated full name passes through unchanged', () => {
+      const result = applyTemplate(
+        'the-beatles-hey-jude',
+        'music',
+        { category: 'music', dateFormat: 'none' },
+        'kebab-case'
+      );
+      expect(result).toBe('the-beatles-hey-jude');
+    });
+
+    it('should apply series template — AI-generated full name passes through unchanged', () => {
+      const result = applyTemplate(
+        'breaking-bad-s01e01',
+        'series',
+        { category: 'series', dateFormat: 'none' },
+        'kebab-case'
+      );
+      expect(result).toBe('breaking-bad-s01e01');
+    });
+
+    it('should apply book template — AI-generated full name passes through unchanged', () => {
+      const result = applyTemplate(
+        'george-orwell-1984',
+        'book',
+        { category: 'book', dateFormat: 'none' },
+        'kebab-case'
+      );
+      expect(result).toBe('george-orwell-1984');
+    });
+  });
+
+  describe('applyTemplate() — date fallback behaviour', () => {
+    it('should fall back to current date when fileInfo is not provided', () => {
+      const result = applyTemplate(
+        'report',
+        'document',
+        { category: 'document', personalName: 'admin', dateFormat: 'YYYY' },
+        'kebab-case'
+        // no fileInfo
+      );
+      expect(result).toBe(`report-admin-${new Date().getFullYear()}`);
+    });
+
+    it('should fall back to current date when documentMetadata is absent', () => {
+      const fileInfoNoMeta: FileInfo = {
+        path: '/docs/file.pdf',
+        name: 'file.pdf',
+        extension: '.pdf',
+        size: 1024,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        accessedAt: new Date(),
+        parentFolder: 'docs',
+        folderPath: ['docs']
+        // no documentMetadata
+      };
+      const result = applyTemplate(
+        'memo',
+        'document',
+        { category: 'document', personalName: 'user', dateFormat: 'YYYY' },
+        'kebab-case',
+        fileInfoNoMeta
+      );
+      expect(result).toBe(`memo-user-${new Date().getFullYear()}`);
+    });
+
+    it('should fall back to current date when creationDate is missing from metadata', () => {
+      const fileInfoPartialMeta: FileInfo = {
+        path: '/docs/file.pdf',
+        name: 'file.pdf',
+        extension: '.pdf',
+        size: 1024,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        accessedAt: new Date(),
+        parentFolder: 'docs',
+        folderPath: ['docs'],
+        documentMetadata: { title: 'Some title' } // no creationDate
+      };
+      const result = applyTemplate(
+        'contract',
+        'document',
+        { category: 'document', personalName: 'jane', dateFormat: 'YYYY' },
+        'kebab-case',
+        fileInfoPartialMeta
+      );
+      expect(result).toBe(`contract-jane-${new Date().getFullYear()}`);
     });
   });
 

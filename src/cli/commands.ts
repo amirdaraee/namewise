@@ -16,7 +16,7 @@ export function setupCommands(program: Command): void {
     .option('--dry-run', 'Preview changes without renaming files (RECOMMENDED first!)', false)
     .option('--max-size <size>', 'Maximum file size in MB (default: 10)')
     .option('--base-url <url>', 'Base URL for local LLM providers')
-    .option('--model <name>', 'Model name for local LLM providers')
+    .option('--model <name>', 'Model name to use (overrides provider default)')
     .option('-r, --recursive', 'Recursively scan subdirectories', false)
     .option('--depth <n>', 'Maximum recursion depth when using --recursive')
     .option('--concurrency <n>', 'Files to process in parallel (default: 3)')

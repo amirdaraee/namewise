@@ -47,7 +47,7 @@ describe('ClaudeService', () => {
       
       expect(mockClient.messages.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'claude-3-haiku-20240307',
+          model: 'claude-sonnet-4-5-20250929',
           messages: [expect.objectContaining({
             role: 'user',
             content: expect.stringContaining('Use lowercase with hyphens between words')
@@ -108,19 +108,18 @@ describe('ClaudeService', () => {
       await service.generateFileName(sampleContent, originalName, 'kebab-case');
       
       const call = mockClient.messages.create.mock.calls[0][0];
-      expect(call.messages[0].content).toContain(sampleContent.substring(0, 2000));
-      expect(call.messages[0].content).toContain('Document content (first 2000 characters)');
+      expect(call.messages[0].content).toContain(sampleContent.substring(0, 5000));
+      expect(call.messages[0].content).toContain('Document content (first 5000 characters)');
     });
 
-    it('should truncate long content to 2000 characters', async () => {
-      const longContent = 'a'.repeat(3000);
+    it('should truncate long content to 5000 characters', async () => {
+      const longContent = 'a'.repeat(6000);
       await service.generateFileName(longContent, originalName);
-      
+
       const call = mockClient.messages.create.mock.calls[0][0];
       const contentInPrompt = call.messages[0].content;
-      // Should only contain first 2000 characters
-      expect(contentInPrompt).toContain('a'.repeat(2000));
-      expect(contentInPrompt).not.toContain('a'.repeat(2001));
+      expect(contentInPrompt).toContain('a'.repeat(5000));
+      expect(contentInPrompt).not.toContain('a'.repeat(5001));
     });
   });
 
@@ -258,6 +257,53 @@ describe('ClaudeService', () => {
       const call = mockClient.messages.create.mock.calls[0][0];
       const imageContent = call.messages[0].content.find((c: any) => c.type === 'image');
       expect(imageContent.source.data).toBe(base64Data);
+    });
+  });
+
+  describe('Custom model parameter', () => {
+    it('should use default model when none provided', async () => {
+      const defaultService = new ClaudeService('test-key');
+      const defaultClient = (defaultService as any).client;
+      defaultClient.messages.create.mockResolvedValue({
+        content: [{ type: 'text', text: 'test-name' }]
+      });
+
+      await defaultService.generateFileName('sample content', 'file.txt');
+
+      expect(defaultClient.messages.create).toHaveBeenCalledWith(
+        expect.objectContaining({ model: 'claude-sonnet-4-5-20250929' })
+      );
+    });
+
+    it('should use the custom model for text requests when provided', async () => {
+      const customModel = 'claude-opus-4-6';
+      const customService = new ClaudeService('test-key', customModel);
+      const customClient = (customService as any).client;
+      customClient.messages.create.mockResolvedValue({
+        content: [{ type: 'text', text: 'test-name' }]
+      });
+
+      await customService.generateFileName('sample content', 'file.txt');
+
+      expect(customClient.messages.create).toHaveBeenCalledWith(
+        expect.objectContaining({ model: customModel })
+      );
+    });
+
+    it('should use the custom model for vision (scanned PDF) requests', async () => {
+      const customModel = 'claude-opus-4-6';
+      const customService = new ClaudeService('test-key', customModel);
+      const customClient = (customService as any).client;
+      customClient.messages.create.mockResolvedValue({
+        content: [{ type: 'text', text: 'scanned-doc' }]
+      });
+
+      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fake';
+      await customService.generateFileName(scannedContent, 'scan.pdf');
+
+      expect(customClient.messages.create).toHaveBeenCalledWith(
+        expect.objectContaining({ model: customModel })
+      );
     });
   });
 });

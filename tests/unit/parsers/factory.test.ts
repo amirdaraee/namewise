@@ -74,7 +74,7 @@ describe('DocumentParserFactory', () => {
   describe('getSupportedExtensions()', () => {
     it('should return all supported extensions', () => {
       const extensions = factory.getSupportedExtensions();
-      
+
       expect(extensions).toContain('.pdf');
       expect(extensions).toContain('.docx');
       expect(extensions).toContain('.doc');
@@ -88,13 +88,29 @@ describe('DocumentParserFactory', () => {
     it('should return unique extensions', () => {
       const extensions = factory.getSupportedExtensions();
       const uniqueExtensions = [...new Set(extensions)];
-      
+
       expect(extensions.length).toBe(uniqueExtensions.length);
     });
 
     it('should include at least 8 extensions', () => {
       const extensions = factory.getSupportedExtensions();
       expect(extensions.length).toBeGreaterThanOrEqual(8);
+    });
+
+    it('should only list extensions that at least one parser actually supports', () => {
+      const extensions = factory.getSupportedExtensions();
+      extensions.forEach(ext => {
+        expect(factory.getParser(`file${ext}`)).not.toBeNull();
+      });
+    });
+
+    it('should not include extensions that no parser supports', () => {
+      const extensions = factory.getSupportedExtensions();
+      expect(extensions).not.toContain('.png');
+      expect(extensions).not.toContain('.jpg');
+      expect(extensions).not.toContain('.mp4');
+      expect(extensions).not.toContain('.zip');
+      expect(extensions).not.toContain('.exe');
     });
   });
 });

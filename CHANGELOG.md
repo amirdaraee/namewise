@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-04-02
+
+### Fixed
+- Movie, music, series, and book templates now produce correct filenames; the AI is explicitly instructed to include the release year, artist name, season/episode, or author in the output rather than leaving unfilled `{year}`, `{artist}`, `{author}`, `{season}`, `{episode}` placeholders that were silently stripped
+- `--date` flag for document and photo templates now uses the document's own creation date from file metadata when available, instead of always substituting today's date
+
+### Changed
+- `--model` flag now works for all providers (Claude, OpenAI, Ollama, LMStudio), not just local LLMs; defaults are `claude-sonnet-4-5-20250929` for Claude and `gpt-4o` for OpenAI
+- Content sent to AI increased from 2000 to 5000 characters for more accurate filename generation on longer documents
+
 ## [0.6.0] - 2026-04-02
 
 ### Added

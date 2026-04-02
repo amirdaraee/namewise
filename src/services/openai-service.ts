@@ -7,11 +7,11 @@ import { buildFileNamePrompt } from '../utils/ai-prompts.js';
 export class OpenAIService implements AIProvider {
   name = 'OpenAI';
   private client: OpenAI;
+  private model: string;
 
-  constructor(apiKey: string) {
-    this.client = new OpenAI({
-      apiKey: apiKey
-    });
+  constructor(apiKey: string, model?: string) {
+    this.client = new OpenAI({ apiKey });
+    this.model = model ?? 'gpt-4o';
   }
 
   async generateFileName(content: string, originalName: string, namingConvention: string = 'kebab-case', category: string = 'general', fileInfo?: FileInfo): Promise<string> {
@@ -40,7 +40,7 @@ export class OpenAIService implements AIProvider {
         });
 
         response = await this.client.chat.completions.create({
-          model: 'gpt-4o', // Use GPT-4 with vision capabilities
+          model: this.model,
           messages: [
             {
               role: 'user',
@@ -72,7 +72,7 @@ export class OpenAIService implements AIProvider {
         });
 
         response = await this.client.chat.completions.create({
-          model: 'gpt-3.5-turbo',
+          model: this.model,
           messages: [
             {
               role: 'user',

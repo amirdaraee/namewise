@@ -55,7 +55,7 @@ describe('OpenAIService', () => {
       
       expect(mockClient.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gpt-3.5-turbo',
+          model: 'gpt-4o',
           messages: [expect.objectContaining({
             role: 'user',
             content: expect.stringContaining('Use lowercase with hyphens between words')
@@ -105,16 +105,16 @@ describe('OpenAIService', () => {
       await service.generateFileName(sampleContent, originalName, 'kebab-case');
       
       const call = mockClient.chat.completions.create.mock.calls[0][0];
-      expect(call.messages[0].content).toContain(sampleContent.substring(0, 2000));
-      expect(call.messages[0].content).toContain('Document content (first 2000 characters)');
+      expect(call.messages[0].content).toContain(sampleContent.substring(0, 5000));
+      expect(call.messages[0].content).toContain('Document content (first 5000 characters)');
     });
 
     it('should use correct OpenAI parameters', async () => {
       await service.generateFileName(sampleContent, originalName);
-      
+
       expect(mockClient.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gpt-3.5-turbo',
+          model: 'gpt-4o',
           max_tokens: 100,
           temperature: 0.3
         })
@@ -266,6 +266,53 @@ describe('OpenAIService', () => {
       const call = mockClient.chat.completions.create.mock.calls[0][0];
       const imageContent = call.messages[0].content.find((c: any) => c.type === 'image_url');
       expect(imageContent.image_url.url).toBe(imageUrl);
+    });
+  });
+
+  describe('Custom model parameter', () => {
+    it('should use default model gpt-4o when none provided', async () => {
+      const defaultService = new OpenAIService('test-key');
+      const defaultClient = (defaultService as any).client;
+      defaultClient.chat.completions.create.mockResolvedValue({
+        choices: [{ message: { content: 'test-name' } }]
+      });
+
+      await defaultService.generateFileName('sample content', 'file.txt');
+
+      expect(defaultClient.chat.completions.create).toHaveBeenCalledWith(
+        expect.objectContaining({ model: 'gpt-4o' })
+      );
+    });
+
+    it('should use the custom model for text requests when provided', async () => {
+      const customModel = 'gpt-4-turbo';
+      const customService = new OpenAIService('test-key', customModel);
+      const customClient = (customService as any).client;
+      customClient.chat.completions.create.mockResolvedValue({
+        choices: [{ message: { content: 'test-name' } }]
+      });
+
+      await customService.generateFileName('sample content', 'file.txt');
+
+      expect(customClient.chat.completions.create).toHaveBeenCalledWith(
+        expect.objectContaining({ model: customModel })
+      );
+    });
+
+    it('should use the custom model for vision (scanned PDF) requests', async () => {
+      const customModel = 'gpt-4-turbo';
+      const customService = new OpenAIService('test-key', customModel);
+      const customClient = (customService as any).client;
+      customClient.chat.completions.create.mockResolvedValue({
+        choices: [{ message: { content: 'scanned-doc' } }]
+      });
+
+      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fake';
+      await customService.generateFileName(scannedContent, 'scan.pdf');
+
+      expect(customClient.chat.completions.create).toHaveBeenCalledWith(
+        expect.objectContaining({ model: customModel })
+      );
     });
   });
 });

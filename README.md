@@ -1,6 +1,6 @@
 # Namewise
 
-[![Tests](https://img.shields.io/badge/tests-428%20passing-brightgreen.svg)](#testing--development)
+[![Tests](https://img.shields.io/badge/tests-457%20passing-brightgreen.svg)](#testing--development)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#testing--development)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
@@ -73,7 +73,7 @@ namewise undo [session-id] [options]
 |--------|-------------|---------|
 | `--provider` | AI provider (`claude`, `openai`, `ollama`, `lmstudio`) | `claude` |
 | `--base-url` | Base URL for local LLM providers | Auto-detected |
-| `--model` | Model name for local LLM providers | Provider default |
+| `--model` | Model name (overrides provider default for any provider) | Provider default |
 | `--api-key` | API key for the chosen provider | Interactive prompt |
 | `--case` | Naming convention (kebab-case, snake_case, camelCase, PascalCase, lowercase, UPPERCASE) | `kebab-case` |
 | `--template` | File category template (document, movie, music, series, photo, book, general, auto) | `general` |
@@ -218,11 +218,11 @@ Supported keys: `provider`, `case`, `template`, `name`, `date`, `maxSize`, `mode
 |----------|---------|----------------|-------------|
 | `general` | `{content}` | `meeting-notes-q4-2024.pdf` | Default — simple descriptive names |
 | `document` | `{content}-{name}-{date}` | `driving-license-john-20250905.pdf` | Personal documents, contracts, certificates |
-| `movie` | `{content}-{year}` | `the-dark-knight-2008.mkv` | Movie files with release year |
-| `series` | `{content}-s{season}e{episode}` | `breaking-bad-s01e01.mkv` | TV series episodes |
-| `music` | `{artist}-{content}` | `the-beatles-hey-jude.mp3` | Music files with artist |
+| `movie` | AI provides full name | `the-dark-knight-2008.mkv` | Movie files — AI includes release year |
+| `series` | AI provides full name | `breaking-bad-s01e01.mkv` | TV series — AI includes season/episode |
+| `music` | AI provides full name | `the-beatles-hey-jude.mp3` | Music files — AI includes artist name |
 | `photo` | `{content}-{name}-{date}` | `vacation-paris-john-20240715.jpg` | Personal photos |
-| `book` | `{author}-{content}` | `george-orwell-1984.pdf` | Books and ebooks |
+| `book` | AI provides full name | `george-orwell-1984.pdf` | Books — AI includes author name |
 | `auto` | *Automatic* | *Varies by detected type* | Let AI detect and choose best template |
 
 ## AI Provider Setup
@@ -247,18 +247,20 @@ Supported keys: `provider`, `case`, `template`, `name`, `date`, `maxSize`, `mode
 1. Visit [Anthropic Console](https://console.anthropic.com/)
 2. Generate an API key
 3. `export ANTHROPIC_API_KEY=your-key`
+4. Default model: `claude-sonnet-4-5-20250929` (override with `--model`)
 
 **OpenAI**
 1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
 2. Create an API key
 3. `export OPENAI_API_KEY=your-key`
+4. Default model: `gpt-4o` (override with `--model`)
 
 ## How It Works
 
 1. **File Discovery**: Scans directory (recursively if `--recursive`) for supported file types
-2. **Content Extraction**: Uses specialized parsers to extract text; falls back to vision AI for scanned PDFs
-3. **AI Processing**: Sends content to the configured AI provider for filename suggestions
-4. **Template & Convention**: Applies the chosen category template and naming convention
+2. **Content Extraction**: Uses specialized parsers to extract text and metadata; falls back to vision AI for scanned PDFs
+3. **AI Processing**: Sends up to 5000 characters of content plus metadata to the configured AI provider for filename suggestions
+4. **Template & Convention**: Applies the chosen category template and naming convention; for `document` and `photo` templates, uses the document's own creation date from metadata when available
 5. **Conflict Resolution**: If the target name exists, auto-numbers (`-2`, `-3`, …)
 6. **Rename / Preview**: Renames files on disk, or shows a preview in dry-run mode
 7. **History**: Saves the session to `~/.namewise/history.json` for later undo
@@ -270,7 +272,7 @@ Supported keys: `provider`, `case`, `template`, `name`, `date`, `maxSize`, `mode
 - **Conflict Auto-Numbering**: Never overwrites an existing file
 - **File Size Limits**: Skips files above `--max-size`
 - **Extension Preservation**: Original file extensions are never changed
-- **Comprehensive Testing**: 428 tests with 100% coverage
+- **Comprehensive Testing**: 457 tests with 100% coverage
 
 ## Testing & Development
 

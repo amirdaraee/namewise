@@ -18,10 +18,10 @@ export class AIServiceFactory {
     switch (provider) {
       case 'claude':
         if (!apiKey) throw new Error('API key is required for Claude provider');
-        return new ClaudeService(apiKey);
+        return new ClaudeService(apiKey, localLLMConfig?.model);
       case 'openai':
         if (!apiKey) throw new Error('API key is required for OpenAI provider');
-        return new OpenAIService(apiKey);
+        return new OpenAIService(apiKey, localLLMConfig?.model);
       case 'ollama':
         return new OllamaService(
           localLLMConfig?.baseUrl || 'http://localhost:11434',

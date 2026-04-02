@@ -12,39 +12,59 @@ export class FileRenamer {
   ) {}
 
   async renameFiles(files: FileInfo[]): Promise<RenameResult[]> {
-    const results: RenameResult[] = [];
+    const results: RenameResult[] = new Array(files.length);
+    const concurrency = this.config.concurrency ?? 3;
+    let completedCount = 0;
     let lastProgressLength = 0;
+    let progressChain = Promise.resolve();
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      
-      // Create progress message with better formatting
-      const progressBar = `[${i + 1}/${files.length}]`;
-      const truncatedName = file.name.length > 50 ? file.name.substring(0, 47) + '...' : file.name;
-      const progressMessage = `🔄 Processing ${progressBar} ${truncatedName}`;
-      
-      // Clear the previous line completely by using the actual length
-      const clearLine = '\r' + ' '.repeat(Math.max(lastProgressLength, progressMessage.length)) + '\r';
-      process.stdout.write(clearLine + progressMessage);
-      
-      // Store the length for next iteration
-      lastProgressLength = progressMessage.length;
-      
+    let active = 0;
+    const pending: Array<() => void> = [];
+
+    const acquire = (): Promise<void> => {
+      if (active < concurrency) {
+        active++;
+        return Promise.resolve();
+      }
+      return new Promise(resolve => pending.push(resolve));
+    };
+
+    const release = () => {
+      active--;
+      if (pending.length > 0) {
+        active++;
+        pending.shift()!();
+      }
+    };
+
+    await Promise.all(files.map(async (file, index) => {
+      await acquire();
       try {
-        const result = await this.renameFile(file);
-        results.push(result);
+        results[index] = await this.renameFile(file);
       } catch (error) {
-        results.push({
+        results[index] = {
           originalPath: file.path,
           newPath: file.path,
           suggestedName: file.name,
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error'
+        };
+      } finally {
+        completedCount++;
+        const count = completedCount;
+        const truncatedName = file.name.length > 50 ? file.name.substring(0, 47) + '...' : file.name;
+        const msg = `🔄 Processing [${count}/${files.length}] ${truncatedName}`;
+        progressChain = progressChain.then(() => {
+          const clearLine = '\r' + ' '.repeat(Math.max(lastProgressLength, msg.length)) + '\r';
+          process.stdout.write(clearLine + msg);
+          lastProgressLength = msg.length;
         });
+        release();
       }
-    }
+    }));
 
-    // Clear the final processing line completely and show completion
+    await progressChain;
+
     const clearFinal = '\r' + ' '.repeat(lastProgressLength) + '\r';
     if (files.length > 0) {
       const successCount = results.filter(r => r.success).length;
@@ -108,34 +128,43 @@ export class FileRenamer {
     const newFileName = `${templatedName}${file.extension}`;
     const newPath = path.join(path.dirname(file.path), newFileName);
 
-    // Check if new filename would conflict with existing file
-    if (newPath !== file.path) {
-      await this.checkForConflicts(newPath);
-    }
+    // Resolve final path, auto-numbering if target already exists
+    const finalPath = newPath === file.path ? newPath : await this.resolveConflict(newPath);
 
     // Perform the rename (or simulate if dry run)
-    if (!this.config.dryRun && newPath !== file.path) {
-      await fs.rename(file.path, newPath);
+    if (!this.config.dryRun && finalPath !== file.path) {
+      await fs.rename(file.path, finalPath);
     }
 
     return {
       originalPath: file.path,
-      newPath,
-      suggestedName: newFileName,
+      newPath: finalPath,
+      suggestedName: path.basename(finalPath),
       success: true
     };
   }
 
-  private async checkForConflicts(newPath: string): Promise<void> {
+  private async resolveConflict(newPath: string): Promise<string> {
+    const ext = path.extname(newPath);
+    const base = path.join(path.dirname(newPath), path.basename(newPath, ext));
+
     try {
       await fs.access(newPath);
-      // If we reach here, the file exists
-      throw new Error(`Target filename already exists: ${path.basename(newPath)}`);
     } catch (error) {
-      // If the error is ENOENT (file doesn't exist), that's what we want
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return newPath;
+      throw error;
+    }
+
+    for (let i = 2; i <= 99; i++) {
+      const candidate = `${base}-${i}${ext}`;
+      try {
+        await fs.access(candidate);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return candidate;
         throw error;
       }
     }
+
+    throw new Error(`Could not find an available filename for: ${path.basename(newPath)} (tried -2 through -99)`);
   }
 }

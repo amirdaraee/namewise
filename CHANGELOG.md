@@ -7,10 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-02
+
+### Added
+- **Recursive Directory Scanning**: New `-r, --recursive` flag scans subdirectories
+  - Optional `--depth <n>` to cap recursion depth
+  - Example: `namewise rename ./projects --recursive --depth 2 --dry-run`
+- **Undo Command**: New `namewise undo` reverses the most recent rename session
+  - Sessions stored in `~/.namewise/history.json` (append-only audit log)
+  - `namewise undo --list` shows the last 10 sessions with their IDs
+  - `namewise undo <session-id>` undoes a specific past session
+  - Warns and skips (without erroring) if a file has already been moved
+- **Cascading Config File**: Project- and user-level config support
+  - `~/.namewise.json` sets user-wide defaults
+  - `<targetDir>/.namewise.json` overrides per project
+  - CLI flags override both; all keys are optional
+  - Supports: `provider`, `case`, `template`, `name`, `date`, `maxSize`, `model`, `baseUrl`, `concurrency`, `recursive`, `depth`, `output`
+- **Concurrency Control**: New `--concurrency <n>` flag (default: 3)
+  - Files are processed in parallel up to the configured limit
+  - Implemented with a zero-dependency semaphore
+- **JSON Rename Report**: New `--output <path>` flag writes a full report after each run
+  - Includes timestamp, directory, dry-run flag, summary counts, and per-file results
+
+### Changed
+- **Conflict Auto-Numbering**: Replaces the old "file already exists" error
+  - When the suggested name is taken, automatically tries `-2`, `-3` … up to `-99`
+  - Example: `report.pdf` → `report-2.pdf` if `report.pdf` already exists
+
+### Technical
+- Added `src/utils/config-loader.ts` and `src/utils/history.ts` as thin, focused modules
+- Added `src/cli/undo.ts` for undo command logic
+- 103 new tests across 11 new/updated test files; total now 428 tests (36 files)
+
+### Examples
+```bash
+# Recursive scan with depth limit
+namewise rename ./projects --recursive --depth 2 --dry-run
+
+# Save defaults to ~/.namewise.json
+echo '{"provider":"claude","case":"snake_case","concurrency":5}' > ~/.namewise.json
+
+# Save a rename report
+namewise rename ./documents --output ./report.json
+
+# Undo the last session
+namewise undo
+
+# List and undo a specific session
+namewise undo --list
+namewise undo 2026-04-02T10:30:00.000Z
+```
+
 ## [0.5.4] - 2026-03-31
 
 ### Improved
-- **🧪 Test Coverage**: Achieved 100% coverage across all metrics (statements, branches, functions, lines)
+- **Test Coverage**: Achieved 100% coverage across all metrics (statements, branches, functions, lines)
   - 325 tests across 26 test files
   - Added tests for all error branches including non-Error exception paths
   - Full coverage for scanned PDF handling, folder-based categorization, and naming convention truncation
@@ -19,7 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.0] - 2025-11-10
 
 ### Added
-- **📄 Scanned PDF Support**: Full support for image-only (scanned) PDFs with vision AI
+- **Scanned PDF Support**: Full support for image-only (scanned) PDFs with vision AI
   - Automatic detection of scanned PDFs (documents with minimal or no text)
   - Converts first page to image and sends to AI for content analysis
   - Intelligent image optimization to stay under Claude's 5MB limit
@@ -28,11 +79,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Smart size calculation to ensure API compatibility
 
 ### Enhanced
-- **🔄 PDF Processing**: Replaced PDF.js with pdf-to-png-converter for better Node.js compatibility
+- **PDF Processing**: Replaced PDF.js with pdf-to-png-converter for better Node.js compatibility
   - Resolves canvas rendering issues in Node.js environment
   - More reliable PDF-to-image conversion
   - Better error handling and debugging
-- **🤖 AI Model**: Updated to Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
+- **AI Model**: Updated to Claude Sonnet 4.5 (claude-sonnet-4-5-20250929)
   - Latest Claude model with enhanced vision capabilities
   - Improved accuracy for document analysis
   - Better understanding of complex document layouts
@@ -44,9 +95,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved error logging with detailed stack traces
 
 ### Fixed
-- **🐛 Critical**: Fixed "Image or Canvas expected" errors when processing scanned PDFs
-- **🐛 Critical**: Fixed "image exceeds 5 MB maximum" errors with large scanned documents
-- **🐛 Model**: Fixed deprecated model warnings by updating to latest Claude API
+- **Critical**: Fixed "Image or Canvas expected" errors when processing scanned PDFs
+- **Critical**: Fixed "image exceeds 5 MB maximum" errors with large scanned documents
+- **Model**: Fixed deprecated model warnings by updating to latest Claude API
 
 ### Examples
 ```bash
@@ -64,27 +115,27 @@ namewise rename ./documents --dry-run
 ## [0.4.1] - 2025-09-15
 
 ### Enhanced
-- **🔧 Reliability Improvements**: Enhanced stability and consistency across all AI providers
-- **📋 Documentation**: Improved examples and usage documentation
+- **Reliability Improvements**: Enhanced stability and consistency across all AI providers
+- **Documentation**: Improved examples and usage documentation
 
 ## [0.4.0] - 2025-09-15
 
 ### Added
-- **🤖 Local LLM Provider Support**: Full integration with local AI services
+- **Local LLM Provider Support**: Full integration with local AI services
   - **Ollama**: Local LLM support with customizable models (llama3.1, codellama, etc.)
   - **LMStudio**: Local model hosting with OpenAI-compatible API
   - Support for custom base URLs and model selection
   - Availability checking and model listing for local providers
 
 ### Enhanced
-- **🎯 Intelligent Person Name Detection**: Major AI prompting improvements
+- **Intelligent Person Name Detection**: Major AI prompting improvements
   - AI now extracts person names from document content and places them at filename beginning
   - Smart folder name filtering to ignore irrelevant names like "no", "temp", "downloads"
   - Enhanced prompts that focus on document content rather than metadata
   - Support for detecting visa applications, contracts, medical records, certificates
 
 ### Architecture
-- **📋 Centralized Prompt System**: Single source of truth for all AI prompts
+- **Centralized Prompt System**: Single source of truth for all AI prompts
   - Model-agnostic prompting that works across Claude, OpenAI, LMStudio, and Ollama
   - Consolidated prompt building in `/src/utils/ai-prompts.ts`
   - Consistent behavior across all AI providers
@@ -110,18 +161,18 @@ namewise rename ./files --provider lmstudio --base-url http://localhost:1234 --m
 ## [0.3.1] - 2025-09-05
 
 ### Security
-- **🔒 Vulnerability Fix**: Replaced vulnerable `xlsx` package with secure `exceljs`
+- **Vulnerability Fix**: Replaced vulnerable `xlsx` package with secure `exceljs`
 - Enhanced Excel file parsing with improved security and reliability
 
 ### Infrastructure
-- **⚙️ CI/CD Improvements**: Enhanced GitHub Actions workflows
+- **CI/CD Improvements**: Enhanced GitHub Actions workflows
 - Updated Node.js versions in CI pipelines
 - Improved test workflow reliability and build process
 
 ## [0.3.0] - 2025-09-05
 
 ### Added
-- **🎯 Personal File Templates**: Customizable templates for different file categories
+- **Personal File Templates**: Customizable templates for different file categories
   - `document`: Personal docs with name and date (e.g., `driving-license-amirhossein-20250213.pdf`)
   - `movie`: Movies with release year (e.g., `the-dark-knight-2008.mkv`)
   - `music`: Music with artist names (e.g., `the-beatles-hey-jude.mp3`)
@@ -129,14 +180,14 @@ namewise rename ./files --provider lmstudio --base-url http://localhost:1234 --m
   - `photo`: Photos with personal info (e.g., `vacation-paris-john-20240715.jpg`)
   - `book`: Books with author names (e.g., `george-orwell-1984.pdf`)
   - `general`: General files without special formatting
-- **🤖 Smart File Categorization**: Automatically detects file type based on extension and content
-- **👤 Personal Name Integration**: `-n, --name` option to include your name in documents
-- **📅 Flexible Date Formats**: `-d, --date` option with formats:
+- **Smart File Categorization**: Automatically detects file type based on extension and content
+- **Personal Name Integration**: `-n, --name` option to include your name in documents
+- **Flexible Date Formats**: `-d, --date` option with formats:
   - `YYYY-MM-DD`: 2025-09-05
   - `YYYY`: 2025
   - `YYYYMMDD`: 20250905
   - `none`: No date (default)
-- **📂 Category Templates**: `-t, --template` option to specify file category or use auto-detection
+- **Category Templates**: `-t, --template` option to specify file category or use auto-detection
 
 ### Enhanced
 - AI prompts now include category-specific instructions for better filename generation

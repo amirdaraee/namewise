@@ -44,25 +44,34 @@ describe('CLI Commands', () => {
       // Check provider option
       const providerOption = options?.find(opt => opt.long === '--provider');
       expect(providerOption).toBeDefined();
-      expect(providerOption?.description).toBe('AI provider (claude|openai|ollama|lmstudio)');
-      expect(providerOption?.defaultValue).toBe('claude');
+      expect(providerOption?.description).toBe('AI provider: claude|openai|ollama|lmstudio (default: claude)');
 
       // Check api-key option
       const apiKeyOption = options?.find(opt => opt.long === '--api-key');
       expect(apiKeyOption).toBeDefined();
-      expect(apiKeyOption?.description).toBe('API key for cloud providers (or set CLAUDE_API_KEY/OPENAI_API_KEY)');
+      expect(apiKeyOption?.description).toBe('API key for cloud providers (or set CLAUDE_API_KEY/ANTHROPIC_API_KEY/OPENAI_API_KEY)');
 
       // Check dry-run option
       const dryRunOption = options?.find(opt => opt.long === '--dry-run');
       expect(dryRunOption).toBeDefined();
-      expect(dryRunOption?.description).toBe('Preview changes without actually renaming files (RECOMMENDED first!)');
+      expect(dryRunOption?.description).toBe('Preview changes without renaming files (RECOMMENDED first!)');
       expect(dryRunOption?.defaultValue).toBe(false);
 
       // Check max-size option
       const maxSizeOption = options?.find(opt => opt.long === '--max-size');
       expect(maxSizeOption).toBeDefined();
-      expect(maxSizeOption?.description).toBe('Maximum file size in MB to process');
-      expect(maxSizeOption?.defaultValue).toBe('10');
+      expect(maxSizeOption?.description).toBe('Maximum file size in MB (default: 10)');
+
+      // Check new flags exist
+      const recursiveOption = options?.find(opt => opt.long === '--recursive');
+      expect(recursiveOption).toBeDefined();
+      expect(recursiveOption?.defaultValue).toBe(false);
+
+      const concurrencyOption = options?.find(opt => opt.long === '--concurrency');
+      expect(concurrencyOption).toBeDefined();
+
+      const outputOption = options?.find(opt => opt.long === '--output');
+      expect(outputOption).toBeDefined();
     });
 
     it('should have short option aliases', () => {
@@ -110,12 +119,7 @@ describe('CLI Commands', () => {
         apiKey: 'test-key',
         dryRun: true,
         maxSize: '20',
-        case: 'kebab-case',
-        template: 'general',
-        name: undefined,
-        date: 'none',
-        baseUrl: undefined,
-        model: undefined
+        recursive: false
       });
     });
 
@@ -128,16 +132,8 @@ describe('CLI Commands', () => {
       
       const callArgs = vi.mocked(renameFiles).mock.calls[0];
       expect(callArgs[1]).toEqual({
-        provider: 'claude',
-        apiKey: undefined,
         dryRun: false,
-        maxSize: '10',
-        case: 'kebab-case',
-        template: 'general',
-        name: undefined,
-        date: 'none',
-        baseUrl: undefined,
-        model: undefined
+        recursive: false
       });
     });
 
@@ -156,13 +152,7 @@ describe('CLI Commands', () => {
         provider: 'openai',
         apiKey: 'test-key',
         dryRun: false,
-        maxSize: '10',
-        case: 'kebab-case',
-        template: 'general',
-        name: undefined,
-        date: 'none',
-        baseUrl: undefined,
-        model: undefined
+        recursive: false
       });
     });
   });

@@ -138,7 +138,7 @@ describe('Workflow Integration Tests', () => {
       expect(results[0].error).toContain('Mock AI service failed');
     });
 
-    it('should detect file conflicts and not rename', async () => {
+    it('should auto-number when target filename already exists', async () => {
       const srcPath = await copyTestFile('sample-text.txt', tempDir);
       const stat = await fs.stat(srcPath);
       const fileInfo = makeFileInfo(srcPath, { size: stat.size });
@@ -150,8 +150,9 @@ describe('Workflow Integration Tests', () => {
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: false }));
       const results = await renamer.renameFiles([fileInfo]);
 
-      expect(results[0].success).toBe(false);
-      expect(results[0].error).toContain('already exists');
+      // Auto-numbering should succeed with a -2 suffix
+      expect(results[0].success).toBe(true);
+      expect(results[0].suggestedName).toBe('project-requirements-document-2.txt');
     });
   });
 

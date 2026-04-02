@@ -63,6 +63,10 @@ export interface Config {
     baseUrl?: string;
     model?: string;
   };
+  recursive?: boolean;
+  depth?: number;
+  concurrency?: number;
+  outputPath?: string;
 }
 
 export interface ParseResult {

@@ -36,6 +36,7 @@ describe('FileRenamer', () => {
       supportedExtensions: ['.txt', '.pdf', '.docx', '.xlsx'],
       dryRun: false,
       namingConvention: 'kebab-case',
+      concurrency: 1,
       templateOptions: {
         category: 'general',
         personalName: undefined,
@@ -166,7 +167,7 @@ describe('FileRenamer', () => {
       expect(fs.rename).not.toHaveBeenCalled();
     });
 
-    it('should handle file conflicts', async () => {
+    it('should auto-number filename when target already exists', async () => {
       const testFiles: FileInfo[] = [
         {
           path: path.join(testDataDir, 'sample-text.txt'),
@@ -176,15 +177,42 @@ describe('FileRenamer', () => {
         }
       ];
 
-      // Mock fs.access to simulate that new file already exists
+      // First access call (base name) → file exists; -2 variant → ENOENT
+      vi.mocked(fs.access).mockImplementation(async (filePath: any) => {
+        if (String(filePath).includes('-2') || String(filePath).includes('-3')) {
+          throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+        }
+        return undefined; // original target exists
+      });
+      vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+      const results = await fileRenamer.renameFiles(testFiles);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].success).toBe(true);
+      expect(results[0].newPath).toMatch(/-2\.txt$/);
+      expect(mockAIService.getCallCount()).toBe(1);
+      expect(fs.rename).toHaveBeenCalledOnce();
+    });
+
+    it('should fail when all numbered variants -2 through -99 are taken', async () => {
+      const testFiles: FileInfo[] = [
+        {
+          path: path.join(testDataDir, 'sample-text.txt'),
+          name: 'sample-text.txt',
+          extension: '.txt',
+          size: 1000
+        }
+      ];
+
+      // All paths exist — even -2 through -99
       vi.mocked(fs.access).mockResolvedValue(undefined);
 
       const results = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(false);
-      expect(results[0].error).toContain('Target filename already exists');
-      expect(mockAIService.getCallCount()).toBe(1);
+      expect(results[0].error).toContain('Could not find an available filename');
       expect(fs.rename).not.toHaveBeenCalled();
     });
 
@@ -369,6 +397,38 @@ describe('FileRenamer', () => {
           documentMetadata: expect.any(Object)
         })
       );
+    });
+
+    it('should process files concurrently up to the configured limit', async () => {
+      const concurrentConfig = { ...config, concurrency: 2 };
+      const concurrentRenamer = new FileRenamer(parserFactory, mockAIService, concurrentConfig);
+
+      let maxSimultaneous = 0;
+      let currentlyActive = 0;
+
+      const originalGenerate = mockAIService.generateFileName.bind(mockAIService);
+      vi.spyOn(mockAIService, 'generateFileName').mockImplementation(async (...args: Parameters<typeof mockAIService.generateFileName>) => {
+        currentlyActive++;
+        if (currentlyActive > maxSimultaneous) maxSimultaneous = currentlyActive;
+        await new Promise(resolve => setImmediate(resolve));
+        currentlyActive--;
+        return originalGenerate(...args);
+      });
+
+      const testFiles: FileInfo[] = [
+        { path: path.join(testDataDir, 'sample-text.txt'), name: 'sample-text.txt', extension: '.txt', size: 1000 },
+        { path: path.join(testDataDir, 'sample-markdown.md'), name: 'sample-markdown.md', extension: '.md', size: 500 },
+        { path: path.join(testDataDir, 'contract-john-doe.txt'), name: 'contract-john-doe.txt', extension: '.txt', size: 800 }
+      ];
+
+      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+      vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+      const results = await concurrentRenamer.renameFiles(testFiles);
+
+      expect(results).toHaveLength(3);
+      expect(results.every(r => r.success)).toBe(true);
+      expect(maxSimultaneous).toBe(2);
     });
   });
 

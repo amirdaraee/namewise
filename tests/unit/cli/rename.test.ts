@@ -35,6 +35,16 @@ vi.mock('../../../src/services/ai-factory.js', () => ({
   }
 }));
 
+// Mock config loader
+vi.mock('../../../src/utils/config-loader.js', () => ({
+  loadConfig: vi.fn().mockResolvedValue({})
+}));
+
+// Mock history
+vi.mock('../../../src/utils/history.js', () => ({
+  appendHistory: vi.fn().mockResolvedValue(undefined)
+}));
+
 // Mock FileRenamer - use a module-level variable accessible in the factory
 vi.mock('../../../src/services/file-renamer.js', () => {
   const mockRenameFilesMethod = vi.fn().mockResolvedValue([]);
@@ -52,6 +62,8 @@ import { renameFiles } from '../../../src/cli/rename.js';
 import { promises as fs } from 'fs';
 import inquirer from 'inquirer';
 import { FileRenamer } from '../../../src/services/file-renamer.js';
+import { loadConfig } from '../../../src/utils/config-loader.js';
+import { appendHistory } from '../../../src/utils/history.js';
 
 describe('renameFiles()', () => {
   const mockStat = vi.mocked(fs.stat);
@@ -70,7 +82,11 @@ describe('renameFiles()', () => {
     name: undefined,
     date: 'none',
     baseUrl: undefined,
-    model: undefined
+    model: undefined,
+    recursive: false,
+    depth: undefined,
+    concurrency: '3',
+    output: undefined
   };
 
   beforeEach(() => {
@@ -86,6 +102,8 @@ describe('renameFiles()', () => {
     mockReaddir.mockResolvedValue([]);
     mockInquirerPrompt.mockResolvedValue({ proceed: true });
     mockRenameFilesMethod.mockResolvedValue([]);
+    vi.mocked(loadConfig).mockResolvedValue({});
+    vi.mocked(appendHistory).mockResolvedValue(undefined);
     // Reset FileRenamer mock implementation
     vi.mocked(FileRenamer).mockImplementation(() => ({
       renameFiles: mockRenameFilesMethod
@@ -161,10 +179,10 @@ describe('renameFiles()', () => {
 
     it('should filter out directories and unsupported files', async () => {
       const entries = [
-        { name: 'doc.pdf', isFile: () => true },
-        { name: 'image.jpg', isFile: () => true }, // unsupported
-        { name: 'subdir', isFile: () => false },   // directory
-        { name: 'notes.txt', isFile: () => true }
+        { name: 'doc.pdf', isFile: () => true, isDirectory: () => false },
+        { name: 'image.jpg', isFile: () => true, isDirectory: () => false }, // unsupported
+        { name: 'subdir', isFile: () => false, isDirectory: () => false },   // directory (recursive:false, so skip)
+        { name: 'notes.txt', isFile: () => true, isDirectory: () => false }
       ] as any[];
 
       mockReaddir.mockResolvedValue(entries);
@@ -185,7 +203,7 @@ describe('renameFiles()', () => {
 
   describe('Dry-run mode', () => {
     it('should skip confirmation prompt in dry-run mode', async () => {
-      const entries = [{ name: 'doc.pdf', isFile: () => true }] as any[];
+      const entries = [{ name: 'doc.pdf', isFile: () => true, isDirectory: () => false }] as any[];
       mockReaddir.mockResolvedValue(entries);
       mockStat
         .mockResolvedValueOnce({ isDirectory: () => true } as any)
@@ -208,7 +226,7 @@ describe('renameFiles()', () => {
     });
 
     it('should display preview results in dry-run mode', async () => {
-      const entries = [{ name: 'doc.pdf', isFile: () => true }] as any[];
+      const entries = [{ name: 'doc.pdf', isFile: () => true, isDirectory: () => false }] as any[];
       mockReaddir.mockResolvedValue(entries);
       mockStat
         .mockResolvedValueOnce({ isDirectory: () => true } as any)
@@ -231,7 +249,7 @@ describe('renameFiles()', () => {
 
   describe('Non-dry-run mode', () => {
     it('should prompt for confirmation and cancel when user declines', async () => {
-      const entries = [{ name: 'doc.pdf', isFile: () => true }] as any[];
+      const entries = [{ name: 'doc.pdf', isFile: () => true, isDirectory: () => false }] as any[];
       mockReaddir.mockResolvedValue(entries);
       mockStat
         .mockResolvedValueOnce({ isDirectory: () => true } as any)
@@ -249,7 +267,7 @@ describe('renameFiles()', () => {
     });
 
     it('should rename files when user confirms', async () => {
-      const entries = [{ name: 'doc.pdf', isFile: () => true }] as any[];
+      const entries = [{ name: 'doc.pdf', isFile: () => true, isDirectory: () => false }] as any[];
       mockReaddir.mockResolvedValue(entries);
       mockStat
         .mockResolvedValueOnce({ isDirectory: () => true } as any)
@@ -352,7 +370,7 @@ describe('renameFiles()', () => {
 
   describe('displayResults()', () => {
     it('should display successful results', async () => {
-      const entries = [{ name: 'doc.pdf', isFile: () => true }] as any[];
+      const entries = [{ name: 'doc.pdf', isFile: () => true, isDirectory: () => false }] as any[];
       mockReaddir.mockResolvedValue(entries);
       mockStat
         .mockResolvedValueOnce({ isDirectory: () => true } as any)
@@ -374,7 +392,7 @@ describe('renameFiles()', () => {
     });
 
     it('should display failed results with error messages', async () => {
-      const entries = [{ name: 'doc.pdf', isFile: () => true }] as any[];
+      const entries = [{ name: 'doc.pdf', isFile: () => true, isDirectory: () => false }] as any[];
       mockReaddir.mockResolvedValue(entries);
       mockStat
         .mockResolvedValueOnce({ isDirectory: () => true } as any)
@@ -397,8 +415,8 @@ describe('renameFiles()', () => {
 
     it('should display failed count when there are failures', async () => {
       const entries = [
-        { name: 'good.pdf', isFile: () => true },
-        { name: 'bad.pdf', isFile: () => true }
+        { name: 'good.pdf', isFile: () => true, isDirectory: () => false },
+        { name: 'bad.pdf', isFile: () => true, isDirectory: () => false }
       ] as any[];
       mockReaddir.mockResolvedValue(entries);
       mockStat
@@ -422,7 +440,7 @@ describe('renameFiles()', () => {
     });
 
     it('should show "Results" (not "Preview") for non-dry-run mode', async () => {
-      const entries = [{ name: 'doc.pdf', isFile: () => true }] as any[];
+      const entries = [{ name: 'doc.pdf', isFile: () => true, isDirectory: () => false }] as any[];
       mockReaddir.mockResolvedValue(entries);
       mockStat
         .mockResolvedValueOnce({ isDirectory: () => true } as any)

@@ -58,7 +58,7 @@ vi.mock('../../../src/services/file-renamer.js', () => {
   };
 });
 
-import { renameFiles } from '../../../src/cli/rename.js';
+import { renameFiles, getFilesToProcessForTest } from '../../../src/cli/rename.js';
 import { promises as fs } from 'fs';
 import inquirer from 'inquirer';
 import { FileRenamer } from '../../../src/services/file-renamer.js';
@@ -198,6 +198,40 @@ describe('renameFiles()', () => {
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('2 files to process'));
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe('birthtime cross-platform behaviour', () => {
+    // On Linux (ext4/btrfs) stat.birthtime is not stored by the kernel and Node.js
+    // returns the same value as stat.mtime. This test documents that the code
+    // handles that case gracefully — no crash, createdAt is populated.
+    it('should populate createdAt even when birthtime equals mtime (Linux filesystem behaviour)', async () => {
+      const sharedTime = new Date('2024-06-15T10:00:00Z');
+      const entries = [
+        { name: 'doc.pdf', isFile: () => true, isDirectory: () => false }
+      ] as any[];
+
+      mockReaddir.mockResolvedValue(entries);
+      // getFilesToProcessForTest calls stat only per-file, not on the directory itself
+      mockStat.mockResolvedValueOnce({
+        size: 512,
+        birthtime: sharedTime, // equals mtime — typical on Linux
+        mtime: sharedTime,
+        atime: new Date()
+      } as any);
+
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const files = await getFilesToProcessForTest(
+        '/test/dir',
+        ['.pdf', '.docx', '.xlsx', '.txt', '.md', '.rtf']
+      );
+      consoleSpy.mockRestore();
+
+      expect(files).toHaveLength(1);
+      expect(files[0].createdAt).toBeInstanceOf(Date);
+      expect(files[0].createdAt).toEqual(sharedTime);
+      // createdAt === modifiedAt is expected and valid on Linux — not an error
+      expect(files[0].createdAt).toEqual(files[0].modifiedAt);
     });
   });
 

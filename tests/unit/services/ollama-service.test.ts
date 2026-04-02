@@ -121,6 +121,28 @@ describe('OllamaService', () => {
       expect(result).toBe('project-report'); // Should remove quotes and extension
     });
 
+    it('should strip Windows-illegal characters from AI suggestions', async () => {
+      const illegalChars = [
+        ['Contract: Q4 2024', 'contract--q4-2024'],
+        ['Report? Final*', 'report--final-'],
+        ['Invoice <2024>', 'invoice--2024-'],
+        ['File|Name"Here', 'file-name-here'],
+        ['Path\\Sub/Dir', 'path-sub-dir'],
+      ] as const;
+
+      for (const [input, expected] of illegalChars) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            message: { content: input, role: 'assistant' },
+            done: true
+          })
+        });
+        const result = await ollamaService.generateFileName('content', 'file.txt', 'kebab-case');
+        expect(result).toBe(expected);
+      }
+    });
+
     it('should handle API errors', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,

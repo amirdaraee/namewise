@@ -220,6 +220,24 @@ describe('OpenAIService', () => {
       expect(result).not.toMatch(/-$/);
     });
 
+    it('should strip Windows-illegal characters from AI suggestions', async () => {
+      const illegalChars = [
+        ['Contract: Q4 2024', 'contract-q4-2024'],
+        ['Report? Final*', 'report-final'],
+        ['Invoice <2024>', 'invoice-2024'],
+        ['File|Name"Here', 'file-name-here'],
+        ['Path\\Sub/Dir', 'path-sub-dir'],
+      ] as const;
+
+      for (const [input, expected] of illegalChars) {
+        mockClient.chat.completions.create.mockResolvedValue({
+          choices: [{ message: { content: input } }]
+        });
+        const result = await service.generateFileName('content', 'file.txt', 'kebab-case');
+        expect(result).toBe(expected);
+      }
+    });
+
     it('should truncate long snake_case filenames removing partial word at end', async () => {
       // 102-char snake_case string → triggers the > 100 truncation branch
       mockClient.chat.completions.create.mockResolvedValue({

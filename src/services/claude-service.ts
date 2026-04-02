@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AIProvider, FileInfo } from '../types/index.js';
-import { applyNamingConvention, NamingConvention } from '../utils/naming-conventions.js';
+import { applyNamingConvention, stripWindowsIllegalChars, NamingConvention } from '../utils/naming-conventions.js';
 import { FileCategory } from '../utils/file-templates.js';
 import { buildFileNamePrompt } from '../utils/ai-prompts.js';
 
@@ -99,9 +99,12 @@ export class ClaudeService implements AIProvider {
   private sanitizeFileName(name: string, convention: NamingConvention): string {
     // Remove any potential file extensions from the suggestion
     const nameWithoutExt = name.replace(/\.[^/.]+$/, '');
-    
+
+    // Strip Windows-illegal characters before applying the naming convention
+    const safeForWindows = stripWindowsIllegalChars(nameWithoutExt);
+
     // Apply the naming convention
-    let cleaned = applyNamingConvention(nameWithoutExt, convention);
+    let cleaned = applyNamingConvention(safeForWindows, convention);
 
     // Ensure it's not empty and not too long
     if (!cleaned) {

@@ -53,6 +53,16 @@ export function applyNamingConvention(text: string, convention: NamingConvention
   }
 }
 
+/**
+ * Replaces Windows-illegal filename characters (< > : " / \ | ? *)
+ * with spaces so the subsequent naming-convention pass can normalise them
+ * into hyphens, underscores, or remove them as appropriate.
+ * Safe to call on all platforms — acts as a no-op when none are present.
+ */
+export function stripWindowsIllegalChars(name: string): string {
+  return name.replace(/[<>:"/\\|?*]/g, ' ');
+}
+
 export function getNamingInstructions(convention: NamingConvention): string {
   const instructions = {
     'kebab-case': 'Use lowercase with hyphens between words (e.g., "meeting-notes-2024")',

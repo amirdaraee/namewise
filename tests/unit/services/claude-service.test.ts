@@ -192,6 +192,24 @@ describe('ClaudeService', () => {
       expect(snakeResult).not.toMatch(/_$/); // Should not end with underscore
     });
 
+    it('should strip Windows-illegal characters from AI suggestions', async () => {
+      const illegalChars = [
+        ['Contract: Q4 2024', 'contract-q4-2024'],
+        ['Report? Final*', 'report-final'],
+        ['Invoice <2024>', 'invoice-2024'],
+        ['File|Name"Here', 'file-name-here'],
+        ['Path\\Sub/Dir', 'path-sub-dir'],
+      ] as const;
+
+      for (const [input, expected] of illegalChars) {
+        mockClient.messages.create.mockResolvedValue({
+          content: [{ type: 'text', text: input }]
+        });
+        const result = await service.generateFileName('content', 'file.txt', 'kebab-case');
+        expect(result).toBe(expected);
+      }
+    });
+
     it('should handle snake_case truncation removing partial word at end', async () => {
       // This name becomes exactly 101 chars in snake_case, so truncation is triggered
       // After substring(0, 100), it ends with '_' which gets cleaned up

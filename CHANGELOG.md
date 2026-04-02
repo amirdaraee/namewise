@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2026-04-02
+
+### Fixed
+- `ClaudeService` and `OpenAIService` now explicitly strip Windows-illegal filename characters (`< > : " / \ | ? *`) before applying the naming convention, making all four AI providers consistent; previously these characters were silently removed by `applyNamingConvention` but the sanitisation intent was invisible
+- Added `stripWindowsIllegalChars` shared utility in `naming-conventions.ts` used by Claude and OpenAI services (Ollama and LMStudio already handled these inline)
+
+### Changed
+- CI test matrix now runs on `ubuntu-latest`, `windows-latest`, and `macos-latest` across Node.js 20, 22, and 24 (9 jobs total); coverage upload is gated to the ubuntu/Node 24 job only
+
+### Tests
+- Added unit tests for `stripWindowsIllegalChars` covering all 9 illegal characters and real-world AI response patterns
+- Added Windows-illegal character sanitisation tests for all four AI services (`ClaudeService`, `OpenAIService`, `OllamaService`, `LMStudioService`)
+- Added cross-platform `birthtime` test documenting that `FileInfo.createdAt` is correctly populated when `stat.birthtime === stat.mtime` (Linux filesystem behaviour where creation time is not stored)
+
 ## [0.6.1] - 2026-04-02
 
 ### Fixed

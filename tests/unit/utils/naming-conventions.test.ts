@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyNamingConvention, getNamingInstructions, NamingConvention } from '../../../src/utils/naming-conventions.js';
+import { applyNamingConvention, getNamingInstructions, stripWindowsIllegalChars, NamingConvention } from '../../../src/utils/naming-conventions.js';
 
 describe('Naming Conventions', () => {
   describe('applyNamingConvention()', () => {
@@ -65,6 +65,40 @@ describe('Naming Conventions', () => {
     it('should default to kebab-case for unknown convention', () => {
       const result = applyNamingConvention(testText, 'unknown' as NamingConvention);
       expect(result).toBe('project-requirements-document-2024');
+    });
+  });
+
+  describe('stripWindowsIllegalChars()', () => {
+    it('should replace each Windows-illegal character with a space', () => {
+      expect(stripWindowsIllegalChars('a<b')).toBe('a b');
+      expect(stripWindowsIllegalChars('a>b')).toBe('a b');
+      expect(stripWindowsIllegalChars('a:b')).toBe('a b');
+      expect(stripWindowsIllegalChars('a"b')).toBe('a b');
+      expect(stripWindowsIllegalChars('a/b')).toBe('a b');
+      expect(stripWindowsIllegalChars('a\\b')).toBe('a b');
+      expect(stripWindowsIllegalChars('a|b')).toBe('a b');
+      expect(stripWindowsIllegalChars('a?b')).toBe('a b');
+      expect(stripWindowsIllegalChars('a*b')).toBe('a b');
+    });
+
+    it('should handle a realistic AI response with colons and question marks', () => {
+      expect(stripWindowsIllegalChars('Contract: Q4 2024 Final')).toBe('Contract  Q4 2024 Final');
+      expect(stripWindowsIllegalChars('What? How? Why?')).toBe('What  How  Why ');
+    });
+
+    it('should be a no-op for clean filenames', () => {
+      expect(stripWindowsIllegalChars('clean-filename')).toBe('clean-filename');
+      expect(stripWindowsIllegalChars('clean_filename 2024')).toBe('clean_filename 2024');
+    });
+
+    it('should replace all occurrences, not just the first', () => {
+      expect(stripWindowsIllegalChars('a:b:c:d')).toBe('a b c d');
+      expect(stripWindowsIllegalChars('a*b?c<d')).toBe('a b c d');
+    });
+
+    it('should produce valid kebab-case when combined with applyNamingConvention', () => {
+      const result = applyNamingConvention(stripWindowsIllegalChars('Contract: Q4 2024'), 'kebab-case');
+      expect(result).toBe('contract-q4-2024');
     });
   });
 

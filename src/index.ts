@@ -6,8 +6,8 @@ import { setupCommands } from './cli/commands.js';
 async function main() {
   program
     .name('namewise')
-    .description('🤖 AI-powered CLI tool that intelligently renames files based on their content using Claude or OpenAI')
-    .version('0.3.1')
+    .description('🤖 AI-powered CLI tool that intelligently renames, organises, and cleans up files')
+    .version('0.7.0')
     .addHelpText('after', `
 
 📋 Supported File Types:
@@ -27,20 +27,24 @@ async function main() {
   kebab-case, snake_case, camelCase, PascalCase, lowercase, UPPERCASE
 
 💡 Quick Examples:
-  # Basic usage (dry run first - recommended!)
+  # AI rename (dry run first - recommended!)
   namewise rename ./documents --dry-run
-
-  # With Claude AI and specific template
   namewise rename ./documents --provider claude --template document --name "john"
 
-  # Movies with auto-detection
-  namewise rename ./movies --template auto --case kebab-case
+  # No AI required
+  namewise rename ./docs --no-ai
+  namewise rename ./docs --pattern "s/IMG_//i" --pattern "s/ /-/g"
 
-  # OpenAI with custom settings
-  namewise rename ./files --provider openai --api-key your-key --max-size 20
+  # Utility commands
+  namewise sanitize ./downloads --dry-run
+  namewise dedup ./photos --recursive --delete
+  namewise watch ./inbox --provider claude
+  namewise apply ./plan.json
+  namewise config set case snake_case
+  namewise undo --list
 
 🔑 API Keys:
-  Set environment variables: CLAUDE_API_KEY or OPENAI_API_KEY
+  Set environment variables: ANTHROPIC_API_KEY or OPENAI_API_KEY
   Or provide via --api-key flag
 
 📖 More info: https://github.com/amirdaraee/namewise#readme

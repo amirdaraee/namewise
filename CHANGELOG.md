@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-04-03
+
+### Added
+- `namewise sanitize [dir]` — clean filenames without AI: strips unsafe characters, normalises unicode (NFC), and applies any naming convention; supports `--dry-run` and `--recursive`
+- `namewise dedup [dir]` — find duplicate files by SHA-256 content hash; prints file paths and sizes per group, keeps the lexicographically earliest path; `--delete` prompts for confirmation before removing duplicates; supports `--recursive`
+- `namewise watch [dir]` — monitor a directory for new files and automatically rename them through the full rename pipeline; accepts all `rename` flags (`--provider`, `--no-ai`, `--pattern`, etc.); shuts down gracefully on SIGINT/SIGTERM; requires `chokidar`
+- `namewise apply <plan.json>` — execute a saved rename plan produced by `--output`; validates that source files exist and targets are conflict-free before applying; supports `--dry-run`
+- `namewise config <list|get|set>` — manage `~/.namewise.json` from the CLI without editing JSON manually; validates keys against the known config schema
+- `rename --pattern <pattern>` — regex find-and-replace on filename stems, chainable; supports sed-style `s/find/replace/flags` and plain `find:replace` format; skips AI entirely when used
+- `rename --no-ai` — rename files using extracted metadata (title, author, creation date) with no API call; parsers still run; all templates and naming conventions still apply
+- `undo --all` — undo all non-dry-run history sessions at once; prompts for confirmation when more than one session is affected
+- Enhanced rename stats: elapsed time, total MB processed, and per-extension file count breakdown printed at the end of every `rename` run
+
+### Changed
+- `undo` now accepts `--all` flag in addition to an optional session ID
+
 ## [0.6.2] - 2026-04-02
 
 ### Fixed

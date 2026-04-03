@@ -7,6 +7,8 @@ import { AIServiceFactory } from '../services/ai-factory.js';
 import { FileRenamer } from '../services/file-renamer.js';
 import { loadConfig } from '../utils/config-loader.js';
 import { appendHistory } from '../utils/history.js';
+import { applyPatterns } from '../utils/pattern-rename.js';
+import { applyNamingConvention } from '../utils/naming-conventions.js';
 
 export async function renameFiles(directory: string, options: any): Promise<void> {
   try {
@@ -24,7 +26,7 @@ export async function renameFiles(directory: string, options: any): Promise<void
 
     // Get API key for cloud providers only
     let apiKey = options.apiKey;
-    const requiresApiKey = ['claude', 'openai'].includes(provider);
+    const requiresApiKey = ['claude', 'openai'].includes(provider) && options.ai !== false;
 
     if (requiresApiKey && !apiKey) {
       // Check environment variables first
@@ -65,7 +67,9 @@ export async function renameFiles(directory: string, options: any): Promise<void
       recursive: options.recursive ?? fileConfig.recursive ?? false,
       depth: options.depth !== undefined ? parseInt(options.depth) : fileConfig.depth,
       concurrency: parseInt(options.concurrency ?? String(fileConfig.concurrency ?? '3')),
-      outputPath: options.output ?? fileConfig.output
+      outputPath: options.output ?? fileConfig.output,
+      patterns: Array.isArray(options.pattern) ? options.pattern : (options.pattern ? [options.pattern] : []),
+      noAi: options.ai === false
     };
 
     // Initialize services
@@ -77,7 +81,7 @@ export async function renameFiles(directory: string, options: any): Promise<void
     const files = await getFilesToProcess(
       directory,
       config.supportedExtensions,
-      config.recursive ?? false,
+      config.recursive,
       config.depth ?? Infinity
     );
     
@@ -88,6 +92,11 @@ export async function renameFiles(directory: string, options: any): Promise<void
 
     console.log(`Found ${files.length} files to process:`);
     files.forEach(file => console.log(`  - ${file.name}`));
+
+    if (config.patterns && config.patterns.length > 0) {
+      await runPatternRenames(files, config);
+      return;
+    }
 
     // Confirm before processing
     if (!config.dryRun) {
@@ -108,10 +117,11 @@ export async function renameFiles(directory: string, options: any): Promise<void
 
     // Process files
     console.log('\nProcessing files...');
+    const startTime = Date.now();
     const results = await fileRenamer.renameFiles(files);
 
     // Display results
-    displayResults(results, config.dryRun);
+    displayResults(results, config.dryRun, startTime, files);
 
     // Save session to history (~/.namewise/history.json)
     const successfulRenames = results
@@ -202,13 +212,50 @@ async function getFilesToProcess(
 // Exported for integration testing only
 export { getFilesToProcess as getFilesToProcessForTest };
 
-function displayResults(results: RenameResult[], dryRun: boolean): void {
+async function runPatternRenames(files: FileInfo[], config: Config): Promise<void> {
+  const renames: Array<{ originalPath: string; newPath: string }> = [];
+  let previewCount = 0;
+
+  for (const file of files) {
+    const stem = path.basename(file.name, file.extension);
+    let newStem = applyPatterns(stem, config.patterns!);
+    newStem = applyNamingConvention(newStem, config.namingConvention);
+    const newName = newStem + file.extension;
+
+    if (newName === file.name) continue;
+
+    const newPath = path.join(path.dirname(file.path), newName);
+    console.log(`${config.dryRun ? '[dry-run] ' : ''}${file.name} → ${newName}`);
+
+    if (!config.dryRun) {
+      await fs.rename(file.path, newPath);
+      renames.push({ originalPath: file.path, newPath });
+    } else {
+      previewCount++;
+    }
+  }
+
+  if (!config.dryRun && renames.length > 0) {
+    await appendHistory({
+      id: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
+      directory: path.resolve(path.dirname(files[0].path)),
+      dryRun: false,
+      renames
+    });
+  }
+
+  const count = config.dryRun ? previewCount : renames.length;
+  console.log(`\n${config.dryRun ? 'Would rename' : 'Renamed'} ${count} file(s) using pattern(s).`);
+}
+
+function displayResults(results: RenameResult[], dryRun: boolean, startTime: number, files: FileInfo[]): void {
   const successful = results.filter(r => r.success);
   const failed = results.filter(r => !r.success);
 
   console.log(`\n${dryRun ? 'Preview' : 'Results'}:`);
   console.log(`✅ ${successful.length} files ${dryRun ? 'would be' : 'successfully'} renamed`);
-  
+
   if (failed.length > 0) {
     console.log(`❌ ${failed.length} files failed`);
   }
@@ -218,7 +265,7 @@ function displayResults(results: RenameResult[], dryRun: boolean): void {
     const status = result.success ? '✅' : '❌';
     const originalName = path.basename(result.originalPath);
     const newName = path.basename(result.newPath);
-    
+
     if (result.success) {
       console.log(`${status} ${originalName} → ${newName}`);
     } else {
@@ -228,4 +275,20 @@ function displayResults(results: RenameResult[], dryRun: boolean): void {
       }
     }
   });
+
+  // Stats
+  const elapsed = Date.now() - startTime;
+  const elapsedStr = elapsed < 1000 ? `${elapsed}ms` : `${(elapsed / 1000).toFixed(1)}s`;
+  const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
+  const totalMB = (totalBytes / 1024 / 1024).toFixed(2);
+  const extCounts: Record<string, number> = {};
+  for (const f of files) {
+    extCounts[f.extension] = (extCounts[f.extension] ?? 0) + 1;
+  }
+  const extSummary = Object.entries(extCounts)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([ext, count]) => `${count} ${ext.slice(1).toUpperCase()}`)
+    .join(', ');
+  const statsLine = `📊 Stats: ${elapsedStr} elapsed · ${totalMB} MB processed · ${extSummary}`;
+  console.log(`\n${statsLine}`);
 }

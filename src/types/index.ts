@@ -67,6 +67,8 @@ export interface Config {
   depth?: number;
   concurrency?: number;
   outputPath?: string;
+  patterns?: string[];
+  noAi?: boolean;
 }
 
 export interface ParseResult {

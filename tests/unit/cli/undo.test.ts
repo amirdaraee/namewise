@@ -17,6 +17,11 @@ vi.mock('fs', async () => {
   };
 });
 
+vi.mock('inquirer', () => ({
+  default: { prompt: vi.fn() }
+}));
+import inquirer from 'inquirer';
+
 import { promises as fs } from 'fs';
 import { readHistory, appendHistory } from '../../../src/utils/history.js';
 import { undoRename } from '../../../src/cli/undo.js';
@@ -89,6 +94,15 @@ describe('undoRename()', () => {
         })
       );
     });
+
+    it('prints dry-run message when explicitly targeting a dry-run session by ID', async () => {
+      const dryEntry = { ...session, dryRun: true, id: 'dry-id' };
+      mockReadHistory.mockResolvedValue([dryEntry]);
+      const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      await undoRename('dry-id');
+      expect(spy).toHaveBeenCalledWith(expect.stringContaining('dry run'));
+      spy.mockRestore();
+    });
   });
 
   describe('undo most recent', () => {
@@ -112,12 +126,82 @@ describe('undoRename()', () => {
       warnSpy.mockRestore();
     });
 
+    it('re-throws non-ENOENT errors encountered during rename restore', async () => {
+      mockReadHistory.mockResolvedValue([session]);
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      const permError = Object.assign(new Error('Permission denied'), { code: 'EACCES' });
+      vi.mocked(fs.rename).mockRejectedValue(permError);
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      await expect(undoRename()).rejects.toThrow('Permission denied');
+    });
+
     it('prints message when no undo-able sessions exist', async () => {
       mockReadHistory.mockResolvedValue([{ ...session, dryRun: true }]);
       const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
       await undoRename();
       expect(spy).toHaveBeenCalledWith('No undo-able rename sessions found.');
       spy.mockRestore();
+    });
+  });
+
+  describe('--all', () => {
+    it('prints message when no undo-able sessions exist', async () => {
+      mockReadHistory.mockResolvedValue([{ ...session, dryRun: true }]);
+      const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      await undoRename(undefined, { all: true });
+      expect(spy).toHaveBeenCalledWith('No undo-able rename sessions found.');
+      spy.mockRestore();
+    });
+
+    it('undoes all non-dry-run sessions without confirmation when only one session', async () => {
+      mockReadHistory.mockResolvedValue([session]);
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      await undoRename(undefined, { all: true });
+      expect(fs.rename).toHaveBeenCalledWith('/some/dir/new-name.pdf', '/some/dir/old.pdf');
+    });
+
+    it('prompts for confirmation when more than one session exists', async () => {
+      const session2 = { ...session, id: 'session-2', renames: [{ originalPath: '/some/dir/a.pdf', newPath: '/some/dir/b.pdf' }] };
+      mockReadHistory.mockResolvedValue([session, session2]);
+      vi.mocked(inquirer.prompt).mockResolvedValue({ confirm: false } as any);
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      await undoRename(undefined, { all: true });
+      expect(inquirer.prompt).toHaveBeenCalled();
+      expect(fs.rename).not.toHaveBeenCalled();
+    });
+
+    it('undoes all sessions when user confirms', async () => {
+      const session2 = { ...session, id: 'session-2', renames: [{ originalPath: '/some/dir/a.pdf', newPath: '/some/dir/b.pdf' }] };
+      mockReadHistory.mockResolvedValue([session, session2]);
+      vi.mocked(inquirer.prompt).mockResolvedValue({ confirm: true } as any);
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      await undoRename(undefined, { all: true });
+      expect(fs.rename).toHaveBeenCalledTimes(2);
+    });
+
+    it('logs error and continues when undoSession throws during --all', async () => {
+      const session2 = { ...session, id: 'session-2', renames: [{ originalPath: '/some/dir/a.pdf', newPath: '/some/dir/b.pdf' }] };
+      mockReadHistory.mockResolvedValue([session, session2]);
+      vi.mocked(inquirer.prompt).mockResolvedValue({ confirm: true } as any);
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      // Make fs.rename throw a non-ENOENT error so undoSession re-throws
+      const permError = Object.assign(new Error('Permission denied'), { code: 'EACCES' });
+      vi.mocked(fs.rename).mockRejectedValue(permError);
+      await undoRename(undefined, { all: true });
+      expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to undo session'));
+      errSpy.mockRestore();
+    });
+
+    it('uses "Unknown error" in error message when undoSession throws a non-Error during --all', async () => {
+      mockReadHistory.mockResolvedValue([session]);
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      // Throw a non-Error (string) so the ternary hits the 'Unknown error' branch
+      vi.mocked(fs.rename).mockRejectedValue('string-rejection');
+      await undoRename(undefined, { all: true });
+      expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown error'));
+      errSpy.mockRestore();
     });
   });
 });

@@ -195,6 +195,55 @@ describe('FileRenamer', () => {
       expect(fs.rename).toHaveBeenCalledOnce();
     });
 
+    it('should fail when fs.access throws a non-ENOENT error on the base target path', async () => {
+      const testFiles: FileInfo[] = [
+        {
+          path: path.join(testDataDir, 'sample-text.txt'),
+          name: 'sample-text.txt',
+          extension: '.txt',
+          size: 1000
+        }
+      ];
+
+      // Throw EACCES on the very first fs.access call (checking the base target path)
+      vi.mocked(fs.access).mockRejectedValue(
+        Object.assign(new Error('Permission denied'), { code: 'EACCES' })
+      );
+
+      const results = await fileRenamer.renameFiles(testFiles);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].success).toBe(false);
+      expect(results[0].error).toContain('Permission denied');
+      expect(fs.rename).not.toHaveBeenCalled();
+    });
+
+    it('should fail when fs.access throws a non-ENOENT error on a numbered variant path', async () => {
+      const testFiles: FileInfo[] = [
+        {
+          path: path.join(testDataDir, 'sample-text.txt'),
+          name: 'sample-text.txt',
+          extension: '.txt',
+          size: 1000
+        }
+      ];
+
+      // Base target exists (resolves), -2 variant throws EACCES
+      vi.mocked(fs.access).mockImplementation(async (filePath: any) => {
+        if (String(filePath).includes('-2')) {
+          throw Object.assign(new Error('Permission denied'), { code: 'EACCES' });
+        }
+        return undefined; // base target exists
+      });
+
+      const results = await fileRenamer.renameFiles(testFiles);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].success).toBe(false);
+      expect(results[0].error).toContain('Permission denied');
+      expect(fs.rename).not.toHaveBeenCalled();
+    });
+
     it('should fail when all numbered variants -2 through -99 are taken', async () => {
       const testFiles: FileInfo[] = [
         {
@@ -332,7 +381,7 @@ describe('FileRenamer', () => {
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(false);
-      expect(results[0].error).toContain('AI service failed to generate a filename');
+      expect(results[0].error).toContain('Failed to generate a filename');
     });
 
     it('should use "Unknown error" when a non-Error is thrown during rename', async () => {

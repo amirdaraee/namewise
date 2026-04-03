@@ -1,6 +1,6 @@
 # Namewise
 
-[![Tests](https://img.shields.io/badge/tests-457%20passing-brightgreen.svg)](#testing--development)
+[![Tests](https://img.shields.io/badge/tests-621%20passing-brightgreen.svg)](#testing--development)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#testing--development)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
@@ -16,8 +16,15 @@ Automatically rename files based on their content using AI providers (Claude, Op
 
 - **AI-Powered Renaming**: Uses cloud providers (Claude, OpenAI) or local LLMs (Ollama, LMStudio) to generate descriptive filenames
 - **Privacy First**: Local LLM support means your files never leave your machine
+- **No-AI Mode**: Rename using file metadata only — no API key required (`--no-ai`)
+- **Pattern Rename**: Regex/sed-style find-and-replace on filenames, chainable, no AI needed (`--pattern`)
+- **Watch Mode**: Monitor a directory and auto-rename new files as they arrive (`namewise watch`)
+- **Sanitize**: Clean filenames by removing unsafe characters and applying naming conventions (`namewise sanitize`)
+- **Dedup**: Find and optionally delete duplicate files by content hash (`namewise dedup`)
+- **Apply Plans**: Execute a saved rename plan from a previous `--output` report (`namewise apply`)
+- **Config Management**: Manage `~/.namewise.json` from the CLI (`namewise config get|set|list`)
 - **Recursive Scanning**: Scan nested directories with an optional depth limit
-- **Undo Support**: Reverse any previous rename session via `namewise undo`
+- **Undo Support**: Reverse any previous rename session via `namewise undo` (or `undo --all`)
 - **Config File**: Set persistent defaults in `~/.namewise.json` or per-project `.namewise.json`
 - **Concurrency Control**: Process multiple files in parallel with a configurable limit
 - **Conflict Auto-Numbering**: When a target name is taken, automatically appends `-2`, `-3`, etc.
@@ -64,10 +71,15 @@ Download the latest release from [GitHub Releases](https://github.com/amirdaraee
 ### Command Structure
 ```bash
 namewise rename [directory] [options]
+namewise sanitize [directory] [options]
+namewise dedup [directory] [options]
+namewise watch [directory] [options]
+namewise apply <plan.json> [options]
+namewise config <list|get|set> [key] [value]
 namewise undo [session-id] [options]
 ```
 
-### Options Reference
+### `rename` Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
@@ -85,12 +97,30 @@ namewise undo [session-id] [options]
 | `--depth <n>` | Maximum recursion depth (requires `--recursive`) | Unlimited |
 | `--concurrency <n>` | Files to process in parallel | `3` |
 | `--output <path>` | Save rename report as JSON to this path | - |
+| `--pattern <pattern>` | Regex rename pattern (repeatable); skips AI | - |
+| `--no-ai` | Use file metadata instead of AI (no API call) | `false` |
 
-### Undo Options
+### `sanitize` Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--dry-run` | Preview changes without renaming | `false` |
+| `-r, --recursive` | Process subdirectories | `false` |
+| `--case` | Naming convention to apply | `kebab-case` |
+
+### `dedup` Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-r, --recursive` | Scan subdirectories | `false` |
+| `--delete` | Delete duplicates after confirmation | `false` |
+
+### `undo` Options
 
 | Option | Description |
 |--------|-------------|
 | `--list` | List recent rename sessions with their IDs |
+| `--all` | Undo all sessions at once |
 | `[session-id]` | Undo a specific session by ID (default: most recent) |
 
 ### Examples
@@ -111,9 +141,51 @@ namewise rename ./projects --recursive --depth 2 --dry-run
 namewise rename ./documents --output ./report.json
 ```
 
+**Rename using metadata only (no API key needed):**
+```bash
+namewise rename ./documents --no-ai --dry-run
+```
+
+**Regex pattern rename (no AI):**
+```bash
+namewise rename ./docs --pattern "s/IMG_//i" --pattern "s/ /-/g" --dry-run
+```
+
+**Clean filenames without AI:**
+```bash
+namewise sanitize ./downloads --dry-run
+namewise sanitize ./downloads --case snake_case
+```
+
+**Find and remove duplicate files:**
+```bash
+namewise dedup ./photos --recursive
+namewise dedup ./photos --recursive --delete
+```
+
+**Watch a directory and auto-rename new files:**
+```bash
+namewise watch ./inbox --provider claude --template document
+namewise watch ./inbox --no-ai --case snake_case
+```
+
+**Apply a saved rename plan:**
+```bash
+namewise rename ./docs --output ./plan.json --dry-run
+namewise apply ./plan.json
+```
+
+**Manage config from the CLI:**
+```bash
+namewise config list
+namewise config get provider
+namewise config set case snake_case
+```
+
 **Undo the last rename session:**
 ```bash
 namewise undo
+namewise undo --all
 ```
 
 **List and undo a specific session:**
@@ -268,11 +340,11 @@ Supported keys: `provider`, `case`, `template`, `name`, `date`, `maxSize`, `mode
 ## Safety Features
 
 - **Dry Run Mode**: Always preview changes first with `--dry-run`
-- **Undo**: Reverse any session with `namewise undo`
+- **Undo**: Reverse any session with `namewise undo` (or `undo --all`)
 - **Conflict Auto-Numbering**: Never overwrites an existing file
 - **File Size Limits**: Skips files above `--max-size`
 - **Extension Preservation**: Original file extensions are never changed
-- **Comprehensive Testing**: 457 tests with 100% coverage
+- **Comprehensive Testing**: 621 tests with 100% coverage
 
 ## Testing & Development
 

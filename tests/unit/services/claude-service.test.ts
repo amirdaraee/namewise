@@ -224,6 +224,20 @@ describe('ClaudeService', () => {
   });
 
   describe('Scanned PDF handling', () => {
+    it('should throw when scanned PDF image data has no data: prefix', async () => {
+      const scannedContent = '[SCANNED_PDF_IMAGE]:notadataurl';
+      await expect(service.generateFileName(scannedContent, 'scan.pdf')).rejects.toThrow(
+        'Invalid scanned PDF image data format'
+      );
+    });
+
+    it('should throw when scanned PDF image data has no comma separator', async () => {
+      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpegNOCOMMA';
+      await expect(service.generateFileName(scannedContent, 'scan.pdf')).rejects.toThrow(
+        'Invalid scanned PDF image data format'
+      );
+    });
+
     it('should handle scanned PDF with JPEG image using vision model', async () => {
       mockClient.messages.create.mockResolvedValue({
         content: [{ type: 'text', text: 'visa-application' }]

@@ -250,6 +250,20 @@ describe('OpenAIService', () => {
   });
 
   describe('Scanned PDF handling', () => {
+    it('should throw when scanned PDF image data has no data: prefix', async () => {
+      const scannedContent = '[SCANNED_PDF_IMAGE]:notadataurl';
+      await expect(service.generateFileName(scannedContent, 'scan.pdf')).rejects.toThrow(
+        'Invalid scanned PDF image data format'
+      );
+    });
+
+    it('should throw when scanned PDF image data has no comma separator', async () => {
+      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpegNOCOMMA';
+      await expect(service.generateFileName(scannedContent, 'scan.pdf')).rejects.toThrow(
+        'Invalid scanned PDF image data format'
+      );
+    });
+
     it('should handle scanned PDF with image_url using gpt-4o', async () => {
       mockClient.chat.completions.create.mockResolvedValue({
         choices: [{ message: { content: 'visa-document' } }]

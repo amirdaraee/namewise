@@ -14,6 +14,20 @@ describe('LMStudioService', () => {
     vi.clearAllMocks();
   });
 
+  describe('Constructor URL validation', () => {
+    it('should throw when base URL points to a non-localhost host', () => {
+      expect(() => new LMStudioService('http://example.com:1234')).toThrow('localhost');
+    });
+
+    it('should throw on an invalid URL format', () => {
+      expect(() => new LMStudioService('not-a-url')).toThrow();
+    });
+
+    it('should not throw when base URL uses 127.0.0.1', () => {
+      expect(() => new LMStudioService('http://127.0.0.1:1234')).not.toThrow();
+    });
+  });
+
   describe('generateFileName()', () => {
     it('should generate filename using OpenAI-compatible API', async () => {
       const mockResponse = {

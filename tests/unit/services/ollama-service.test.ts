@@ -14,6 +14,20 @@ describe('OllamaService', () => {
     vi.clearAllMocks();
   });
 
+  describe('Constructor URL validation', () => {
+    it('should throw when base URL points to a non-localhost host', () => {
+      expect(() => new OllamaService('http://example.com:11434')).toThrow('localhost');
+    });
+
+    it('should throw on an invalid URL format', () => {
+      expect(() => new OllamaService('not-a-url')).toThrow();
+    });
+
+    it('should not throw when base URL uses 127.0.0.1', () => {
+      expect(() => new OllamaService('http://127.0.0.1:11434')).not.toThrow();
+    });
+  });
+
   describe('generateFileName()', () => {
     it('should generate filename using Ollama chat API', async () => {
       const mockResponse = {

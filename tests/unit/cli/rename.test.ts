@@ -9,7 +9,9 @@ vi.mock('fs', async () => {
     ...actual,
     promises: {
       stat: vi.fn(),
-      readdir: vi.fn()
+      readdir: vi.fn(),
+      rename: vi.fn().mockResolvedValue(undefined),
+      writeFile: vi.fn().mockResolvedValue(undefined)
     }
   };
 });
@@ -86,7 +88,8 @@ describe('renameFiles()', () => {
     recursive: false,
     depth: undefined,
     concurrency: '3',
-    output: undefined
+    output: undefined,
+    pattern: [] as string[]
   };
 
   beforeEach(() => {
@@ -338,6 +341,25 @@ describe('renameFiles()', () => {
       consoleSpy.mockRestore();
     });
 
+    it('should use ANTHROPIC_API_KEY env var when CLAUDE_API_KEY is not set', async () => {
+      const savedClaude = process.env.CLAUDE_API_KEY;
+      const savedAnthropic = process.env.ANTHROPIC_API_KEY;
+      delete process.env.CLAUDE_API_KEY;
+      process.env.ANTHROPIC_API_KEY = 'env-anthropic-key';
+      mockReaddir.mockResolvedValue([]);
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const { AIServiceFactory } = await import('../../../src/services/ai-factory.js');
+
+      try {
+        await renameFiles('/test/dir', { ...defaultOptions, apiKey: undefined, provider: 'claude' });
+        expect(AIServiceFactory.create).toHaveBeenCalledWith('claude', 'env-anthropic-key', expect.anything());
+      } finally {
+        if (savedClaude !== undefined) process.env.CLAUDE_API_KEY = savedClaude; else delete process.env.CLAUDE_API_KEY;
+        if (savedAnthropic !== undefined) process.env.ANTHROPIC_API_KEY = savedAnthropic; else delete process.env.ANTHROPIC_API_KEY;
+        consoleSpy.mockRestore();
+      }
+    });
+
     it('should use OPENAI_API_KEY env var when provider is openai', async () => {
       const originalKey = process.env.OPENAI_API_KEY;
       process.env.OPENAI_API_KEY = 'env-openai-key';
@@ -493,6 +515,295 @@ describe('renameFiles()', () => {
       expect(allLogs).toContain('Results');
 
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe('--pattern flag', () => {
+    beforeEach(() => {
+      mockReaddir.mockResolvedValue([
+        { name: 'old-report.txt', isDirectory: () => false, isFile: () => true } as any
+      ]);
+      mockStat.mockImplementation(async (p: any) => {
+        if (String(p).endsWith('old-report.txt')) {
+          return { isDirectory: () => false, isFile: () => true, size: 512, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+        }
+        return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+      });
+    });
+
+    it('skips FileRenamer when --pattern is set', async () => {
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      await renameFiles('/test/dir', { ...defaultOptions, pattern: ['s/old/new/'], dryRun: true });
+      expect(mockRenameFilesMethod).not.toHaveBeenCalled();
+    });
+
+    it('does not call fs.rename in dry-run mode', async () => {
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      await renameFiles('/test/dir', { ...defaultOptions, pattern: ['s/old/new/'], dryRun: true });
+      expect(vi.mocked(fs.rename)).not.toHaveBeenCalled();
+    });
+
+    it('reports correct count in dry-run summary', async () => {
+      const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      await renameFiles('/test/dir', { ...defaultOptions, pattern: ['s/old/new/'], dryRun: true });
+      const output = spy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(output).toMatch(/Would rename 1 file\(s\)/);
+      spy.mockRestore();
+    });
+  });
+
+  describe('--pattern flag (additional coverage)', () => {
+    beforeEach(() => {
+      mockReaddir.mockResolvedValue([
+        { name: 'already-good.txt', isDirectory: () => false, isFile: () => true } as any
+      ]);
+      mockStat.mockImplementation(async (p: any) => {
+        if (String(p).endsWith('already-good.txt')) {
+          return { isDirectory: () => false, isFile: () => true, size: 512, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+        }
+        return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+      });
+    });
+
+    it('skips rename when pattern result equals the original filename (line 132 continue)', async () => {
+      // Pattern replaces "already-good" with "already-good" — net result same as original
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      await renameFiles('/test/dir', {
+        ...defaultOptions,
+        pattern: ['s/already-good/already-good/'],
+        dryRun: true
+      });
+      // fs.rename should never be called because the name didn't change
+      expect(vi.mocked(fs.rename)).not.toHaveBeenCalled();
+      // Summary should say 0 renames
+      const output = logSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(output).toMatch(/Would rename 0 file\(s\)/);
+      logSpy.mockRestore();
+    });
+
+    it('calls appendHistory when NOT in dry-run mode and renames happened (lines 239-246)', async () => {
+      // Pattern changes the name so a real rename is performed
+      mockReaddir.mockResolvedValue([
+        { name: 'old-report.txt', isDirectory: () => false, isFile: () => true } as any
+      ]);
+      mockStat.mockImplementation(async (p: any) => {
+        if (String(p).endsWith('old-report.txt')) {
+          return { isDirectory: () => false, isFile: () => true, size: 512, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+        }
+        return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+      });
+      vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      await renameFiles('/test/dir', {
+        ...defaultOptions,
+        pattern: ['s/old/new/'],
+        dryRun: false
+      });
+
+      expect(vi.mocked(fs.rename)).toHaveBeenCalledOnce();
+      expect(vi.mocked(appendHistory)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dryRun: false,
+          renames: expect.arrayContaining([
+            expect.objectContaining({ originalPath: expect.stringContaining('old-report.txt') })
+          ])
+        })
+      );
+      logSpy.mockRestore();
+    });
+  });
+
+  describe('stats output', () => {
+    it('prints stats line with multiple extension types', async () => {
+      mockReaddir.mockResolvedValue([
+        { name: 'report.pdf', isDirectory: () => false, isFile: () => true } as any,
+        { name: 'notes.txt', isDirectory: () => false, isFile: () => true } as any
+      ]);
+      mockStat.mockImplementation(async (p: any) => {
+        const s = String(p);
+        if (s.endsWith('report.pdf') || s.endsWith('notes.txt')) {
+          return { isDirectory: () => false, isFile: () => true, size: 512, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+        }
+        return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+      });
+      mockRenameFilesMethod.mockResolvedValue([
+        { originalPath: '/test/dir/report.pdf', newPath: '/test/dir/document.pdf', success: true },
+        { originalPath: '/test/dir/notes.txt', newPath: '/test/dir/notes.txt', success: true }
+      ]);
+      mockInquirerPrompt.mockResolvedValue({ proceed: true });
+
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      await renameFiles('/test/dir', defaultOptions);
+
+      const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(allOutput).toMatch(/📊 Stats:/);
+      expect(allOutput).toMatch(/PDF/);
+      expect(allOutput).toMatch(/TXT/);
+
+      logSpy.mockRestore();
+    });
+
+    it('prints a stats line with elapsed time and file info after processing', async () => {
+      // Set up a .txt file entry in the directory
+      mockReaddir.mockResolvedValue([
+        { name: 'report.txt', isDirectory: () => false, isFile: () => true } as any
+      ]);
+      mockStat.mockImplementation(async (p: any) => {
+        if (String(p).endsWith('report.txt')) {
+          return { isDirectory: () => false, isFile: () => true, size: 1572864, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+        }
+        return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+      });
+      mockRenameFilesMethod.mockResolvedValue([
+        { originalPath: '/test/dir/report.txt', newPath: '/test/dir/renamed.txt', suggestedName: 'renamed.txt', success: true }
+      ]);
+      mockInquirerPrompt.mockResolvedValue({ proceed: true });
+
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      await renameFiles('/test/dir', defaultOptions);
+
+      const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(allOutput).toMatch(/📊 Stats:/);
+      expect(allOutput).toMatch(/elapsed/);
+      expect(allOutput).toMatch(/MB/);
+      expect(allOutput).toMatch(/1\.50 MB/);
+      expect(allOutput).toMatch(/TXT/);
+
+      logSpy.mockRestore();
+    });
+  });
+
+  describe('--output flag (JSON report)', () => {
+    beforeEach(() => {
+      mockReaddir.mockResolvedValue([
+        { name: 'doc.pdf', isDirectory: () => false, isFile: () => true } as any
+      ]);
+      mockStat.mockImplementation(async (p: any) => {
+        if (String(p).endsWith('doc.pdf')) {
+          return { isDirectory: () => false, isFile: () => true, size: 1024, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+        }
+        return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+      });
+      mockRenameFilesMethod.mockResolvedValue([
+        { success: true, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/document.pdf' }
+      ]);
+      mockInquirerPrompt.mockResolvedValue({ proceed: true });
+    });
+
+    it('saves JSON report when --output is set and writeFile succeeds', async () => {
+      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await renameFiles('/test/dir', { ...defaultOptions, output: '/tmp/report.json' });
+
+      expect(vi.mocked(fs.writeFile)).toHaveBeenCalledWith('/tmp/report.json', expect.any(String), 'utf-8');
+      const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(allOutput).toContain('Report saved to: /tmp/report.json');
+
+      logSpy.mockRestore();
+    });
+
+    it('warns when writeFile throws an Error (line 156)', async () => {
+      vi.mocked(fs.writeFile).mockRejectedValue(new Error('disk full'));
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      await renameFiles('/test/dir', { ...defaultOptions, output: '/tmp/report.json' });
+
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('disk full'));
+
+      logSpy.mockRestore();
+      warnSpy.mockRestore();
+    });
+
+    it('warns "Unknown error" when writeFile throws a non-Error (line 156-157 false branch)', async () => {
+      vi.mocked(fs.writeFile).mockRejectedValue('not an error object');
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      await renameFiles('/test/dir', { ...defaultOptions, output: '/tmp/report.json' });
+
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown error'));
+
+      logSpy.mockRestore();
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('config ?? defaults', () => {
+    it('uses hard-coded defaults when options and fileConfig are both empty', async () => {
+      // All options absent — commander would not set these fields at all
+      const minimalOptions = { apiKey: 'test-api-key', ai: true, pattern: [] as string[] };
+      vi.mocked(loadConfig).mockResolvedValue({});
+      mockReaddir.mockResolvedValue([]);
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await renameFiles('/test/dir', minimalOptions);
+
+      // Verify the config passed to FileRenamer uses all hard-coded defaults
+      const config = vi.mocked(FileRenamer).mock.calls[0]?.[2] as any;
+      expect(config?.namingConvention).toBe('kebab-case');
+      expect(config?.templateOptions?.category).toBe('general');
+      expect(config?.templateOptions?.dateFormat).toBe('none');
+      expect(config?.recursive).toBe(false);
+      expect(config?.concurrency).toBe(3);
+      expect(config?.dryRun).toBe(false);
+
+      logSpy.mockRestore();
+    });
+
+    it('uses depth from options when provided as a string', async () => {
+      mockReaddir.mockResolvedValue([]);
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await renameFiles('/test/dir', { ...defaultOptions, depth: '5', recursive: true });
+
+      const config = vi.mocked(FileRenamer).mock.calls[0]?.[2] as any;
+      expect(config?.depth).toBe(5);
+
+      logSpy.mockRestore();
+    });
+
+    it('passes single --pattern string as a one-element array', async () => {
+      mockReaddir.mockResolvedValue([]);
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      // pattern as a plain string (not wrapped in array) — hits the `options.pattern ? [options.pattern] : []` branch
+      await renameFiles('/test/dir', { ...defaultOptions, pattern: 's/old/new/' as any });
+
+      const config = vi.mocked(FileRenamer).mock.calls[0]?.[2] as any;
+      expect(config?.patterns).toEqual(['s/old/new/']);
+
+      logSpy.mockRestore();
+    });
+
+    it('prints elapsed time in seconds when run takes >= 1000ms', async () => {
+      mockReaddir.mockResolvedValue([
+        { name: 'doc.txt', isDirectory: () => false, isFile: () => true } as any
+      ]);
+      mockStat.mockImplementation(async (p: any) => {
+        if (String(p).endsWith('doc.txt')) {
+          return { isDirectory: () => false, isFile: () => true, size: 512, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+        }
+        return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+      });
+      mockRenameFilesMethod.mockResolvedValue([
+        { originalPath: '/test/dir/doc.txt', newPath: '/test/dir/renamed.txt', success: true }
+      ]);
+      mockInquirerPrompt.mockResolvedValue({ proceed: true });
+
+      // Mock Date.now to simulate 1500ms elapsed
+      const dateSpy = vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(1500);
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await renameFiles('/test/dir', defaultOptions);
+
+      const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(allOutput).toMatch(/1\.5s elapsed/);
+
+      dateSpy.mockRestore();
+      logSpy.mockRestore();
     });
   });
 });

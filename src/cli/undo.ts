@@ -1,10 +1,11 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import inquirer from 'inquirer';
 import { readHistory, appendHistory, HistoryEntry } from '../utils/history.js';
 
 export async function undoRename(
   sessionId?: string,
-  options: { list?: boolean } = {}
+  options: { list?: boolean; all?: boolean } = {}
 ): Promise<void> {
   if (options.list) {
     const history = await readHistory();
@@ -18,6 +19,11 @@ export async function undoRename(
       const label = entry.dryRun ? ' [dry-run]' : '';
       console.log(`  ${entry.id}${label} — ${entry.renames.length} file(s) in ${entry.directory}`);
     });
+    return;
+  }
+
+  if (options.all) {
+    await undoAll();
     return;
   }
 
@@ -40,6 +46,10 @@ export async function undoRename(
     return;
   }
 
+  await undoSession(entry);
+}
+
+async function undoSession(entry: HistoryEntry): Promise<{ succeeded: number; skipped: number }> {
   const reversed = [...entry.renames].reverse();
   let succeeded = 0;
   let skipped = 0;
@@ -69,4 +79,37 @@ export async function undoRename(
   });
 
   console.log(`\nUndo complete: ${succeeded} restored, ${skipped} skipped.`);
+  return { succeeded, skipped };
+}
+
+async function undoAll(): Promise<void> {
+  const history = await readHistory();
+  const sessions = [...history].reverse().filter(e => !e.dryRun);
+
+  if (sessions.length === 0) {
+    console.log('No undo-able rename sessions found.');
+    return;
+  }
+
+  if (sessions.length > 1) {
+    const { confirm } = await inquirer.prompt([{
+      type: 'confirm',
+      name: 'confirm',
+      message: `Undo all ${sessions.length} rename session(s)?`,
+      default: false
+    }]);
+    if (!confirm) {
+      console.log('Cancelled.');
+      return;
+    }
+  }
+
+  for (const session of sessions) {
+    console.log(`\nUndoing session: ${session.id}`);
+    try {
+      await undoSession(session);
+    } catch (error) {
+      console.error(`❌ Failed to undo session ${session.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 }

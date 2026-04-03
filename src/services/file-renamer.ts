@@ -104,16 +104,12 @@ export class FileRenamer {
       ? categorizeFile(file.path, content, file)
       : this.config.templateOptions.category;
 
-    // Generate core filename using AI with all available metadata
-    const coreFileName = await this.aiService.generateFileName(
-      content, 
-      file.name, 
-      this.config.namingConvention, 
-      fileCategory,
-      file // Pass the entire file info with all metadata
-    );
+    // Generate core filename using AI (or metadata if --no-ai)
+    const coreFileName = this.config.noAi
+      ? this.buildNameFromMetadata(file)
+      : await this.aiService.generateFileName(content, file.name, this.config.namingConvention, fileCategory, file);
     if (!coreFileName || coreFileName.trim().length === 0) {
-      throw new Error('AI service failed to generate a filename');
+      throw new Error('Failed to generate a filename');
     }
 
     // Apply template to include personal info, dates, etc.
@@ -143,6 +139,18 @@ export class FileRenamer {
       suggestedName: path.basename(finalPath),
       success: true
     };
+  }
+
+  private buildNameFromMetadata(file: FileInfo): string {
+    const meta = file.documentMetadata;
+    if (meta?.title?.trim()) {
+      return meta.title.trim();
+    }
+    if (meta?.author) {
+      const year = meta.creationDate ? meta.creationDate.getFullYear().toString() : '';
+      return [meta.author, year].filter(Boolean).join(' ');
+    }
+    return path.basename(file.name, file.extension).replace(/[-_]/g, ' ');
   }
 
   private async resolveConflict(newPath: string): Promise<string> {

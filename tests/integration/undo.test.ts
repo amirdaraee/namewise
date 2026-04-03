@@ -142,4 +142,24 @@ describe('undoRename() — integration', () => {
     expect(output).toContain('s2');
     consoleSpy.mockRestore();
   });
+
+  it('undoes all sessions with --all when only one session (no prompt)', async () => {
+    const newPath = path.join(tempDir, 'new-name.txt');
+    const originalPath = path.join(tempDir, 'old-name.txt');
+    await fs.writeFile(newPath, 'content');
+
+    vi.mocked(readHistory).mockResolvedValue([{
+      id: 'sess-1',
+      timestamp: new Date().toISOString(),
+      directory: tempDir,
+      dryRun: false,
+      renames: [{ originalPath, newPath }]
+    }]);
+
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await undoRename(undefined, { all: true });
+
+    await expect(fs.access(originalPath)).resolves.toBeUndefined();
+    await expect(fs.access(newPath)).rejects.toThrow();
+  });
 });

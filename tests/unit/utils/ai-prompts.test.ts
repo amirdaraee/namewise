@@ -165,6 +165,29 @@ describe('AI Prompts', () => {
       expect(contentSection).not.toContain('a'.repeat(5001));
     });
 
+    it('should include language instruction when language is provided', () => {
+      const prompt = buildFileNamePrompt({
+        content: 'Persian document content.',
+        originalName: 'document.pdf',
+        namingConvention: 'kebab-case',
+        category: 'general',
+        language: 'English'
+      });
+
+      expect(prompt).toContain('Generate the filename in English, regardless of the document\'s original language');
+    });
+
+    it('should not include language instruction when language is not provided', () => {
+      const prompt = buildFileNamePrompt({
+        content: 'Document content.',
+        originalName: 'document.pdf',
+        namingConvention: 'kebab-case',
+        category: 'general'
+      });
+
+      expect(prompt).not.toContain('Generate the filename in');
+    });
+
     it('should handle missing optional metadata gracefully', () => {
       const mockFileInfo: FileInfo = {
         name: 'simple.txt',

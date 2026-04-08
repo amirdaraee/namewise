@@ -434,7 +434,7 @@ describe('FileRenamer', () => {
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(true);
       
-      // Verify AI service was called with the naming convention, category, and file info
+      // Verify AI service was called with the naming convention, category, file info, and language
       expect(generateFileNameSpy).toHaveBeenCalledWith(
         expect.any(String),
         'sample-text.txt',
@@ -444,7 +444,8 @@ describe('FileRenamer', () => {
           name: 'sample-text.txt',
           extension: '.txt',
           documentMetadata: expect.any(Object)
-        })
+        }),
+        undefined // no language configured
       );
     });
 

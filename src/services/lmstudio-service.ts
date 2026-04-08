@@ -59,23 +59,24 @@ export class LMStudioService implements AIProvider {
   }
 
   async generateFileName(
-    content: string, 
-    originalName: string, 
-    namingConvention = 'kebab-case', 
+    content: string,
+    originalName: string,
+    namingConvention = 'kebab-case',
     category = 'general',
-    fileInfo?: FileInfo
+    fileInfo?: FileInfo,
+    language?: string
   ): Promise<string> {
     try {
       // Check if this is a scanned PDF image
       const isScannedPDF = content.startsWith('[SCANNED_PDF_IMAGE]:');
-      
+
       if (isScannedPDF) {
         // LM Studio has limited vision support, so we'll fall back to using the original filename
-        console.log('⚠️ Scanned PDF detected but LMStudio has limited vision support. Using original filename.');
+        console.log('Scanned PDF detected but LMStudio has limited vision support. Using original filename.');
         return this.sanitizeFilename(originalName);
       }
-      
-      const prompt = this.buildPrompt(content, originalName, namingConvention, category, fileInfo);
+
+      const prompt = this.buildPrompt(content, originalName, namingConvention, category, fileInfo, language);
       
       const response = await this.makeRequest('/v1/chat/completions', {
         model: this.model,
@@ -106,18 +107,20 @@ export class LMStudioService implements AIProvider {
   }
 
   private buildPrompt(
-    content: string, 
-    originalName: string, 
-    namingConvention: string, 
+    content: string,
+    originalName: string,
+    namingConvention: string,
     category: string,
-    fileInfo?: FileInfo
+    fileInfo?: FileInfo,
+    language?: string
   ): string {
     return buildFileNamePrompt({
       content,
       originalName,
       namingConvention: namingConvention as NamingConvention,
       category: category as FileCategory,
-      fileInfo
+      fileInfo,
+      language
     });
   }
 

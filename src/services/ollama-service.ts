@@ -48,29 +48,31 @@ export class OllamaService implements AIProvider {
   }
 
   async generateFileName(
-    content: string, 
-    originalName: string, 
-    namingConvention = 'kebab-case', 
+    content: string,
+    originalName: string,
+    namingConvention = 'kebab-case',
     category = 'general',
-    fileInfo?: FileInfo
+    fileInfo?: FileInfo,
+    language?: string
   ): Promise<string> {
     try {
       // Check if this is a scanned PDF image
       const isScannedPDF = content.startsWith('[SCANNED_PDF_IMAGE]:');
-      
+
       let response;
-      
+
       if (isScannedPDF) {
         // Extract base64 image data and use a vision model
         const imageBase64 = content.replace('[SCANNED_PDF_IMAGE]:', '');
         const imageData = imageBase64.split(',')[1]; // Remove data:image/format;base64, prefix
-        
+
         const prompt = this.buildPrompt(
           'This is a scanned PDF document converted to an image. Please analyze the image and extract the main content to generate an appropriate filename.',
-          originalName, 
-          namingConvention, 
-          category, 
-          fileInfo
+          originalName,
+          namingConvention,
+          category,
+          fileInfo,
+          language
         );
         
         // Use LLaVA model for vision capabilities
@@ -93,7 +95,7 @@ export class OllamaService implements AIProvider {
         });
       } else {
         // Standard text processing
-        const prompt = this.buildPrompt(content, originalName, namingConvention, category, fileInfo);
+        const prompt = this.buildPrompt(content, originalName, namingConvention, category, fileInfo, language);
         
         response = await this.makeRequest('/api/chat', {
           model: this.model,
@@ -123,18 +125,20 @@ export class OllamaService implements AIProvider {
   }
 
   private buildPrompt(
-    content: string, 
-    originalName: string, 
-    namingConvention: string, 
+    content: string,
+    originalName: string,
+    namingConvention: string,
     category: string,
-    fileInfo?: FileInfo
+    fileInfo?: FileInfo,
+    language?: string
   ): string {
     return buildFileNamePrompt({
       content,
       originalName,
       namingConvention: namingConvention as NamingConvention,
       category: category as FileCategory,
-      fileInfo
+      fileInfo,
+      language
     });
   }
 

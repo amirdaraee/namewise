@@ -113,8 +113,9 @@ Run `namewise init` to launch the interactive setup wizard. It will ask:
 | 4 | **Base URL** | Local providers only; skipped if using the default |
 | 5 | **Model** | Leave blank to use the provider default |
 | 6 | **Naming convention** | kebab-case, snake_case, camelCase, etc. |
-| 7 | **Always dry-run by default?** | Recommended `Yes` for first-time users |
-| 8 | **Your name** | Optional; used in document/photo templates |
+| 7 | **Output language** | e.g. `English`, `French` — leave blank to match document language |
+| 8 | **Always dry-run by default?** | Recommended `Yes` for first-time users |
+| 9 | **Your name** | Optional; used in document/photo templates |
 
 After init, all saved settings apply automatically — no flags needed on every run.
 
@@ -138,6 +139,7 @@ After init, all saved settings apply automatically — no flags needed on every 
 | `--output <path>` | Save rename report as JSON to this path | - |
 | `--pattern <pattern>` | Regex rename pattern (repeatable); skips AI | - |
 | `--no-ai` | Use file metadata instead of AI (no API call) | `false` |
+| `--language <lang>` | Output language for generated filenames (e.g. `English`, `French`) | Document language |
 
 ### `sanitize` Options
 
@@ -253,6 +255,12 @@ namewise rename ./documents --output ./report.json
 **Rename using metadata only (no API key needed):**
 ```bash
 namewise rename ./documents --no-ai --dry-run
+```
+
+**Force output language (e.g. rename Farsi documents with English names):**
+```bash
+namewise rename ./farsi-docs --language English --dry-run
+namewise rename ./documents --language French
 ```
 
 **Regex pattern rename (no AI):**
@@ -442,7 +450,7 @@ Set persistent defaults so you don't have to repeat flags on every run.
 
 Priority order (highest to lowest): CLI flags > project config > user config.
 
-Supported keys: `provider`, `case`, `template`, `name`, `date`, `maxSize`, `model`, `baseUrl`, `concurrency`, `recursive`, `depth`, `output`.
+Supported keys: `provider`, `apiKey`, `case`, `template`, `name`, `date`, `maxSize`, `model`, `baseUrl`, `concurrency`, `recursive`, `depth`, `output`, `dryRun`, `language`.
 
 ## Supported File Types
 

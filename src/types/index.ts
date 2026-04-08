@@ -37,7 +37,7 @@ export interface RenameResult {
 
 export interface AIProvider {
   name: string;
-  generateFileName: (content: string, originalName: string, namingConvention?: string, category?: string, fileInfo?: FileInfo) => Promise<string>;
+  generateFileName: (content: string, originalName: string, namingConvention?: string, category?: string, fileInfo?: FileInfo, language?: string) => Promise<string>;
 }
 
 export type NamingConvention = 'kebab-case' | 'snake_case' | 'camelCase' | 'PascalCase' | 'lowercase' | 'UPPERCASE';
@@ -69,6 +69,7 @@ export interface Config {
   outputPath?: string;
   patterns?: string[];
   noAi?: boolean;
+  language?: string;
 }
 
 export interface ParseResult {

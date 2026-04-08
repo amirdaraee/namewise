@@ -8,6 +8,7 @@ export interface PromptContext {
   namingConvention: NamingConvention;
   category: FileCategory;
   fileInfo?: FileInfo;
+  language?: string;
 }
 
 /**
@@ -15,7 +16,7 @@ export interface PromptContext {
  * This prompt is used across all AI providers (Claude, OpenAI, LMStudio, Ollama)
  */
 export function buildFileNamePrompt(context: PromptContext): string {
-  const { content, originalName, namingConvention, category, fileInfo } = context;
+  const { content, originalName, namingConvention, category, fileInfo, language } = context;
   
   const namingInstructions = getNamingInstructions(namingConvention);
   const templateInstructions = getTemplateInstructions(category);
@@ -47,13 +48,15 @@ Document Properties:`;
     }
   }
 
+  const languageInstruction = language ? `- Generate the filename in ${language}, regardless of the document's original language` : '';
+
   return `Based on the following document information, generate a descriptive filename that captures the main topic/purpose of the document. The filename should be:
 - Descriptive and meaningful
 - Professional and clean
 - Between 3-10 words
 - ${namingInstructions}
 - ${templateInstructions}
-- Do not include file extension
+- Do not include file extension${languageInstruction ? `\n- ${languageInstruction.slice(2)}` : ''}
 - If the document is specifically for/about a person (based on content), include their name at the beginning
 - Include dates only if they are essential to the document's identity (e.g., contracts, certificates)
 - Ignore irrelevant folder names that don't describe the document content

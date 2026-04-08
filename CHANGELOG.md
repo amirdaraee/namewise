@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Batch rename flags on `rename` (no AI required): `--sequence` (sequential numbering), `--sequence-prefix <p>`, `--prefix <text>`, `--suffix <text>`, `--date-stamp created|modified`, `--strip <pattern>`, `--truncate <n>`
 - `namewise init` — interactive first-time setup wizard; prompts for scope (global or project), provider, API key, base URL for local LLMs, model, naming convention, dry-run default, and personal name; writes to `~/.namewise.json` or `./.namewise.json`; detects and offers to overwrite existing config
 - `apiKey` and `dryRun` fields added to the config file schema (`~/.namewise.json`); `namewise config get/set` now supports both keys; `rename` reads `apiKey` and `dryRun` from config so no flags are needed after `namewise init`
+- `language` setting for AI-generated filenames: set a default output language (e.g. `English`, `French`) so filenames are always produced in that language regardless of the document's original language; configurable via `--language <lang>` flag, `namewise init` wizard, or `namewise config set language English`; stored in `~/.namewise.json` or `.namewise.json`
 - Shared `collectFiles` utility (`src/utils/fs-collect.ts`) extracted from duplicated code in `dedup` and `sanitize`
 
 ### Changed

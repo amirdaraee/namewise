@@ -106,6 +106,15 @@ export async function initCommand(): Promise<void> {
   }]);
   config.case = namingConvention;
 
+  // Output language
+  const { language } = await inquirer.prompt([{
+    type: 'input',
+    name: 'language',
+    message: 'Default language for generated filenames (e.g. English, French — leave blank to match document language):',
+    default: existing.language ?? ''
+  }]);
+  if (language) config.language = language;
+
   // Dry run by default
   const { dryRun } = await inquirer.prompt([{
     type: 'confirm',

@@ -44,6 +44,7 @@ describe('initCommand()', () => {
       { apiKey: 'sk-ant-abc' },
       { model: '' },
       { namingConvention: 'snake_case' },
+      { language: '' },
       { dryRun: true },
       { personalName: 'alice' }
     );
@@ -57,6 +58,7 @@ describe('initCommand()', () => {
     const written = JSON.parse(vi.mocked(fs.writeFile).mock.calls[0][1] as string);
     expect(written).toMatchObject({ provider: 'claude', apiKey: 'sk-ant-abc', case: 'snake_case', dryRun: true, name: 'alice' });
     expect(written.model).toBeUndefined(); // blank model not stored
+    expect(written.language).toBeUndefined(); // blank language not stored
   });
 
   it('writes project config when scope is project', async () => {
@@ -66,6 +68,7 @@ describe('initCommand()', () => {
       { apiKey: 'sk-oai-xyz' },
       { model: 'gpt-4' },
       { namingConvention: 'kebab-case' },
+      { language: '' },
       { dryRun: false },
       { personalName: '' }
     );
@@ -89,6 +92,7 @@ describe('initCommand()', () => {
       { apiKey: 'sk-oai' },
       { model: '' },
       { namingConvention: 'kebab-case' },
+      { language: '' },
       { dryRun: false },
       { personalName: '' }
     );
@@ -105,6 +109,7 @@ describe('initCommand()', () => {
       { apiKey: '' },
       { model: '' },
       { namingConvention: 'kebab-case' },
+      { language: '' },
       { dryRun: false },
       { personalName: '' }
     );
@@ -121,6 +126,7 @@ describe('initCommand()', () => {
       { baseUrl: 'http://remote:11434' },
       { model: '' },
       { namingConvention: 'kebab-case' },
+      { language: '' },
       { dryRun: false },
       { personalName: '' }
     );
@@ -137,6 +143,7 @@ describe('initCommand()', () => {
       { baseUrl: 'http://localhost:11434' },
       { model: '' },
       { namingConvention: 'kebab-case' },
+      { language: '' },
       { dryRun: false },
       { personalName: '' }
     );
@@ -153,6 +160,7 @@ describe('initCommand()', () => {
       { baseUrl: 'http://localhost:5678' },
       { model: 'mistral-7b' },
       { namingConvention: 'camelCase' },
+      { language: '' },
       { dryRun: true },
       { personalName: '' }
     );
@@ -170,6 +178,7 @@ describe('initCommand()', () => {
       { baseUrl: 'http://localhost:1234' },
       { model: '' },
       { namingConvention: 'kebab-case' },
+      { language: '' },
       { dryRun: false },
       { personalName: '' }
     );
@@ -201,6 +210,7 @@ describe('initCommand()', () => {
       { apiKey: 'sk-new' },
       { model: '' },
       { namingConvention: 'snake_case' },
+      { language: '' },
       { dryRun: false },
       { personalName: '' }
     );
@@ -216,6 +226,7 @@ describe('initCommand()', () => {
       { baseUrl: 'http://localhost:11434' },
       { model: '' },
       { namingConvention: 'kebab-case' },
+      { language: '' },
       { dryRun: false },
       { personalName: '' }
     );
@@ -233,6 +244,7 @@ describe('initCommand()', () => {
       { baseUrl: 'http://localhost:11434' },
       { model: '' },
       { namingConvention: 'kebab-case' },
+      { language: '' },
       { dryRun: true },
       { personalName: '' }
     );
@@ -242,5 +254,39 @@ describe('initCommand()', () => {
     const renameLine = lines.find(l => typeof l === 'string' && l.includes('namewise rename'));
     expect(renameLine).not.toContain('--dry-run');
     spy.mockRestore();
+  });
+
+  it('stores language when provided', async () => {
+    queueAnswers(
+      { scope: 'global' },
+      { provider: 'claude' },
+      { apiKey: 'sk-ant-abc' },
+      { model: '' },
+      { namingConvention: 'kebab-case' },
+      { language: 'English' },
+      { dryRun: false },
+      { personalName: '' }
+    );
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await initCommand();
+    const written = JSON.parse(vi.mocked(fs.writeFile).mock.calls[0][1] as string);
+    expect(written.language).toBe('English');
+  });
+
+  it('does not store language when left blank', async () => {
+    queueAnswers(
+      { scope: 'global' },
+      { provider: 'claude' },
+      { apiKey: 'sk-ant-abc' },
+      { model: '' },
+      { namingConvention: 'kebab-case' },
+      { language: '' },
+      { dryRun: false },
+      { personalName: '' }
+    );
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await initCommand();
+    const written = JSON.parse(vi.mocked(fs.writeFile).mock.calls[0][1] as string);
+    expect(written.language).toBeUndefined();
   });
 });

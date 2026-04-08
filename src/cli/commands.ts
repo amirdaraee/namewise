@@ -28,6 +28,7 @@ What init configures:
   Base URL   — for local providers (ollama / lmstudio)
   Model      — override the provider default
   Convention — kebab-case, snake_case, camelCase, etc.
+  Language   — language for generated filenames (e.g. English, French)
   Dry-run    — always preview before renaming by default
   Your name  — used in document and photo templates
 
@@ -73,6 +74,7 @@ Example:
     .option('--date-stamp <field>', 'Prepend date to filename: created|modified (skips AI)')
     .option('--strip <pattern>', 'Remove regex pattern from all filenames (skips AI)')
     .option('--truncate <n>', 'Truncate filenames to N characters (skips AI)')
+    .option('--language <lang>', 'Language for generated filenames (e.g. English, French, German)')
     .addHelpText('after', `
 
 How it works:
@@ -110,6 +112,10 @@ Examples:
   # Cloud providers (require API keys)
   namewise rename ./docs --provider claude --template document --name "alice"
   namewise rename ./media --provider openai --template auto
+
+  # Force output language regardless of document language
+  namewise rename ./farsi-docs --language English --dry-run
+  namewise rename ./documents --language French
 
   # Local LLMs (no API key needed)
   namewise rename --provider ollama --model llama3.1 --dry-run

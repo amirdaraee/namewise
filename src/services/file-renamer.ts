@@ -107,7 +107,7 @@ export class FileRenamer {
     // Generate core filename using AI (or metadata if --no-ai)
     const coreFileName = this.config.noAi
       ? this.buildNameFromMetadata(file)
-      : await this.aiService.generateFileName(content, file.name, this.config.namingConvention, fileCategory, file);
+      : await this.aiService.generateFileName(content, file.name, this.config.namingConvention, fileCategory, file, this.config.language);
     if (!coreFileName || coreFileName.trim().length === 0) {
       throw new Error('Failed to generate a filename');
     }

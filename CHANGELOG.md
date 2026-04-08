@@ -26,10 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `namewise find [dir]` — search files by extension (`--ext`), name glob (`--name`), size range (`--larger-than` / `--smaller-than`), or date range (`--newer-than` / `--older-than`); reports match count
 - `namewise diff <dir1> <dir2>` — compare two directories by filename (`--by name`) or content hash (`--by hash`); hash mode detects moved/renamed files; reports difference count
 - Batch rename flags on `rename` (no AI required): `--sequence` (sequential numbering), `--sequence-prefix <p>`, `--prefix <text>`, `--suffix <text>`, `--date-stamp created|modified`, `--strip <pattern>`, `--truncate <n>`
+- `namewise init` — interactive first-time setup wizard; prompts for scope (global or project), provider, API key, base URL for local LLMs, model, naming convention, dry-run default, and personal name; writes to `~/.namewise.json` or `./.namewise.json`; detects and offers to overwrite existing config
+- `apiKey` and `dryRun` fields added to the config file schema (`~/.namewise.json`); `namewise config get/set` now supports both keys; `rename` reads `apiKey` and `dryRun` from config so no flags are needed after `namewise init`
 - Shared `collectFiles` utility (`src/utils/fs-collect.ts`) extracted from duplicated code in `dedup` and `sanitize`
 
 ### Changed
 - `undo` now accepts `--all` flag in addition to an optional session ID
+- `rename` now reads `apiKey` and `dryRun` from the config file (set by `namewise init`), so cloud API keys no longer need to be passed on every run
 
 ## [0.6.2] - 2026-04-02
 

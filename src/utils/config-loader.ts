@@ -4,6 +4,7 @@ import os from 'os';
 
 export interface NamiwiseFileConfig {
   provider?: 'claude' | 'openai' | 'ollama' | 'lmstudio';
+  apiKey?: string;
   case?: string;
   template?: string;
   name?: string;
@@ -15,6 +16,7 @@ export interface NamiwiseFileConfig {
   recursive?: boolean;
   depth?: number;
   output?: string;
+  dryRun?: boolean;
 }
 
 async function readConfigFile(filePath: string): Promise<NamiwiseFileConfig> {

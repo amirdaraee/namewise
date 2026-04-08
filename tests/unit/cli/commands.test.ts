@@ -31,6 +31,7 @@ vi.mock('../../../src/cli/undo.js', () => ({
   undoRename: vi.fn()
 }));
 
+vi.mock('../../../src/cli/init.js', () => ({ initCommand: vi.fn() }));
 vi.mock('../../../src/cli/stats.js', () => ({ statsCommand: vi.fn() }));
 vi.mock('../../../src/cli/tree.js', () => ({ treeCommand: vi.fn() }));
 vi.mock('../../../src/cli/info.js', () => ({ infoCommand: vi.fn() }));
@@ -489,6 +490,40 @@ describe('CLI Commands', () => {
 
       exitSpy.mockRestore();
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe('init command action', () => {
+    it('should call initCommand', async () => {
+      const { initCommand } = await import('../../../src/cli/init.js');
+      vi.mocked(initCommand).mockResolvedValue(undefined);
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'init'], { from: 'node' });
+      expect(initCommand).toHaveBeenCalled();
+    });
+
+    it('should exit with 1 when initCommand throws', async () => {
+      const { initCommand } = await import('../../../src/cli/init.js');
+      vi.mocked(initCommand).mockRejectedValue(new Error('init error'));
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'init'], { from: 'node' });
+      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'init error');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      exitSpy.mockRestore(); consoleSpy.mockRestore();
+    });
+
+    it('should show "Unknown error" when initCommand throws a non-Error', async () => {
+      const { initCommand } = await import('../../../src/cli/init.js');
+      vi.mocked(initCommand).mockRejectedValue('oops');
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'init'], { from: 'node' });
+      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      exitSpy.mockRestore(); consoleSpy.mockRestore();
     });
   });
 

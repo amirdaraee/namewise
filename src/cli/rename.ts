@@ -52,7 +52,7 @@ export async function renameFiles(directory: string, options: any): Promise<void
     const provider = (options.provider ?? fileConfig.provider ?? 'claude') as Config['aiProvider'];
 
     // Get API key for cloud providers only
-    let apiKey = options.apiKey;
+    let apiKey = options.apiKey ?? fileConfig.apiKey;
     const requiresApiKey = ['claude', 'openai'].includes(provider) && options.ai !== false;
 
     if (requiresApiKey && !apiKey) {
@@ -80,7 +80,7 @@ export async function renameFiles(directory: string, options: any): Promise<void
       apiKey,
       maxFileSize: parseInt(options.maxSize ?? String(fileConfig.maxSize ?? '10')) * 1024 * 1024,
       supportedExtensions: ['.pdf', '.docx', '.doc', '.xlsx', '.xls', '.txt', '.md', '.rtf'],
-      dryRun: options.dryRun ?? false,
+      dryRun: options.dryRun ?? fileConfig.dryRun ?? false,
       namingConvention: (options.case ?? fileConfig.case ?? 'kebab-case') as Config['namingConvention'],
       templateOptions: {
         category: (options.template ?? fileConfig.template ?? 'general') as FileCategory,

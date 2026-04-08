@@ -14,8 +14,33 @@ import { flattenDirectory } from './flatten.js';
 import { cleanEmptyDirs } from './clean-empty.js';
 import { findFiles } from './find.js';
 import { diffDirectories } from './diff.js';
+import { initCommand } from './init.js';
 
 export function setupCommands(program: Command): void {
+  program
+    .command('init')
+    .description('🎉 Set up Namewise for the first time (interactive wizard)')
+    .addHelpText('after', `
+💡 What init configures:
+  • Scope      — global (~/.namewise.json) or project (.namewise.json)
+  • Provider   — claude | openai | ollama | lmstudio
+  • API key    — stored in config (cloud providers only)
+  • Base URL   — for local providers (ollama / lmstudio)
+  • Model      — override the provider default
+  • Convention — kebab-case, snake_case, camelCase, etc.
+  • Dry-run    — always preview before renaming by default
+  • Your name  — used in document and photo templates
+
+📝 Example:
+  namewise init
+  # Then run without any flags — saved settings apply automatically:
+  namewise rename ./documents
+`)
+    .action(async () => {
+      try { await initCommand(); }
+      catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+    });
+
   program
     .command('rename')
     .description('🚀 Rename files in a directory based on their content using AI analysis')

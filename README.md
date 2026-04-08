@@ -1,6 +1,6 @@
 # Namewise
 
-[![Tests](https://img.shields.io/badge/tests-763%20passing-brightgreen.svg)](#testing--development)
+[![Tests](https://img.shields.io/badge/tests-778%20passing-brightgreen.svg)](#testing--development)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#testing--development)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
@@ -17,6 +17,7 @@ Automatically rename files based on their content using AI providers (Claude, Op
 - **AI-Powered Renaming**: Uses cloud providers (Claude, OpenAI) or local LLMs (Ollama, LMStudio) to generate descriptive filenames
 - **Privacy First**: Local LLM support means your files never leave your machine
 - **No-AI Mode**: Rename using file metadata only — no API key required (`--no-ai`)
+- **Interactive Setup**: First-time wizard to configure provider, API key, naming convention and more (`namewise init`)
 - **Batch Rename (no AI)**: Sequence-number, prefix/suffix, date-stamp, strip, or truncate filenames in bulk (`--sequence`, `--prefix`, `--suffix`, `--date-stamp`, `--strip`, `--truncate`)
 - **Pattern Rename**: Regex/sed-style find-and-replace on filenames, chainable, no AI needed (`--pattern`)
 - **Watch Mode**: Monitor a directory and auto-rename new files as they arrive (`namewise watch`)
@@ -54,6 +55,9 @@ cd namewise
 npm install
 npm run build
 
+# Run the interactive setup wizard (recommended for first use)
+namewise init
+
 # Preview renames (recommended first)
 npx namewise rename ./my-documents --dry-run --provider claude
 
@@ -79,6 +83,7 @@ Download the latest release from [GitHub Releases](https://github.com/amirdaraee
 
 ### Command Structure
 ```bash
+namewise init                               # First-time setup wizard
 namewise rename [directory] [options]       # AI-powered rename (or batch rename with flags)
 namewise sanitize [directory] [options]     # Clean filenames without AI
 namewise dedup [directory] [options]        # Find and remove duplicate files
@@ -95,6 +100,23 @@ namewise clean-empty [directory] [options]  # Remove empty directories
 namewise find [directory] [options]         # Search files by criteria
 namewise diff <dir1> <dir2> [options]       # Compare two directories
 ```
+
+### `init`
+
+Run `namewise init` to launch the interactive setup wizard. It will ask:
+
+| Step | Question | Notes |
+|------|----------|-------|
+| 1 | **Scope** — global (`~/.namewise.json`) or project (`./.namewise.json`) | Global applies everywhere |
+| 2 | **AI provider** — claude, openai, ollama, lmstudio | |
+| 3 | **API key** | Cloud providers only; stored in config file |
+| 4 | **Base URL** | Local providers only; skipped if using the default |
+| 5 | **Model** | Leave blank to use the provider default |
+| 6 | **Naming convention** | kebab-case, snake_case, camelCase, etc. |
+| 7 | **Always dry-run by default?** | Recommended `Yes` for first-time users |
+| 8 | **Your name** | Optional; used in document/photo templates |
+
+After init, all saved settings apply automatically — no flags needed on every run.
 
 ### `rename` Options
 
@@ -204,6 +226,13 @@ namewise diff <dir1> <dir2> [options]       # Compare two directories
 | `-r, --recursive` | Compare subdirectories | `true` |
 
 ### Examples
+
+**First-time setup:**
+```bash
+namewise init
+# Walks through provider, API key, naming convention, dry-run preference, and your name
+# Saves to ~/.namewise.json or ./.namewise.json
+```
 
 **Basic usage:**
 ```bash

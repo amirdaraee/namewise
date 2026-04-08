@@ -31,6 +31,15 @@ vi.mock('../../../src/cli/undo.js', () => ({
   undoRename: vi.fn()
 }));
 
+vi.mock('../../../src/cli/stats.js', () => ({ statsCommand: vi.fn() }));
+vi.mock('../../../src/cli/tree.js', () => ({ treeCommand: vi.fn() }));
+vi.mock('../../../src/cli/info.js', () => ({ infoCommand: vi.fn() }));
+vi.mock('../../../src/cli/organize.js', () => ({ organizeFiles: vi.fn() }));
+vi.mock('../../../src/cli/flatten.js', () => ({ flattenDirectory: vi.fn() }));
+vi.mock('../../../src/cli/clean-empty.js', () => ({ cleanEmptyDirs: vi.fn() }));
+vi.mock('../../../src/cli/find.js', () => ({ findFiles: vi.fn() }));
+vi.mock('../../../src/cli/diff.js', () => ({ diffDirectories: vi.fn() }));
+
 describe('CLI Commands', () => {
   let program: Command;
 
@@ -138,7 +147,7 @@ describe('CLI Commands', () => {
         '--max-size', '20'
       ], { from: 'node' });
       
-      expect(renameFiles).toHaveBeenCalledWith('/test/directory', {
+      expect(renameFiles).toHaveBeenCalledWith('/test/directory', expect.objectContaining({
         ai: true,
         provider: 'openai',
         apiKey: 'test-key',
@@ -146,7 +155,7 @@ describe('CLI Commands', () => {
         maxSize: '20',
         recursive: false,
         pattern: []
-      });
+      }));
     });
 
     it('should use default values for options', async () => {
@@ -157,12 +166,12 @@ describe('CLI Commands', () => {
       await program.parseAsync(['node', 'test', 'rename', '/test/directory'], { from: 'node' });
       
       const callArgs = vi.mocked(renameFiles).mock.calls[0];
-      expect(callArgs[1]).toEqual({
+      expect(callArgs[1]).toEqual(expect.objectContaining({
         ai: true,
         dryRun: false,
         recursive: false,
         pattern: []
-      });
+      }));
     });
 
     it('should handle short option aliases', async () => {
@@ -176,14 +185,14 @@ describe('CLI Commands', () => {
         '-k', 'test-key'
       ], { from: 'node' });
 
-      expect(renameFiles).toHaveBeenCalledWith('/test/directory', {
+      expect(renameFiles).toHaveBeenCalledWith('/test/directory', expect.objectContaining({
         ai: true,
         provider: 'openai',
         apiKey: 'test-key',
         dryRun: false,
         recursive: false,
         pattern: []
-      });
+      }));
     });
   });
 
@@ -478,6 +487,279 @@ describe('CLI Commands', () => {
       expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
       expect(exitSpy).toHaveBeenCalledWith(1);
 
+      exitSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('stats command action', () => {
+    it('should call statsCommand with directory and options', async () => {
+      const { statsCommand } = await import('../../../src/cli/stats.js');
+      vi.mocked(statsCommand).mockResolvedValue(undefined);
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'stats', '/my/dir', '--recursive'], { from: 'node' });
+      expect(statsCommand).toHaveBeenCalledWith('/my/dir', { recursive: true });
+    });
+
+    it('should exit with 1 when statsCommand throws', async () => {
+      const { statsCommand } = await import('../../../src/cli/stats.js');
+      vi.mocked(statsCommand).mockRejectedValue(new Error('stats error'));
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'stats'], { from: 'node' });
+      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'stats error');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      exitSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('tree command action', () => {
+    it('should call treeCommand with directory and depth', async () => {
+      const { treeCommand } = await import('../../../src/cli/tree.js');
+      vi.mocked(treeCommand).mockResolvedValue(undefined);
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'tree', '/my/dir', '--depth', '3'], { from: 'node' });
+      expect(treeCommand).toHaveBeenCalledWith('/my/dir', { depth: 3 });
+    });
+
+    it('should call treeCommand without depth when not specified', async () => {
+      const { treeCommand } = await import('../../../src/cli/tree.js');
+      vi.mocked(treeCommand).mockResolvedValue(undefined);
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'tree', '/my/dir'], { from: 'node' });
+      expect(treeCommand).toHaveBeenCalledWith('/my/dir', { depth: undefined });
+    });
+
+    it('should exit with 1 when treeCommand throws', async () => {
+      const { treeCommand } = await import('../../../src/cli/tree.js');
+      vi.mocked(treeCommand).mockRejectedValue(new Error('tree error'));
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'tree'], { from: 'node' });
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      exitSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('info command action', () => {
+    it('should call infoCommand with path', async () => {
+      const { infoCommand } = await import('../../../src/cli/info.js');
+      vi.mocked(infoCommand).mockResolvedValue(undefined);
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'info', '/my/file.pdf'], { from: 'node' });
+      expect(infoCommand).toHaveBeenCalledWith('/my/file.pdf');
+    });
+
+    it('should exit with 1 when infoCommand throws', async () => {
+      const { infoCommand } = await import('../../../src/cli/info.js');
+      vi.mocked(infoCommand).mockRejectedValue(new Error('info error'));
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'info', '/my/file.pdf'], { from: 'node' });
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      exitSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('organize command action', () => {
+    it('should call organizeFiles with directory and options', async () => {
+      const { organizeFiles } = await import('../../../src/cli/organize.js');
+      vi.mocked(organizeFiles).mockResolvedValue(undefined);
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'organize', '/my/dir', '--by', 'date', '--dry-run'], { from: 'node' });
+      expect(organizeFiles).toHaveBeenCalledWith('/my/dir', { by: 'date', recursive: false, dryRun: true });
+    });
+
+    it('should exit with 1 when organizeFiles throws', async () => {
+      const { organizeFiles } = await import('../../../src/cli/organize.js');
+      vi.mocked(organizeFiles).mockRejectedValue(new Error('organize error'));
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'organize'], { from: 'node' });
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      exitSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('flatten command action', () => {
+    it('should call flattenDirectory with directory and dryRun', async () => {
+      const { flattenDirectory } = await import('../../../src/cli/flatten.js');
+      vi.mocked(flattenDirectory).mockResolvedValue(undefined);
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'flatten', '/my/dir', '--dry-run'], { from: 'node' });
+      expect(flattenDirectory).toHaveBeenCalledWith('/my/dir', { dryRun: true });
+    });
+
+    it('should exit with 1 when flattenDirectory throws', async () => {
+      const { flattenDirectory } = await import('../../../src/cli/flatten.js');
+      vi.mocked(flattenDirectory).mockRejectedValue(new Error('flatten error'));
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'flatten'], { from: 'node' });
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      exitSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('clean-empty command action', () => {
+    it('should call cleanEmptyDirs with directory and dryRun', async () => {
+      const { cleanEmptyDirs } = await import('../../../src/cli/clean-empty.js');
+      vi.mocked(cleanEmptyDirs).mockResolvedValue(undefined);
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'clean-empty', '/my/dir', '--dry-run'], { from: 'node' });
+      expect(cleanEmptyDirs).toHaveBeenCalledWith('/my/dir', { dryRun: true });
+    });
+
+    it('should exit with 1 when cleanEmptyDirs throws', async () => {
+      const { cleanEmptyDirs } = await import('../../../src/cli/clean-empty.js');
+      vi.mocked(cleanEmptyDirs).mockRejectedValue(new Error('clean error'));
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'clean-empty'], { from: 'node' });
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      exitSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('find command action', () => {
+    it('should call findFiles with directory and filter options', async () => {
+      const { findFiles } = await import('../../../src/cli/find.js');
+      vi.mocked(findFiles).mockResolvedValue(undefined);
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'find', '/my/dir', '--ext', 'pdf', '--larger-than', '1mb'], { from: 'node' });
+      expect(findFiles).toHaveBeenCalledWith('/my/dir', expect.objectContaining({ ext: 'pdf', largerThan: '1mb' }));
+    });
+
+    it('should exit with 1 when findFiles throws', async () => {
+      const { findFiles } = await import('../../../src/cli/find.js');
+      vi.mocked(findFiles).mockRejectedValue(new Error('find error'));
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'find'], { from: 'node' });
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      exitSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('new command "Unknown error" branches', () => {
+    const exitAndConsole = () => {
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      return { exitSpy, consoleSpy };
+    };
+
+    it('stats: shows "Unknown error" on non-Error throw', async () => {
+      const { statsCommand } = await import('../../../src/cli/stats.js');
+      vi.mocked(statsCommand).mockRejectedValue('oops');
+      const { exitSpy, consoleSpy } = exitAndConsole();
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'stats'], { from: 'node' });
+      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      exitSpy.mockRestore(); consoleSpy.mockRestore();
+    });
+
+    it('tree: shows "Unknown error" on non-Error throw', async () => {
+      const { treeCommand } = await import('../../../src/cli/tree.js');
+      vi.mocked(treeCommand).mockRejectedValue(42);
+      const { exitSpy, consoleSpy } = exitAndConsole();
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'tree'], { from: 'node' });
+      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      exitSpy.mockRestore(); consoleSpy.mockRestore();
+    });
+
+    it('info: shows "Unknown error" on non-Error throw', async () => {
+      const { infoCommand } = await import('../../../src/cli/info.js');
+      vi.mocked(infoCommand).mockRejectedValue(null);
+      const { exitSpy, consoleSpy } = exitAndConsole();
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'info', '/f'], { from: 'node' });
+      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      exitSpy.mockRestore(); consoleSpy.mockRestore();
+    });
+
+    it('organize: shows "Unknown error" on non-Error throw', async () => {
+      const { organizeFiles } = await import('../../../src/cli/organize.js');
+      vi.mocked(organizeFiles).mockRejectedValue(undefined);
+      const { exitSpy, consoleSpy } = exitAndConsole();
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'organize'], { from: 'node' });
+      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      exitSpy.mockRestore(); consoleSpy.mockRestore();
+    });
+
+    it('flatten: shows "Unknown error" on non-Error throw', async () => {
+      const { flattenDirectory } = await import('../../../src/cli/flatten.js');
+      vi.mocked(flattenDirectory).mockRejectedValue(0);
+      const { exitSpy, consoleSpy } = exitAndConsole();
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'flatten'], { from: 'node' });
+      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      exitSpy.mockRestore(); consoleSpy.mockRestore();
+    });
+
+    it('clean-empty: shows "Unknown error" on non-Error throw', async () => {
+      const { cleanEmptyDirs } = await import('../../../src/cli/clean-empty.js');
+      vi.mocked(cleanEmptyDirs).mockRejectedValue('fail');
+      const { exitSpy, consoleSpy } = exitAndConsole();
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'clean-empty'], { from: 'node' });
+      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      exitSpy.mockRestore(); consoleSpy.mockRestore();
+    });
+
+    it('find: shows "Unknown error" on non-Error throw', async () => {
+      const { findFiles } = await import('../../../src/cli/find.js');
+      vi.mocked(findFiles).mockRejectedValue({});
+      const { exitSpy, consoleSpy } = exitAndConsole();
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'find'], { from: 'node' });
+      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      exitSpy.mockRestore(); consoleSpy.mockRestore();
+    });
+
+    it('diff: shows "Unknown error" on non-Error throw', async () => {
+      const { diffDirectories } = await import('../../../src/cli/diff.js');
+      vi.mocked(diffDirectories).mockRejectedValue(false);
+      const { exitSpy, consoleSpy } = exitAndConsole();
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'diff', '/a', '/b'], { from: 'node' });
+      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      exitSpy.mockRestore(); consoleSpy.mockRestore();
+    });
+  });
+
+  describe('diff command action', () => {
+    it('should call diffDirectories with both dirs and options', async () => {
+      const { diffDirectories } = await import('../../../src/cli/diff.js');
+      vi.mocked(diffDirectories).mockResolvedValue(undefined);
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'diff', '/dir1', '/dir2', '--by', 'hash'], { from: 'node' });
+      expect(diffDirectories).toHaveBeenCalledWith('/dir1', '/dir2', { by: 'hash', recursive: true });
+    });
+
+    it('should exit with 1 when diffDirectories throws', async () => {
+      const { diffDirectories } = await import('../../../src/cli/diff.js');
+      vi.mocked(diffDirectories).mockRejectedValue(new Error('diff error'));
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'diff', '/dir1', '/dir2'], { from: 'node' });
+      expect(exitSpy).toHaveBeenCalledWith(1);
       exitSpy.mockRestore();
       consoleSpy.mockRestore();
     });

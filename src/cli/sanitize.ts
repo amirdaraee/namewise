@@ -3,6 +3,7 @@ import path from 'path';
 import { appendHistory } from '../utils/history.js';
 import { sanitizeFilename } from '../utils/sanitizer.js';
 import { NamingConvention } from '../types/index.js';
+import { collectFiles } from '../utils/fs-collect.js';
 
 export async function sanitizeFiles(
   directory: string,
@@ -13,7 +14,7 @@ export async function sanitizeFiles(
     throw new Error(`${directory} is not a directory`);
   }
 
-  const filePaths = await collectFiles(directory, options.recursive ?? false);
+  const filePaths = await collectFiles(directory, { recursive: options.recursive ?? false });
   if (filePaths.length === 0) {
     console.log('No files found.');
     return;
@@ -57,16 +58,3 @@ export async function sanitizeFiles(
   console.log(`\nDone: ${count} file(s) ${verb}.`);
 }
 
-async function collectFiles(dir: string, recursive: boolean): Promise<string[]> {
-  const files: string[] = [];
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const entryPath = path.join(dir, entry.name);
-    if (entry.isDirectory() && recursive) {
-      files.push(...await collectFiles(entryPath, recursive));
-    } else if (entry.isFile()) {
-      files.push(entryPath);
-    }
-  }
-  return files;
-}

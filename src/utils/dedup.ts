@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
-import { createReadStream, promises as fs } from 'fs';
-import path from 'path';
+import { createReadStream } from 'fs';
+import { collectFiles } from './fs-collect.js';
 
 export async function hashFile(filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -16,7 +16,7 @@ export async function findDuplicates(
   directory: string,
   recursive: boolean = false
 ): Promise<Map<string, string[]>> {
-  const files = await collectAllFiles(directory, recursive);
+  const files = await collectFiles(directory, { recursive });
   const hashMap = new Map<string, string[]>();
 
   for (const filePath of files) {
@@ -33,16 +33,3 @@ export async function findDuplicates(
   return duplicates;
 }
 
-async function collectAllFiles(dir: string, recursive: boolean): Promise<string[]> {
-  const files: string[] = [];
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const entryPath = path.join(dir, entry.name);
-    if (entry.isDirectory() && recursive) {
-      files.push(...await collectAllFiles(entryPath, recursive));
-    } else if (entry.isFile()) {
-      files.push(entryPath);
-    }
-  }
-  return files;
-}

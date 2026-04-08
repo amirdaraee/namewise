@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.7.0] - 2026-04-03
+## [0.7.0] - 2026-04-08
 
 ### Added
 - `namewise sanitize [dir]` — clean filenames without AI: strips unsafe characters, normalises unicode (NFC), and applies any naming convention; supports `--dry-run` and `--recursive`
@@ -17,6 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `rename --no-ai` — rename files using extracted metadata (title, author, creation date) with no API call; parsers still run; all templates and naming conventions still apply
 - `undo --all` — undo all non-dry-run history sessions at once; prompts for confirmation when more than one session is affected
 - Enhanced rename stats: elapsed time, total MB processed, and per-extension file count breakdown printed at the end of every `rename` run
+- `namewise stats [dir]` — show total file count and storage breakdown by file type, with largest-files list; supports `--recursive`
+- `namewise tree [dir]` — print visual directory tree with per-file sizes and per-folder file counts; `--depth <n>` limits recursion depth
+- `namewise info <path>` — display detailed metadata for a file (size, extension, SHA-256 hash, created/modified dates) or directory (total file count, subdirectory count, total size)
+- `namewise organize [dir]` — move files into subfolders organised by extension (`--by ext`), modification date (`--by date`), or file size (`--by size`); supports `--dry-run` and `--recursive`; tracks moves in history for undo
+- `namewise flatten [dir]` — move all files from nested subdirectories up to the root directory; auto-resolves name conflicts with `-1`, `-2` suffixes; supports `--dry-run`; tracks moves in history
+- `namewise clean-empty [dir]` — recursively find and remove empty directories; supports `--dry-run`
+- `namewise find [dir]` — search files by extension (`--ext`), name glob (`--name`), size range (`--larger-than` / `--smaller-than`), or date range (`--newer-than` / `--older-than`); reports match count
+- `namewise diff <dir1> <dir2>` — compare two directories by filename (`--by name`) or content hash (`--by hash`); hash mode detects moved/renamed files; reports difference count
+- Batch rename flags on `rename` (no AI required): `--sequence` (sequential numbering), `--sequence-prefix <p>`, `--prefix <text>`, `--suffix <text>`, `--date-stamp created|modified`, `--strip <pattern>`, `--truncate <n>`
+- Shared `collectFiles` utility (`src/utils/fs-collect.ts`) extracted from duplicated code in `dedup` and `sanitize`
 
 ### Changed
 - `undo` now accepts `--all` flag in addition to an optional session ID

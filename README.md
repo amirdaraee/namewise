@@ -1,6 +1,6 @@
 # Namewise
 
-[![Tests](https://img.shields.io/badge/tests-621%20passing-brightgreen.svg)](#testing--development)
+[![Tests](https://img.shields.io/badge/tests-763%20passing-brightgreen.svg)](#testing--development)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#testing--development)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
@@ -17,12 +17,21 @@ Automatically rename files based on their content using AI providers (Claude, Op
 - **AI-Powered Renaming**: Uses cloud providers (Claude, OpenAI) or local LLMs (Ollama, LMStudio) to generate descriptive filenames
 - **Privacy First**: Local LLM support means your files never leave your machine
 - **No-AI Mode**: Rename using file metadata only — no API key required (`--no-ai`)
+- **Batch Rename (no AI)**: Sequence-number, prefix/suffix, date-stamp, strip, or truncate filenames in bulk (`--sequence`, `--prefix`, `--suffix`, `--date-stamp`, `--strip`, `--truncate`)
 - **Pattern Rename**: Regex/sed-style find-and-replace on filenames, chainable, no AI needed (`--pattern`)
 - **Watch Mode**: Monitor a directory and auto-rename new files as they arrive (`namewise watch`)
 - **Sanitize**: Clean filenames by removing unsafe characters and applying naming conventions (`namewise sanitize`)
 - **Dedup**: Find and optionally delete duplicate files by content hash (`namewise dedup`)
 - **Apply Plans**: Execute a saved rename plan from a previous `--output` report (`namewise apply`)
 - **Config Management**: Manage `~/.namewise.json` from the CLI (`namewise config get|set|list`)
+- **Storage Stats**: Show file count and size breakdown by type (`namewise stats`)
+- **Tree View**: Visual directory tree with file sizes and per-folder summaries (`namewise tree`)
+- **File Info**: Detailed metadata for any file or directory including SHA-256 hash (`namewise info`)
+- **Organize**: Move files into subfolders by extension, date, or size (`namewise organize`)
+- **Flatten**: Move all nested files up to the root directory (`namewise flatten`)
+- **Clean Empty Dirs**: Find and remove empty directories recursively (`namewise clean-empty`)
+- **Find**: Search files by extension, name glob, size range, or date range (`namewise find`)
+- **Diff Directories**: Compare two directories by filename or content hash (`namewise diff`)
 - **Recursive Scanning**: Scan nested directories with an optional depth limit
 - **Undo Support**: Reverse any previous rename session via `namewise undo` (or `undo --all`)
 - **Config File**: Set persistent defaults in `~/.namewise.json` or per-project `.namewise.json`
@@ -70,13 +79,21 @@ Download the latest release from [GitHub Releases](https://github.com/amirdaraee
 
 ### Command Structure
 ```bash
-namewise rename [directory] [options]
-namewise sanitize [directory] [options]
-namewise dedup [directory] [options]
-namewise watch [directory] [options]
-namewise apply <plan.json> [options]
-namewise config <list|get|set> [key] [value]
-namewise undo [session-id] [options]
+namewise rename [directory] [options]       # AI-powered rename (or batch rename with flags)
+namewise sanitize [directory] [options]     # Clean filenames without AI
+namewise dedup [directory] [options]        # Find and remove duplicate files
+namewise watch [directory] [options]        # Auto-rename new files as they arrive
+namewise apply <plan.json> [options]        # Execute a saved rename plan
+namewise config <list|get|set> [key] [val] # Manage ~/.namewise.json
+namewise undo [session-id] [options]        # Reverse a previous rename session
+namewise stats [directory] [options]        # Storage breakdown by file type
+namewise tree [directory] [options]         # Visual directory tree with sizes
+namewise info <path>                        # Metadata for a file or directory
+namewise organize [directory] [options]     # Move files into subfolders
+namewise flatten [directory] [options]      # Move all nested files to root
+namewise clean-empty [directory] [options]  # Remove empty directories
+namewise find [directory] [options]         # Search files by criteria
+namewise diff <dir1> <dir2> [options]       # Compare two directories
 ```
 
 ### `rename` Options
@@ -122,6 +139,69 @@ namewise undo [session-id] [options]
 | `--list` | List recent rename sessions with their IDs |
 | `--all` | Undo all sessions at once |
 | `[session-id]` | Undo a specific session by ID (default: most recent) |
+
+### Batch rename flags (on `rename`, no AI required)
+
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--sequence` | Replace filenames with padded sequence numbers | `001.pdf`, `002.pdf` |
+| `--sequence-prefix <p>` | Prefix for sequence numbers | `--sequence-prefix photo` → `photo-001.jpg` |
+| `--prefix <text>` | Prepend text to every filename stem | `--prefix "2024-"` |
+| `--suffix <text>` | Append text to every filename stem | `--suffix "-final"` |
+| `--date-stamp <created\|modified>` | Prepend file date to stem | `--date-stamp modified` |
+| `--strip <pattern>` | Remove a substring or regex from stems | `--strip "IMG_"` |
+| `--truncate <n>` | Truncate stems to N characters | `--truncate 20` |
+
+### `stats` Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-r, --recursive` | Include subdirectories | `false` |
+
+### `tree` Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--depth <n>` | Maximum depth to display | Unlimited |
+
+### `organize` Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--by <mode>` | Organisation mode: `ext` \| `date` \| `size` | `ext` |
+| `-r, --recursive` | Include subdirectories | `false` |
+| `--dry-run` | Preview without moving files | `false` |
+
+### `flatten` Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--dry-run` | Preview without moving files | `false` |
+
+### `clean-empty` Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--dry-run` | Preview without deleting directories | `false` |
+
+### `find` Options
+
+| Option | Description |
+|--------|-------------|
+| `--ext <ext>` | Filter by file extension (e.g. `pdf`) |
+| `--name <glob>` | Filter by filename glob (e.g. `"*.report*"`) |
+| `--larger-than <size>` | Minimum size (e.g. `5mb`, `100kb`, `500`) |
+| `--smaller-than <size>` | Maximum size (e.g. `10mb`) |
+| `--newer-than <date>` | Modified after date (`YYYY-MM-DD`) |
+| `--older-than <date>` | Modified before date (`YYYY-MM-DD`) |
+| `-r, --recursive` | Search subdirectories (default: `true`) |
+
+### `diff` Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--by <mode>` | Compare by `name` or `hash` (content-aware, detects renames) | `name` |
+| `-r, --recursive` | Compare subdirectories | `true` |
 
 ### Examples
 
@@ -192,6 +272,66 @@ namewise undo --all
 ```bash
 namewise undo --list
 namewise undo 2026-04-02T10:30:00.000Z
+```
+
+**Batch rename without AI:**
+```bash
+namewise rename ./photos --sequence --sequence-prefix holiday
+# holiday-001.jpg, holiday-002.jpg, ...
+
+namewise rename ./docs --prefix "2024-" --dry-run
+namewise rename ./exports --suffix "-final" --truncate 30
+namewise rename ./downloads --strip "IMG_" --date-stamp modified
+```
+
+**Storage stats:**
+```bash
+namewise stats ./documents
+namewise stats ./projects --recursive
+```
+
+**Directory tree:**
+```bash
+namewise tree ./src
+namewise tree ./src --depth 3
+```
+
+**File or directory info:**
+```bash
+namewise info ./report.pdf
+namewise info ./downloads
+```
+
+**Organise files into subfolders:**
+```bash
+namewise organize ./downloads --by ext --dry-run
+namewise organize ./photos --by date
+namewise organize ./backup --by size --dry-run
+```
+
+**Flatten nested directories:**
+```bash
+namewise flatten ./inbox --dry-run
+namewise flatten ./inbox
+```
+
+**Remove empty directories:**
+```bash
+namewise clean-empty ./projects --dry-run
+namewise clean-empty ./projects
+```
+
+**Find files by criteria:**
+```bash
+namewise find ./downloads --ext pdf
+namewise find ./photos --larger-than 5mb --newer-than 2024-01-01
+namewise find . --name "*.report*" --smaller-than 1mb
+```
+
+**Compare two directories:**
+```bash
+namewise diff ./backup ./original
+namewise diff ./backup ./original --by hash   # detects renamed files
 ```
 
 **Personal documents with your name and date:**

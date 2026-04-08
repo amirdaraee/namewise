@@ -6,6 +6,14 @@ import { sanitizeFiles } from './sanitize.js';
 import { applyPlan } from './apply.js';
 import { dedupFiles } from './dedup.js';
 import { watchDirectory } from './watch.js';
+import { statsCommand } from './stats.js';
+import { treeCommand } from './tree.js';
+import { infoCommand } from './info.js';
+import { organizeFiles } from './organize.js';
+import { flattenDirectory } from './flatten.js';
+import { cleanEmptyDirs } from './clean-empty.js';
+import { findFiles } from './find.js';
+import { diffDirectories } from './diff.js';
 
 export function setupCommands(program: Command): void {
   program
@@ -33,6 +41,13 @@ export function setupCommands(program: Command): void {
       [] as string[]
     )
     .option('--no-ai', 'Use file metadata instead of AI (no API call required)')
+    .option('--sequence', 'Rename files sequentially: 001.ext, 002.ext, … (skips AI)', false)
+    .option('--sequence-prefix <prefix>', 'Prefix for sequential rename: prefix-001.ext')
+    .option('--prefix <str>', 'Prepend string to all filenames (skips AI)')
+    .option('--suffix <str>', 'Append string to all filenames before extension (skips AI)')
+    .option('--date-stamp <field>', 'Prepend date to filename: created|modified (skips AI)')
+    .option('--strip <pattern>', 'Remove regex pattern from all filenames (skips AI)')
+    .option('--truncate <n>', 'Truncate filenames to N characters (skips AI)')
     .addHelpText('after', `
 
 🔍 How it works:
@@ -74,6 +89,25 @@ export function setupCommands(program: Command): void {
   # Local LLMs (no API key needed)
   namewise rename --provider ollama --model llama3.1 --dry-run
   namewise rename ./contracts --provider lmstudio --base-url http://localhost:1234
+
+🔢 Batch Rename (no AI, no API key):
+  # Add sequential numbers
+  namewise rename ./photos --sequence --dry-run
+  namewise rename ./photos --sequence --sequence-prefix "holiday"
+
+  # Add prefix or suffix
+  namewise rename ./exports --prefix "2024-" --dry-run
+  namewise rename ./drafts --suffix "-final"
+
+  # Stamp file dates onto names
+  namewise rename ./docs --date-stamp modified --dry-run
+  namewise rename ./scans --date-stamp created
+
+  # Remove a pattern from filenames
+  namewise rename ./downloads --strip "IMG_" --dry-run
+
+  # Truncate long names
+  namewise rename ./downloads --truncate 30 --dry-run
 `)
     .action(async (directory, options) => {
       await renameFiles(directory, options);
@@ -186,5 +220,103 @@ export function setupCommands(program: Command): void {
         console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
         process.exit(1);
       }
+    });
+
+  program
+    .command('stats')
+    .description('📊 Show storage breakdown by file type')
+    .argument('[directory]', 'Directory to analyse (default: current directory)', '.')
+    .option('-r, --recursive', 'Include subdirectories', false)
+    .action(async (directory, options) => {
+      try { await statsCommand(directory, { recursive: options.recursive }); }
+      catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+    });
+
+  program
+    .command('tree')
+    .description('🌳 Show directory tree with file sizes')
+    .argument('[directory]', 'Directory to display (default: current directory)', '.')
+    .option('--depth <n>', 'Maximum depth to display')
+    .action(async (directory, options) => {
+      try { await treeCommand(directory, { depth: options.depth ? parseInt(options.depth) : undefined }); }
+      catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+    });
+
+  program
+    .command('info')
+    .description('ℹ️  Show metadata for a file or directory')
+    .argument('<path>', 'File or directory path')
+    .action(async (targetPath) => {
+      try { await infoCommand(targetPath); }
+      catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+    });
+
+  program
+    .command('organize')
+    .description('📁 Move files into subfolders by type, date, or size')
+    .argument('[directory]', 'Directory to organise (default: current directory)', '.')
+    .option('--by <mode>', 'Organisation mode: ext|date|size (default: ext)', 'ext')
+    .option('-r, --recursive', 'Include subdirectories', false)
+    .option('--dry-run', 'Preview without moving files', false)
+    .action(async (directory, options) => {
+      try { await organizeFiles(directory, { by: options.by, recursive: options.recursive, dryRun: options.dryRun }); }
+      catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+    });
+
+  program
+    .command('flatten')
+    .description('⬆️  Move all nested files into the root directory')
+    .argument('[directory]', 'Directory to flatten (default: current directory)', '.')
+    .option('--dry-run', 'Preview without moving files', false)
+    .action(async (directory, options) => {
+      try { await flattenDirectory(directory, { dryRun: options.dryRun }); }
+      catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+    });
+
+  program
+    .command('clean-empty')
+    .description('🗑️  Find and remove empty directories')
+    .argument('[directory]', 'Directory to scan (default: current directory)', '.')
+    .option('--dry-run', 'Preview without deleting', false)
+    .action(async (directory, options) => {
+      try { await cleanEmptyDirs(directory, { dryRun: options.dryRun }); }
+      catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+    });
+
+  program
+    .command('find')
+    .description('🔎 Search files by name, extension, size, or date')
+    .argument('[directory]', 'Directory to search (default: current directory)', '.')
+    .option('--ext <ext>', 'Filter by file extension (e.g. pdf)')
+    .option('--name <glob>', 'Filter by filename glob (e.g. "*.report*")')
+    .option('--larger-than <size>', 'Minimum size (e.g. 5mb, 100kb)')
+    .option('--smaller-than <size>', 'Maximum size (e.g. 10mb)')
+    .option('--newer-than <date>', 'Modified after date (YYYY-MM-DD)')
+    .option('--older-than <date>', 'Modified before date (YYYY-MM-DD)')
+    .option('-r, --recursive', 'Search subdirectories', true)
+    .action(async (directory, options) => {
+      try {
+        await findFiles(directory, {
+          ext: options.ext,
+          name: options.name,
+          largerThan: options.largerThan,
+          smallerThan: options.smallerThan,
+          newerThan: options.newerThan,
+          olderThan: options.olderThan,
+          recursive: options.recursive
+        });
+      } catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+    });
+
+  program
+    .command('diff')
+    .description('🔀 Compare two directories')
+    .argument('<dir1>', 'First directory')
+    .argument('<dir2>', 'Second directory')
+    .option('--by <mode>', 'Compare by: name|hash (default: name)', 'name')
+    .option('-r, --recursive', 'Compare subdirectories', true)
+    .action(async (dir1, dir2, options) => {
+      try { await diffDirectories(dir1, dir2, { by: options.by, recursive: options.recursive }); }
+      catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
     });
 }

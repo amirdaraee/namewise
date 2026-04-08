@@ -9,6 +9,15 @@ import { loadConfig } from '../utils/config-loader.js';
 import { appendHistory } from '../utils/history.js';
 import { applyPatterns } from '../utils/pattern-rename.js';
 import { applyNamingConvention } from '../utils/naming-conventions.js';
+import { collectFiles } from '../utils/fs-collect.js';
+import {
+  applySequence,
+  applyPrefix,
+  applySuffix,
+  applyDateStamp,
+  applyStrip,
+  applyTruncate
+} from '../utils/batch-rename.js';
 
 export async function renameFiles(directory: string, options: any): Promise<void> {
   try {
@@ -16,6 +25,24 @@ export async function renameFiles(directory: string, options: any): Promise<void
     const stats = await fs.stat(directory);
     if (!stats.isDirectory()) {
       throw new Error(`${directory} is not a directory`);
+    }
+
+    // Short-circuit for batch rename flags (no AI needed)
+    const hasBatchFlags = options.sequence || options.prefix || options.suffix ||
+      options.dateStamp || options.strip || options.truncate;
+
+    if (hasBatchFlags) {
+      await runBatchRenames(directory, {
+        sequence: options.sequence ?? false,
+        sequencePrefix: options.sequencePrefix,
+        prefix: options.prefix,
+        suffix: options.suffix,
+        dateStamp: options.dateStamp,
+        dateFormat: options.date,
+        strip: options.strip,
+        truncate: options.truncate ? parseInt(options.truncate) : undefined
+      }, options.dryRun ?? false, options.recursive ?? false);
+      return;
     }
 
     // Load cascading config file (project overrides user-home)
@@ -291,4 +318,77 @@ function displayResults(results: RenameResult[], dryRun: boolean, startTime: num
     .join(', ');
   const statsLine = `📊 Stats: ${elapsedStr} elapsed · ${totalMB} MB processed · ${extSummary}`;
   console.log(`\n${statsLine}`);
+}
+
+export interface BatchRenameFlags {
+  sequence?: boolean;
+  sequencePrefix?: string;
+  prefix?: string;
+  suffix?: string;
+  dateStamp?: 'created' | 'modified';
+  dateFormat?: DateFormat;
+  strip?: string;
+  truncate?: number;
+}
+
+export async function runBatchRenames(
+  directory: string,
+  flags: BatchRenameFlags,
+  dryRun: boolean,
+  recursive: boolean
+): Promise<void> {
+  const filePaths = await collectFiles(directory, { recursive });
+  if (filePaths.length === 0) {
+    console.log('No files found.');
+    return;
+  }
+
+  const renames: Array<{ originalPath: string; newPath: string }> = [];
+  let previewCount = 0;
+  const total = filePaths.length;
+
+  for (let i = 0; i < filePaths.length; i++) {
+    const filePath = filePaths[i];
+    const ext = path.extname(filePath);
+    let stem = path.basename(filePath, ext);
+
+    if (flags.sequence) {
+      stem = applySequence(i, total, flags.sequencePrefix);
+    }
+    if (flags.prefix) stem = applyPrefix(stem, flags.prefix);
+    if (flags.suffix) stem = applySuffix(stem, flags.suffix);
+    if (flags.strip) stem = applyStrip(stem, flags.strip);
+    if (flags.truncate) stem = applyTruncate(stem, flags.truncate);
+    if (flags.dateStamp) {
+      const stat = await fs.stat(filePath);
+      const date = flags.dateStamp === 'created' ? stat.birthtime : stat.mtime;
+      stem = applyDateStamp(stem, date, flags.dateFormat ?? 'YYYY-MM-DD');
+    }
+
+    const newName = stem + ext;
+    if (newName === path.basename(filePath)) continue;
+
+    const newPath = path.join(path.dirname(filePath), newName);
+    console.log(`${dryRun ? '[dry-run] ' : ''}${path.basename(filePath)} → ${newName}`);
+
+    if (!dryRun) {
+      await fs.rename(filePath, newPath);
+      renames.push({ originalPath: filePath, newPath });
+    } else {
+      previewCount++;
+    }
+  }
+
+  if (!dryRun && renames.length > 0) {
+    await appendHistory({
+      id: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
+      directory: path.resolve(directory),
+      dryRun: false,
+      renames
+    });
+  }
+
+  const count = dryRun ? previewCount : renames.length;
+  console.log(`\n${dryRun ? 'Would rename' : 'Renamed'} ${count} file(s).`);
 }

@@ -31,9 +31,9 @@ export class PDFParser implements DocumentParser {
           
           // Store the image data as a special marker for the AI service to detect
           content = `[SCANNED_PDF_IMAGE]:${imageBase64}`;
-          console.log('✅ PDF converted to image successfully');
+          console.log('PDF converted to image successfully');
         } catch (conversionError) {
-          console.warn('⚠️ PDF to image conversion failed:', conversionError instanceof Error ? conversionError.message : 'Unknown error');
+          console.warn('PDF to image conversion failed:', conversionError instanceof Error ? conversionError.message : 'Unknown error');
           console.log('💡 PDF-poppler requires system dependencies. Falling back to empty content.');
           // Continue with empty content - AI services will handle this gracefully
         }

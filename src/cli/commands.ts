@@ -19,19 +19,19 @@ import { initCommand } from './init.js';
 export function setupCommands(program: Command): void {
   program
     .command('init')
-    .description('🎉 Set up Namewise for the first time (interactive wizard)')
+    .description('Set up Namewise for the first time (interactive wizard)')
     .addHelpText('after', `
-💡 What init configures:
-  • Scope      — global (~/.namewise.json) or project (.namewise.json)
-  • Provider   — claude | openai | ollama | lmstudio
-  • API key    — stored in config (cloud providers only)
-  • Base URL   — for local providers (ollama / lmstudio)
-  • Model      — override the provider default
-  • Convention — kebab-case, snake_case, camelCase, etc.
-  • Dry-run    — always preview before renaming by default
-  • Your name  — used in document and photo templates
+What init configures:
+  Scope      — global (~/.namewise.json) or project (.namewise.json)
+  Provider   — claude | openai | ollama | lmstudio
+  API key    — stored in config (cloud providers only)
+  Base URL   — for local providers (ollama / lmstudio)
+  Model      — override the provider default
+  Convention — kebab-case, snake_case, camelCase, etc.
+  Dry-run    — always preview before renaming by default
+  Your name  — used in document and photo templates
 
-📝 Example:
+Example:
   namewise init
   # Then run without any flags — saved settings apply automatically:
   namewise rename ./documents
@@ -43,7 +43,7 @@ export function setupCommands(program: Command): void {
 
   program
     .command('rename')
-    .description('🚀 Rename files in a directory based on their content using AI analysis')
+    .description('Rename files in a directory based on their content using AI analysis')
     .argument('[directory]', 'Directory containing files to rename (default: current directory)', '.')
     .option('-p, --provider <provider>', 'AI provider: claude|openai|ollama|lmstudio (default: claude)')
     .option('-k, --api-key <key>', 'API key for cloud providers (or set CLAUDE_API_KEY/ANTHROPIC_API_KEY/OPENAI_API_KEY)')
@@ -75,7 +75,7 @@ export function setupCommands(program: Command): void {
     .option('--truncate <n>', 'Truncate filenames to N characters (skips AI)')
     .addHelpText('after', `
 
-🔍 How it works:
+How it works:
   1. Loads settings from ~/.namewise.json and <dir>/.namewise.json (CLI flags override)
   2. Scans directory for supported files (PDF, DOCX, XLSX, TXT, MD, RTF)
   3. Extracts content and metadata from each file
@@ -85,18 +85,18 @@ export function setupCommands(program: Command): void {
   7. Renames files (or shows preview with --dry-run)
   8. Saves session to ~/.namewise/history.json for later undo
 
-💡 Pro Tips:
-  • Always use --dry-run first to preview changes
-  • Use --recursive to process nested folders
-  • Set common options in ~/.namewise.json to avoid repeating flags
-  • Use namewise undo to reverse the last rename session
-  • Set API keys as environment variables: ANTHROPIC_API_KEY or OPENAI_API_KEY
+Pro Tips:
+  - Always use --dry-run first to preview changes
+  - Use --recursive to process nested folders
+  - Run "namewise init" once to save your API key and preferences
+  - Use "namewise undo" to reverse the last rename session
+  - Set API keys as environment variables: ANTHROPIC_API_KEY or OPENAI_API_KEY
 
-🖥️  Local LLM Setup:
-  • Ollama: Start with 'ollama serve' (default: http://localhost:11434)
-  • LMStudio: Enable local server mode (default: http://localhost:1234)
+Local LLM Setup:
+  Ollama:   start with "ollama serve" (default: http://localhost:11434)
+  LMStudio: enable local server mode   (default: http://localhost:1234)
 
-📝 Examples:
+Examples:
   # Current directory (no directory argument needed)
   namewise rename --dry-run
   namewise rename --provider claude --template document --name "alice"
@@ -115,23 +115,13 @@ export function setupCommands(program: Command): void {
   namewise rename --provider ollama --model llama3.1 --dry-run
   namewise rename ./contracts --provider lmstudio --base-url http://localhost:1234
 
-🔢 Batch Rename (no AI, no API key):
-  # Add sequential numbers
+Batch Rename (no AI, no API key):
   namewise rename ./photos --sequence --dry-run
   namewise rename ./photos --sequence --sequence-prefix "holiday"
-
-  # Add prefix or suffix
   namewise rename ./exports --prefix "2024-" --dry-run
   namewise rename ./drafts --suffix "-final"
-
-  # Stamp file dates onto names
   namewise rename ./docs --date-stamp modified --dry-run
-  namewise rename ./scans --date-stamp created
-
-  # Remove a pattern from filenames
   namewise rename ./downloads --strip "IMG_" --dry-run
-
-  # Truncate long names
   namewise rename ./downloads --truncate 30 --dry-run
 `)
     .action(async (directory, options) => {
@@ -140,7 +130,7 @@ export function setupCommands(program: Command): void {
 
   program
     .command('config')
-    .description('⚙️  Manage persistent config in ~/.namewise.json')
+    .description('Manage persistent config in ~/.namewise.json')
     .argument('<subcommand>', 'list | get | set')
     .argument('[key]', 'Config key name')
     .argument('[value]', 'Value to set (for set subcommand)')
@@ -155,7 +145,7 @@ export function setupCommands(program: Command): void {
 
   program
     .command('sanitize')
-    .description('🧹 Clean filenames by removing unsafe characters and applying naming convention')
+    .description('Clean filenames by removing unsafe characters and applying naming convention')
     .argument('[directory]', 'Directory to sanitize (default: current directory)', '.')
     .option('--dry-run', 'Preview changes without renaming', false)
     .option('-r, --recursive', 'Process subdirectories', false)
@@ -171,7 +161,7 @@ export function setupCommands(program: Command): void {
 
   program
     .command('apply')
-    .description('📋 Apply a saved rename plan produced by --output')
+    .description('Apply a saved rename plan produced by --output')
     .argument('<plan>', 'Path to the plan JSON file')
     .option('--dry-run', 'Validate plan without executing renames', false)
     .action(async (planPath, options) => {
@@ -185,7 +175,7 @@ export function setupCommands(program: Command): void {
 
   program
     .command('dedup')
-    .description('🔍 Find and optionally remove duplicate files by content hash')
+    .description('Find and optionally remove duplicate files by content hash')
     .argument('[directory]', 'Directory to scan (default: current directory)', '.')
     .option('-r, --recursive', 'Scan subdirectories', false)
     .option('--delete', 'Delete duplicates after confirmation', false)
@@ -200,7 +190,7 @@ export function setupCommands(program: Command): void {
 
   program
     .command('watch')
-    .description('👁️  Watch a directory for new files and rename them automatically using AI')
+    .description('Watch a directory for new files and rename them automatically using AI')
     .argument('[directory]', 'Directory to watch (default: current directory)', '.')
     .option('-p, --provider <provider>', 'AI provider: claude|openai|ollama|lmstudio (default: claude)')
     .option('-k, --api-key <key>', 'API key for cloud providers (or set CLAUDE_API_KEY/ANTHROPIC_API_KEY/OPENAI_API_KEY)')
@@ -234,7 +224,7 @@ export function setupCommands(program: Command): void {
 
   program
     .command('undo')
-    .description('↩️  Undo the most recent rename session')
+    .description('Undo the most recent rename session')
     .argument('[session-id]', 'Session ID to undo (use --list to see IDs)')
     .option('--list', 'List recent rename sessions with their IDs')
     .option('--all', 'Undo all rename sessions')
@@ -249,7 +239,7 @@ export function setupCommands(program: Command): void {
 
   program
     .command('stats')
-    .description('📊 Show storage breakdown by file type')
+    .description('Show storage breakdown by file type')
     .argument('[directory]', 'Directory to analyse (default: current directory)', '.')
     .option('-r, --recursive', 'Include subdirectories', false)
     .action(async (directory, options) => {
@@ -259,7 +249,7 @@ export function setupCommands(program: Command): void {
 
   program
     .command('tree')
-    .description('🌳 Show directory tree with file sizes')
+    .description('Show directory tree with file sizes')
     .argument('[directory]', 'Directory to display (default: current directory)', '.')
     .option('--depth <n>', 'Maximum depth to display')
     .action(async (directory, options) => {
@@ -269,7 +259,7 @@ export function setupCommands(program: Command): void {
 
   program
     .command('info')
-    .description('ℹ️  Show metadata for a file or directory')
+    .description('Show metadata for a file or directory')
     .argument('<path>', 'File or directory path')
     .action(async (targetPath) => {
       try { await infoCommand(targetPath); }
@@ -278,7 +268,7 @@ export function setupCommands(program: Command): void {
 
   program
     .command('organize')
-    .description('📁 Move files into subfolders by type, date, or size')
+    .description('Move files into subfolders by type, date, or size')
     .argument('[directory]', 'Directory to organise (default: current directory)', '.')
     .option('--by <mode>', 'Organisation mode: ext|date|size (default: ext)', 'ext')
     .option('-r, --recursive', 'Include subdirectories', false)
@@ -290,7 +280,7 @@ export function setupCommands(program: Command): void {
 
   program
     .command('flatten')
-    .description('⬆️  Move all nested files into the root directory')
+    .description('Move all nested files into the root directory')
     .argument('[directory]', 'Directory to flatten (default: current directory)', '.')
     .option('--dry-run', 'Preview without moving files', false)
     .action(async (directory, options) => {
@@ -300,7 +290,7 @@ export function setupCommands(program: Command): void {
 
   program
     .command('clean-empty')
-    .description('🗑️  Find and remove empty directories')
+    .description('Find and remove empty directories')
     .argument('[directory]', 'Directory to scan (default: current directory)', '.')
     .option('--dry-run', 'Preview without deleting', false)
     .action(async (directory, options) => {
@@ -310,7 +300,7 @@ export function setupCommands(program: Command): void {
 
   program
     .command('find')
-    .description('🔎 Search files by name, extension, size, or date')
+    .description('Search files by name, extension, size, or date')
     .argument('[directory]', 'Directory to search (default: current directory)', '.')
     .option('--ext <ext>', 'Filter by file extension (e.g. pdf)')
     .option('--name <glob>', 'Filter by filename glob (e.g. "*.report*")')
@@ -335,7 +325,7 @@ export function setupCommands(program: Command): void {
 
   program
     .command('diff')
-    .description('🔀 Compare two directories')
+    .description('Compare two directories')
     .argument('<dir1>', 'First directory')
     .argument('<dir2>', 'Second directory')
     .option('--by <mode>', 'Compare by: name|hash (default: name)', 'name')

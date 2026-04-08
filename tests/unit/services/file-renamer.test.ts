@@ -632,7 +632,7 @@ describe('FileRenamer', () => {
       await fileRenamer.renameFiles(testFiles);
 
       const outputString = stdoutOutput.join('');
-      expect(outputString).toContain('✅ Processed 2 files (2 successful)');
+      expect(outputString).toContain('Processed 2 files (2 successful)');
       expect(outputString).toContain('\n'); // Should end with newline
     });
 
@@ -692,7 +692,7 @@ describe('FileRenamer', () => {
       await fileRenamer.renameFiles(testFiles);
 
       const outputString = stdoutOutput.join('');
-      expect(outputString).toContain('✅ Processed 2 files (1 successful)');
+      expect(outputString).toContain('Processed 2 files (1 successful)');
     });
   });
 });

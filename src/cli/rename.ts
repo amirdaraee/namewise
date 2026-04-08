@@ -178,9 +178,9 @@ export async function renameFiles(directory: string, options: any): Promise<void
       };
       try {
         await fs.writeFile(config.outputPath, JSON.stringify(report, null, 2), 'utf-8');
-        console.log(`📄 Report saved to: ${config.outputPath}`);
+        console.log(`Report saved to: ${config.outputPath}`);
       } catch (err) {
-        console.warn(`⚠️  Failed to write report: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        console.warn(`Warning: Failed to write report: ${err instanceof Error ? err.message : 'Unknown error'}`);
       }
     }
 
@@ -281,22 +281,22 @@ function displayResults(results: RenameResult[], dryRun: boolean, startTime: num
   const failed = results.filter(r => !r.success);
 
   console.log(`\n${dryRun ? 'Preview' : 'Results'}:`);
-  console.log(`✅ ${successful.length} files ${dryRun ? 'would be' : 'successfully'} renamed`);
+  console.log(`${successful.length} files ${dryRun ? 'would be' : 'successfully'} renamed`);
 
   if (failed.length > 0) {
-    console.log(`❌ ${failed.length} files failed`);
+    console.log(`${failed.length} files failed`);
   }
 
   console.log('\nDetails:');
   results.forEach(result => {
-    const status = result.success ? '✅' : '❌';
+    const status = result.success ? 'OK' : 'FAIL';
     const originalName = path.basename(result.originalPath);
     const newName = path.basename(result.newPath);
 
     if (result.success) {
-      console.log(`${status} ${originalName} → ${newName}`);
+      console.log(`[${status}] ${originalName} → ${newName}`);
     } else {
-      console.log(`${status} ${originalName} (failed)`);
+      console.log(`[${status}] ${originalName} (failed)`);
       if (result.error) {
         console.log(`   Error: ${result.error}`);
       }
@@ -316,7 +316,7 @@ function displayResults(results: RenameResult[], dryRun: boolean, startTime: num
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([ext, count]) => `${count} ${ext.slice(1).toUpperCase()}`)
     .join(', ');
-  const statsLine = `📊 Stats: ${elapsedStr} elapsed · ${totalMB} MB processed · ${extSummary}`;
+  const statsLine = `Stats: ${elapsedStr} elapsed | ${totalMB} MB processed | ${extSummary}`;
   console.log(`\n${statsLine}`);
 }
 

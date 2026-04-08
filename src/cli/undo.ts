@@ -58,11 +58,11 @@ async function undoSession(entry: HistoryEntry): Promise<{ succeeded: number; sk
     try {
       await fs.access(rename.newPath);
       await fs.rename(rename.newPath, rename.originalPath);
-      console.log(`✅ Restored: ${path.basename(rename.newPath)} → ${path.basename(rename.originalPath)}`);
+      console.log(`Restored: ${path.basename(rename.newPath)} → ${path.basename(rename.originalPath)}`);
       succeeded++;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        console.warn(`⚠️  Skipped: ${path.basename(rename.newPath)} not found`);
+        console.warn(`Skipped: ${path.basename(rename.newPath)} not found`);
         skipped++;
       } else {
         throw error;
@@ -109,7 +109,7 @@ async function undoAll(): Promise<void> {
     try {
       await undoSession(session);
     } catch (error) {
-      console.error(`❌ Failed to undo session ${session.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(`Error: Failed to undo session ${session.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }

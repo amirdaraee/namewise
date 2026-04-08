@@ -68,7 +68,7 @@ export class FileRenamer {
     const clearFinal = '\r' + ' '.repeat(lastProgressLength) + '\r';
     if (files.length > 0) {
       const successCount = results.filter(r => r.success).length;
-      const completionMessage = `✅ Processed ${files.length} file${files.length === 1 ? '' : 's'} (${successCount} successful)`;
+      const completionMessage = `Processed ${files.length} file${files.length === 1 ? '' : 's'} (${successCount} successful)`;
       process.stdout.write(clearFinal + completionMessage + '\n');
     } else {
       process.stdout.write(clearFinal);

@@ -637,7 +637,7 @@ describe('renameFiles()', () => {
       await renameFiles('/test/dir', defaultOptions);
 
       const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
-      expect(allOutput).toMatch(/📊 Stats:/);
+      expect(allOutput).toMatch(/Stats:/);
       expect(allOutput).toMatch(/PDF/);
       expect(allOutput).toMatch(/TXT/);
 
@@ -664,7 +664,7 @@ describe('renameFiles()', () => {
       await renameFiles('/test/dir', defaultOptions);
 
       const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
-      expect(allOutput).toMatch(/📊 Stats:/);
+      expect(allOutput).toMatch(/Stats:/);
       expect(allOutput).toMatch(/elapsed/);
       expect(allOutput).toMatch(/MB/);
       expect(allOutput).toMatch(/1\.50 MB/);

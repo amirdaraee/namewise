@@ -55,7 +55,7 @@ describe('CLI Commands', () => {
       
       const renameCommand = program.commands.find(cmd => cmd.name() === 'rename');
       expect(renameCommand).toBeDefined();
-      expect(renameCommand?.description()).toBe('🚀 Rename files in a directory based on their content using AI analysis');
+      expect(renameCommand?.description()).toBe('Rename files in a directory based on their content using AI analysis');
     });
 
     it('should configure rename command with correct arguments', () => {

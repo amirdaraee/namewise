@@ -79,4 +79,28 @@ describe('appendHistory()', () => {
     const written = JSON.parse(vi.mocked(fs.writeFile).mock.calls[0][1] as string) as HistoryEntry[];
     expect(written).toHaveLength(1);
   });
+
+  it('should persist tokenUsage when provided', async () => {
+    vi.mocked(fs.readFile).mockRejectedValue(Object.assign(new Error(), { code: 'ENOENT' }));
+    const entry = makeEntry({
+      id: '2026-01-01T00:00:00.000Z',
+      tokenUsage: { inputTokens: 500, outputTokens: 42 }
+    });
+    await appendHistory(entry);
+    const written = JSON.parse(vi.mocked(fs.writeFile).mock.calls[0][1] as string) as HistoryEntry[];
+    const saved = written.find(h => h.id === entry.id);
+    expect(saved?.tokenUsage).toEqual({ inputTokens: 500, outputTokens: 42 });
+  });
+
+  it('should work without tokenUsage (backwards compatibility)', async () => {
+    vi.mocked(fs.readFile).mockRejectedValue(Object.assign(new Error(), { code: 'ENOENT' }));
+    const entry = makeEntry({
+      id: '2026-01-02T00:00:00.000Z'
+      // tokenUsage intentionally omitted
+    });
+    await appendHistory(entry);
+    const written = JSON.parse(vi.mocked(fs.writeFile).mock.calls[0][1] as string) as HistoryEntry[];
+    const saved = written.find(h => h.id === entry.id);
+    expect(saved?.tokenUsage).toBeUndefined();
+  });
 });

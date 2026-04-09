@@ -146,10 +146,10 @@ export async function renameFiles(directory: string, options: any): Promise<void
     // Process files
     console.log('\nProcessing files...');
     const startTime = Date.now();
-    const results = await fileRenamer.renameFiles(files);
+    const { results, tokenUsage } = await fileRenamer.renameFiles(files);
 
     // Display results
-    displayResults(results, config.dryRun, startTime, files);
+    displayResults(results, config.dryRun, startTime, files, tokenUsage);
 
     // Save session to history (~/.namewise/history.json)
     const successfulRenames = results
@@ -161,7 +161,8 @@ export async function renameFiles(directory: string, options: any): Promise<void
       timestamp: new Date().toISOString(),
       directory: path.resolve(directory),
       dryRun: config.dryRun,
-      renames: successfulRenames
+      renames: successfulRenames,
+      tokenUsage
     });
 
     // Write JSON report if --output was provided
@@ -277,7 +278,13 @@ async function runPatternRenames(files: FileInfo[], config: Config): Promise<voi
   console.log(`\n${config.dryRun ? 'Would rename' : 'Renamed'} ${count} file(s) using pattern(s).`);
 }
 
-function displayResults(results: RenameResult[], dryRun: boolean, startTime: number, files: FileInfo[]): void {
+function displayResults(
+  results: RenameResult[],
+  dryRun: boolean,
+  startTime: number,
+  files: FileInfo[],
+  tokenUsage: { inputTokens?: number; outputTokens?: number }
+): void {
   const successful = results.filter(r => r.success);
   const failed = results.filter(r => !r.success);
 
@@ -318,7 +325,11 @@ function displayResults(results: RenameResult[], dryRun: boolean, startTime: num
     .map(([ext, count]) => `${count} ${ext.slice(1).toUpperCase()}`)
     .join(', ');
   const statsLine = `Stats: ${elapsedStr} elapsed | ${totalMB} MB processed | ${extSummary}`;
+  const tokenLine = (tokenUsage.inputTokens !== undefined && tokenUsage.outputTokens !== undefined)
+    ? `Tokens: ${tokenUsage.inputTokens.toLocaleString()} input / ${tokenUsage.outputTokens.toLocaleString()} output`
+    : 'Tokens: N/A (local provider)';
   console.log(`\n${statsLine}`);
+  console.log(tokenLine);
 }
 
 export interface BatchRenameFlags {

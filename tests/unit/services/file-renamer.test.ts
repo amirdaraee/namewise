@@ -70,7 +70,7 @@ describe('FileRenamer', () => {
       vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
       vi.mocked(fs.rename).mockResolvedValue(undefined);
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const { results } = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(true);
@@ -96,7 +96,7 @@ describe('FileRenamer', () => {
       // Mock fs.access to simulate that new file doesn't exist
       vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const { results } = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(true);
@@ -117,7 +117,7 @@ describe('FileRenamer', () => {
         }
       ];
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const { results } = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(false);
@@ -137,7 +137,7 @@ describe('FileRenamer', () => {
         }
       ];
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const { results } = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(false);
@@ -158,7 +158,7 @@ describe('FileRenamer', () => {
         }
       ];
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const { results } = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(false);
@@ -186,7 +186,7 @@ describe('FileRenamer', () => {
       });
       vi.mocked(fs.rename).mockResolvedValue(undefined);
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const { results } = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(true);
@@ -210,7 +210,7 @@ describe('FileRenamer', () => {
         Object.assign(new Error('Permission denied'), { code: 'EACCES' })
       );
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const { results } = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(false);
@@ -236,7 +236,7 @@ describe('FileRenamer', () => {
         return undefined; // base target exists
       });
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const { results } = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(false);
@@ -257,7 +257,7 @@ describe('FileRenamer', () => {
       // All paths exist — even -2 through -99
       vi.mocked(fs.access).mockResolvedValue(undefined);
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const { results } = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(false);
@@ -284,7 +284,7 @@ describe('FileRenamer', () => {
       vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
       vi.mocked(fs.rename).mockResolvedValue(undefined);
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const { results } = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(2);
       expect(results.every(r => r.success)).toBe(true);
@@ -302,7 +302,7 @@ describe('FileRenamer', () => {
         }
       ];
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const { results } = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(false);
@@ -326,7 +326,7 @@ describe('FileRenamer', () => {
 
       vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const { results } = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(true);
@@ -352,7 +352,7 @@ describe('FileRenamer', () => {
       vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
       vi.mocked(fs.rename).mockResolvedValue(undefined);
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const { results } = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(true);
@@ -362,7 +362,7 @@ describe('FileRenamer', () => {
       // Exercises the `!coreFileName || coreFileName.trim().length === 0` branch (lines 95-97)
       const emptyAIService = {
         name: 'EmptyAI',
-        generateFileName: vi.fn().mockResolvedValue('')
+        generateFileName: vi.fn().mockResolvedValue({ name: '', inputTokens: undefined, outputTokens: undefined })
       };
       fileRenamer = new FileRenamer(parserFactory, emptyAIService as any, config);
 
@@ -377,7 +377,7 @@ describe('FileRenamer', () => {
 
       vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const { results } = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(false);
@@ -403,7 +403,7 @@ describe('FileRenamer', () => {
 
       vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const { results } = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(false);
@@ -429,11 +429,11 @@ describe('FileRenamer', () => {
       // Mock fs.access to simulate that new file doesn't exist
       vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
 
-      const results = await fileRenamer.renameFiles(testFiles);
+      const { results } = await fileRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(true);
-      
+
       // Verify AI service was called with the naming convention, category, file info, and language
       expect(generateFileNameSpy).toHaveBeenCalledWith(
         expect.any(String),
@@ -474,11 +474,102 @@ describe('FileRenamer', () => {
       vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
       vi.mocked(fs.rename).mockResolvedValue(undefined);
 
-      const results = await concurrentRenamer.renameFiles(testFiles);
+      const { results } = await concurrentRenamer.renameFiles(testFiles);
 
       expect(results).toHaveLength(3);
       expect(results.every(r => r.success)).toBe(true);
       expect(maxSimultaneous).toBe(2);
+    });
+
+    describe('Token accumulation in renameFiles()', () => {
+      it('should sum tokens across multiple successful files', async () => {
+        mockAIService.setTokenValues(100, 10);
+
+        const testFiles: FileInfo[] = [
+          { path: path.join(testDataDir, 'sample-text.txt'), name: 'sample-text.txt', extension: '.txt', size: 1000 },
+          { path: path.join(testDataDir, 'sample-markdown.md'), name: 'sample-markdown.md', extension: '.md', size: 500 }
+        ];
+
+        vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+        vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+        const { tokenUsage } = await fileRenamer.renameFiles(testFiles);
+
+        expect(tokenUsage.inputTokens).toBe(200);   // 100 × 2 files
+        expect(tokenUsage.outputTokens).toBe(20);   // 10 × 2 files
+      });
+
+      it('should return undefined totals when provider returns undefined tokens', async () => {
+        mockAIService.setTokenValues(undefined, undefined);
+
+        const testFiles: FileInfo[] = [
+          { path: path.join(testDataDir, 'sample-text.txt'), name: 'sample-text.txt', extension: '.txt', size: 1000 }
+        ];
+
+        vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+        vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+        const { tokenUsage } = await fileRenamer.renameFiles(testFiles);
+
+        expect(tokenUsage.inputTokens).toBeUndefined();
+        expect(tokenUsage.outputTokens).toBeUndefined();
+      });
+
+      it('should return tokenUsage with undefined totals when all files fail (no AI called)', async () => {
+        config.maxFileSize = 1; // Force all files to fail size check
+        fileRenamer = new FileRenamer(parserFactory, mockAIService, config);
+
+        const testFiles: FileInfo[] = [
+          { path: path.join(testDataDir, 'sample-text.txt'), name: 'sample-text.txt', extension: '.txt', size: 1000 }
+        ];
+
+        const { results, tokenUsage } = await fileRenamer.renameFiles(testFiles);
+
+        expect(results[0].success).toBe(false);
+        expect(tokenUsage.inputTokens).toBeUndefined();
+        expect(tokenUsage.outputTokens).toBeUndefined();
+      });
+
+      it('should not count tokens for failed files', async () => {
+        let callCount = 0;
+        vi.spyOn(mockAIService, 'generateFileName').mockImplementation(async (...args) => {
+          callCount++;
+          if (callCount === 2) throw new Error('AI failed on second file');
+          return { name: 'project-requirements-document', inputTokens: 100, outputTokens: 10 };
+        });
+
+        const testFiles: FileInfo[] = [
+          { path: path.join(testDataDir, 'sample-text.txt'), name: 'sample-text.txt', extension: '.txt', size: 1000 },
+          { path: path.join(testDataDir, 'sample-markdown.md'), name: 'sample-markdown.md', extension: '.md', size: 500 }
+        ];
+
+        vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+        vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+        const { results, tokenUsage } = await fileRenamer.renameFiles(testFiles);
+
+        expect(results[0].success).toBe(true);
+        expect(results[1].success).toBe(false);
+        expect(tokenUsage.inputTokens).toBe(100);  // Only first file counted
+        expect(tokenUsage.outputTokens).toBe(10);
+      });
+
+      it('should return tokenUsage for no-ai mode with undefined tokens', async () => {
+        config.noAi = true;
+        fileRenamer = new FileRenamer(parserFactory, mockAIService, config);
+
+        const testFiles: FileInfo[] = [
+          { path: path.join(testDataDir, 'sample-text.txt'), name: 'sample-text.txt', extension: '.txt', size: 1000 }
+        ];
+
+        vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+        vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+        const { tokenUsage } = await fileRenamer.renameFiles(testFiles);
+
+        expect(tokenUsage.inputTokens).toBeUndefined();
+        expect(tokenUsage.outputTokens).toBeUndefined();
+      });
     });
   });
 

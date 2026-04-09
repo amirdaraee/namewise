@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
-import { AIProvider, Config, FileInfo } from '../../../src/types/index.js';
+import { AIProvider, Config, FileInfo, AINameResult } from '../../../src/types/index.js';
 
 // ---------------------------------------------------------------------------
 // Temp directory helpers
@@ -46,6 +46,8 @@ export class MockAIService implements AIProvider {
   ]);
   private shouldFail = false;
   private calls: CapturedCall[] = [];
+  private mockInputTokens: number | undefined = 50;
+  private mockOutputTokens: number | undefined = 10;
 
   setResponse(key: string, value: string): void {
     this.responses.set(key, value);
@@ -60,6 +62,11 @@ export class MockAIService implements AIProvider {
     this.shouldFail = fail;
   }
 
+  setTokenValues(inputTokens: number | undefined, outputTokens: number | undefined): void {
+    this.mockInputTokens = inputTokens;
+    this.mockOutputTokens = outputTokens;
+  }
+
   getCallCount(): number {
     return this.calls.length;
   }
@@ -71,6 +78,8 @@ export class MockAIService implements AIProvider {
   reset(): void {
     this.calls = [];
     this.shouldFail = false;
+    this.mockInputTokens = 50;
+    this.mockOutputTokens = 10;
   }
 
   /** Alias kept for backwards compatibility with unit tests. */
@@ -84,7 +93,7 @@ export class MockAIService implements AIProvider {
     namingConvention?: string,
     category?: string,
     fileInfo?: FileInfo
-  ): Promise<string> {
+  ): Promise<AINameResult> {
     this.calls.push({ content, originalName, namingConvention, category, fileInfo });
 
     if (this.shouldFail) {
@@ -93,17 +102,18 @@ export class MockAIService implements AIProvider {
 
     const lower = content.toLowerCase();
 
+    let name: string;
     if (lower.includes('meeting') || lower.includes('attendees')) {
-      return this.responses.get('meeting') ?? 'meeting-notes';
-    }
-    if (lower.includes('requirements') || lower.includes('project')) {
-      return this.responses.get('default') ?? 'project-document';
-    }
-    if (lower.includes('report') || lower.includes('sales')) {
-      return this.responses.get('report') ?? 'business-report';
+      name = this.responses.get('meeting') ?? 'meeting-notes';
+    } else if (lower.includes('requirements') || lower.includes('project')) {
+      name = this.responses.get('default') ?? 'project-document';
+    } else if (lower.includes('report') || lower.includes('sales')) {
+      name = this.responses.get('report') ?? 'business-report';
+    } else {
+      name = `renamed-${originalName.replace(/\.[^/.]+$/, '')}`;
     }
 
-    return `renamed-${originalName.replace(/\.[^/.]+$/, '')}`;
+    return { name, inputTokens: this.mockInputTokens, outputTokens: this.mockOutputTokens };
   }
 }
 

@@ -1,4 +1,4 @@
-import { AIProvider, FileInfo } from '../types/index.js';
+import { AIProvider, FileInfo, AINameResult } from '../types/index.js';
 import { buildFileNamePrompt, AI_SYSTEM_PROMPT } from '../utils/ai-prompts.js';
 import { NamingConvention } from '../utils/naming-conventions.js';
 import { FileCategory } from '../utils/file-templates.js';
@@ -65,7 +65,7 @@ export class LMStudioService implements AIProvider {
     category = 'general',
     fileInfo?: FileInfo,
     language?: string
-  ): Promise<string> {
+  ): Promise<AINameResult> {
     try {
       // Check if this is a scanned PDF image
       const isScannedPDF = content.startsWith('[SCANNED_PDF_IMAGE]:');
@@ -73,7 +73,7 @@ export class LMStudioService implements AIProvider {
       if (isScannedPDF) {
         // LM Studio has limited vision support, so we'll fall back to using the original filename
         console.log('Scanned PDF detected but LMStudio has limited vision support. Using original filename.');
-        return this.sanitizeFilename(originalName);
+        return { name: this.sanitizeFilename(originalName), inputTokens: undefined, outputTokens: undefined };
       }
 
       const prompt = this.buildPrompt(content, originalName, namingConvention, category, fileInfo, language);
@@ -96,7 +96,11 @@ export class LMStudioService implements AIProvider {
       });
 
       if (response.choices?.[0]?.message?.content) {
-        return this.sanitizeFilename(response.choices[0].message.content);
+        return {
+          name: this.sanitizeFilename(response.choices[0].message.content),
+          inputTokens: undefined,
+          outputTokens: undefined
+        };
       } else {
         throw new Error('No response content from LMStudio');
       }

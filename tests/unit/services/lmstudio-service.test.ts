@@ -57,7 +57,7 @@ describe('LMStudioService', () => {
         'document'
       );
 
-      expect(result).toBe('project-requirements-document');
+      expect(result.name).toBe('project-requirements-document');
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:1234/v1/chat/completions',
         expect.objectContaining({
@@ -109,7 +109,7 @@ describe('LMStudioService', () => {
         mockFileInfo
       );
 
-      expect(result).toBe('service-contract-agreement-john-doe');
+      expect(result.name).toBe('service-contract-agreement-john-doe');
       
       const fetchCall = mockFetch.mock.calls[0];
       const requestBody = JSON.parse(fetchCall[1].body);
@@ -175,7 +175,7 @@ describe('LMStudioService', () => {
         'kebab-case'
       );
 
-      expect(result).toBe('project-report'); // Should remove quotes and extension
+      expect(result.name).toBe('project-report'); // Should remove quotes and extension
     });
 
     it('should strip Windows-illegal characters from AI suggestions', async () => {
@@ -195,7 +195,7 @@ describe('LMStudioService', () => {
           })
         });
         const result = await lmstudioService.generateFileName('content', 'file.txt', 'kebab-case');
-        expect(result).toBe(expected);
+        expect(result.name).toBe(expected);
       }
     });
 
@@ -384,7 +384,7 @@ describe('LMStudioService', () => {
       // Should not call fetch for scanned PDFs
       expect(mockFetch).not.toHaveBeenCalled();
       // Should return sanitized original name
-      expect(result).toBe('my-scan-file');
+      expect(result.name).toBe('my-scan-file');
 
       consoleSpy.mockRestore();
     });
@@ -400,6 +400,47 @@ describe('LMStudioService', () => {
       );
 
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Token usage (always undefined for local provider)', () => {
+    it('should return undefined inputTokens and outputTokens', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: 'local-document', role: 'assistant' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 50, completion_tokens: 10, total_tokens: 60 }
+        })
+      });
+
+      const result = await lmstudioService.generateFileName('content', 'file.txt');
+
+      expect(result.name).toBe('local-document');
+      expect(result.inputTokens).toBeUndefined();
+      expect(result.outputTokens).toBeUndefined();
+    });
+
+    it('should return undefined tokens even when API returns usage data', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: 'another-doc', role: 'assistant' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 200, completion_tokens: 20, total_tokens: 220 }
+        })
+      });
+
+      const result = await lmstudioService.generateFileName('content', 'file.txt');
+
+      expect(result.inputTokens).toBeUndefined();
+      expect(result.outputTokens).toBeUndefined();
+    });
+
+    it('should return undefined tokens for scanned PDF fallback path', async () => {
+      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fake';
+      const result = await lmstudioService.generateFileName(scannedContent, 'original-name.pdf');
+
+      expect(result.inputTokens).toBeUndefined();
+      expect(result.outputTokens).toBeUndefined();
     });
   });
 });

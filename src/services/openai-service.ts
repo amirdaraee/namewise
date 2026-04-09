@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { AIProvider, FileInfo } from '../types/index.js';
+import { AIProvider, FileInfo, AINameResult } from '../types/index.js';
 import { applyNamingConvention, stripWindowsIllegalChars, NamingConvention } from '../utils/naming-conventions.js';
 import { FileCategory } from '../utils/file-templates.js';
 import { buildFileNamePrompt } from '../utils/ai-prompts.js';
@@ -14,7 +14,7 @@ export class OpenAIService implements AIProvider {
     this.model = model ?? 'gpt-4o';
   }
 
-  async generateFileName(content: string, originalName: string, namingConvention: string = 'kebab-case', category: string = 'general', fileInfo?: FileInfo, language?: string): Promise<string> {
+  async generateFileName(content: string, originalName: string, namingConvention: string = 'kebab-case', category: string = 'general', fileInfo?: FileInfo, language?: string): Promise<AINameResult> {
     const convention = namingConvention as NamingConvention;
     const fileCategory = category as FileCategory;
 
@@ -87,9 +87,14 @@ export class OpenAIService implements AIProvider {
       }
 
       const suggestedName = response.choices[0]?.message?.content?.trim() || 'untitled-document';
-      
+
       // Clean and validate the suggested name
-      return this.sanitizeFileName(suggestedName, convention);
+      const name = this.sanitizeFileName(suggestedName, convention);
+      return {
+        name,
+        inputTokens: response.usage?.prompt_tokens,
+        outputTokens: response.usage?.completion_tokens
+      };
     } catch (error) {
       console.error('OpenAI API error:', error);
       throw new Error(`Failed to generate filename with OpenAI: ${error instanceof Error ? error.message : 'Unknown error'}`);

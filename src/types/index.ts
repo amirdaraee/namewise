@@ -35,9 +35,23 @@ export interface RenameResult {
   error?: string;
 }
 
+export interface AINameResult {
+  name: string;
+  inputTokens?: number;
+  outputTokens?: number;
+}
+
+export interface RenameSessionResult {
+  results: RenameResult[];
+  tokenUsage: {
+    inputTokens?: number;
+    outputTokens?: number;
+  };
+}
+
 export interface AIProvider {
   name: string;
-  generateFileName: (content: string, originalName: string, namingConvention?: string, category?: string, fileInfo?: FileInfo, language?: string) => Promise<string>;
+  generateFileName: (content: string, originalName: string, namingConvention?: string, category?: string, fileInfo?: FileInfo, language?: string) => Promise<AINameResult>;
 }
 
 export type NamingConvention = 'kebab-case' | 'snake_case' | 'camelCase' | 'PascalCase' | 'lowercase' | 'UPPERCASE';

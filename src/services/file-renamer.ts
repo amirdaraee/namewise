@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { FileInfo, Config, RenameResult, AIProvider } from '../types/index.js';
+import { FileInfo, Config, RenameResult, AIProvider, AINameResult, RenameSessionResult } from '../types/index.js';
 import { DocumentParserFactory } from '../parsers/factory.js';
 import { categorizeFile, applyTemplate } from '../utils/file-templates.js';
 
@@ -11,8 +11,10 @@ export class FileRenamer {
     private config: Config
   ) {}
 
-  async renameFiles(files: FileInfo[]): Promise<RenameResult[]> {
+  async renameFiles(files: FileInfo[]): Promise<RenameSessionResult> {
     const results: RenameResult[] = new Array(files.length);
+    let totalInputTokens: number | undefined = undefined;
+    let totalOutputTokens: number | undefined = undefined;
     const concurrency = this.config.concurrency ?? 3;
     let completedCount = 0;
     let lastProgressLength = 0;
@@ -40,7 +42,14 @@ export class FileRenamer {
     await Promise.all(files.map(async (file, index) => {
       await acquire();
       try {
-        results[index] = await this.renameFile(file);
+        const { result, inputTokens, outputTokens } = await this.renameFile(file);
+        results[index] = result;
+        if (inputTokens !== undefined) {
+          totalInputTokens = (totalInputTokens ?? 0) + inputTokens;
+        }
+        if (outputTokens !== undefined) {
+          totalOutputTokens = (totalOutputTokens ?? 0) + outputTokens;
+        }
       } catch (error) {
         results[index] = {
           originalPath: file.path,
@@ -74,10 +83,16 @@ export class FileRenamer {
       process.stdout.write(clearFinal);
     }
 
-    return results;
+    return {
+      results,
+      tokenUsage: {
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens
+      }
+    };
   }
 
-  private async renameFile(file: FileInfo): Promise<RenameResult> {
+  private async renameFile(file: FileInfo): Promise<{ result: RenameResult; inputTokens?: number; outputTokens?: number }> {
     // Check file size
     if (file.size > this.config.maxFileSize) {
       throw new Error(`File size (${Math.round(file.size / 1024 / 1024)}MB) exceeds maximum allowed size (${Math.round(this.config.maxFileSize / 1024 / 1024)}MB)`);
@@ -105,12 +120,16 @@ export class FileRenamer {
       : this.config.templateOptions.category;
 
     // Generate core filename using AI (or metadata if --no-ai)
-    const coreFileName = this.config.noAi
-      ? this.buildNameFromMetadata(file)
-      : await this.aiService.generateFileName(content, file.name, this.config.namingConvention, fileCategory, file, this.config.language);
-    if (!coreFileName || coreFileName.trim().length === 0) {
+    let aiResult: AINameResult;
+    if (this.config.noAi) {
+      aiResult = { name: this.buildNameFromMetadata(file), inputTokens: undefined, outputTokens: undefined };
+    } else {
+      aiResult = await this.aiService.generateFileName(content, file.name, this.config.namingConvention, fileCategory, file, this.config.language);
+    }
+    if (!aiResult.name || aiResult.name.trim().length === 0) {
       throw new Error('Failed to generate a filename');
     }
+    const coreFileName = aiResult.name;
 
     // Apply template to include personal info, dates, etc.
     const templatedName = applyTemplate(
@@ -134,10 +153,14 @@ export class FileRenamer {
     }
 
     return {
-      originalPath: file.path,
-      newPath: finalPath,
-      suggestedName: path.basename(finalPath),
-      success: true
+      result: {
+        originalPath: file.path,
+        newPath: finalPath,
+        suggestedName: path.basename(finalPath),
+        success: true
+      },
+      inputTokens: aiResult.inputTokens,
+      outputTokens: aiResult.outputTokens
     };
   }
 

@@ -38,7 +38,7 @@ describe('FileRenamer with --no-ai', () => {
   it('uses document title from metadata when available', async () => {
     const { renamer, ai } = makeRenamer();
     const file = makeFileInfo('/test/dir/document.pdf', { size: 100 });
-    const results = await renamer.renameFiles([file]);
+    const { results } = await renamer.renameFiles([file]);
     expect(ai.getCallCount()).toBe(0);
     expect(results[0].suggestedName.toLowerCase()).toContain('my');
   });
@@ -55,7 +55,7 @@ describe('FileRenamer with --no-ai', () => {
 
     const { renamer, ai } = makeRenamer(noTitleFactory);
     const file = makeFileInfo('/test/dir/document.pdf', { size: 100 });
-    const results = await renamer.renameFiles([file]);
+    const { results } = await renamer.renameFiles([file]);
     expect(ai.getCallCount()).toBe(0);
     expect(results[0].suggestedName.toLowerCase()).toContain('jane');
   });
@@ -72,7 +72,7 @@ describe('FileRenamer with --no-ai', () => {
 
     const { renamer, ai } = makeRenamer(authorOnlyFactory);
     const file = makeFileInfo('/test/dir/document.pdf', { size: 100 });
-    const results = await renamer.renameFiles([file]);
+    const { results } = await renamer.renameFiles([file]);
     expect(ai.getCallCount()).toBe(0);
     expect(results[0].suggestedName.toLowerCase()).toContain('bob');
   });
@@ -86,7 +86,7 @@ describe('FileRenamer with --no-ai', () => {
 
     const { renamer, ai } = makeRenamer(noMetaFactory);
     const file = makeFileInfo('/test/dir/my_original_file.pdf', { size: 100 });
-    const results = await renamer.renameFiles([file]);
+    const { results } = await renamer.renameFiles([file]);
     expect(ai.getCallCount()).toBe(0);
     expect(results[0].suggestedName.toLowerCase()).toContain('original');
   });

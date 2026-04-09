@@ -512,7 +512,24 @@ Supported keys: `provider`, `apiKey`, `case`, `template`, `name`, `date`, `maxSi
 4. **Template & Convention**: Applies the chosen category template and naming convention; for `document` and `photo` templates, uses the document's own creation date from metadata when available
 5. **Conflict Resolution**: If the target name exists, auto-numbers (`-2`, `-3`, …)
 6. **Rename / Preview**: Renames files on disk, or shows a preview in dry-run mode
-7. **History**: Saves the session to `~/.namewise/history.json` for later undo
+7. **History**: Saves the session to `~/.namewise/history.json` for later undo (includes token usage for cloud providers)
+
+### Token Usage
+
+After each `rename` session using a cloud provider (Claude or OpenAI), Namewise displays token counts in the stats summary:
+
+```
+Stats: 1.2s elapsed | 0.45 MB processed | 2 PDF, 1 TXT
+Tokens: 1,240 input / 87 output
+```
+
+Token usage is also saved to `~/.namewise/history.json` alongside the rename records, so you can track API consumption over time.
+
+For local providers (Ollama, LMStudio), token counts are not available:
+
+```
+Tokens: N/A (local provider)
+```
 
 ## Safety Features
 

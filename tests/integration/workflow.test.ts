@@ -36,7 +36,7 @@ describe('Workflow Integration Tests', () => {
       const fileInfo = makeFileInfo(filePath, { size: stat.size });
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
 
-      const results = await renamer.renameFiles([fileInfo]);
+      const { results } = await renamer.renameFiles([fileInfo]);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(true);
@@ -53,7 +53,7 @@ describe('Workflow Integration Tests', () => {
       const mdStat = await fs.stat(mdPath);
 
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
-      const results = await renamer.renameFiles([
+      const { results } = await renamer.renameFiles([
         makeFileInfo(txtPath, { size: txtStat.size }),
         makeFileInfo(mdPath, { size: mdStat.size })
       ]);
@@ -75,7 +75,7 @@ describe('Workflow Integration Tests', () => {
       const fileInfo = makeFileInfo(filePath, { size: stat.size });
 
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: false }));
-      const results = await renamer.renameFiles([fileInfo]);
+      const { results } = await renamer.renameFiles([fileInfo]);
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(true);
@@ -93,7 +93,7 @@ describe('Workflow Integration Tests', () => {
       const fileInfo = makeFileInfo(filePath, { size: 20 * 1024 * 1024 }); // 20 MB
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ maxFileSize: 10 * 1024 * 1024 }));
 
-      const results = await renamer.renameFiles([fileInfo]);
+      const { results } = await renamer.renameFiles([fileInfo]);
 
       expect(results[0].success).toBe(false);
       expect(results[0].error).toContain('exceeds maximum');
@@ -105,7 +105,7 @@ describe('Workflow Integration Tests', () => {
       const fileInfo = makeFileInfo(filePath, { size: 0 });
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig());
 
-      const results = await renamer.renameFiles([fileInfo]);
+      const { results } = await renamer.renameFiles([fileInfo]);
 
       expect(results[0].success).toBe(false);
       expect(results[0].error).toContain('No content');
@@ -118,7 +118,7 @@ describe('Workflow Integration Tests', () => {
       const fileInfo = makeFileInfo(unsupportedPath, { extension: '.xyz', size: 12 });
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig());
 
-      const results = await renamer.renameFiles([fileInfo]);
+      const { results } = await renamer.renameFiles([fileInfo]);
 
       expect(results[0].success).toBe(false);
       expect(results[0].error).toContain('No parser available');
@@ -132,7 +132,7 @@ describe('Workflow Integration Tests', () => {
       const fileInfo = makeFileInfo(filePath, { size: stat.size });
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig());
 
-      const results = await renamer.renameFiles([fileInfo]);
+      const { results } = await renamer.renameFiles([fileInfo]);
 
       expect(results[0].success).toBe(false);
       expect(results[0].error).toContain('Mock AI service failed');
@@ -148,7 +148,7 @@ describe('Workflow Integration Tests', () => {
       await fs.writeFile(path.join(tempDir, suggestedName), 'existing');
 
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: false }));
-      const results = await renamer.renameFiles([fileInfo]);
+      const { results } = await renamer.renameFiles([fileInfo]);
 
       // Auto-numbering should succeed with a -2 suffix
       expect(results[0].success).toBe(true);
@@ -171,7 +171,7 @@ describe('Workflow Integration Tests', () => {
       });
 
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
-      const results = await renamer.renameFiles([
+      const { results } = await renamer.renameFiles([
         makeFileInfo(goodPath1, { size: goodStat1.size }),
         oversize,
         makeFileInfo(goodPath2, { size: goodStat2.size })
@@ -203,7 +203,7 @@ describe('Workflow Integration Tests', () => {
         makeConfig({ dryRun: true, namingConvention: convention })
       );
 
-      const results = await renamer.renameFiles([fileInfo]);
+      const { results } = await renamer.renameFiles([fileInfo]);
 
       expect(results[0].success).toBe(true);
       expect(results[0].suggestedName).toMatch(pattern);
@@ -229,9 +229,11 @@ describe('Workflow Integration Tests', () => {
         })
       );
 
-      const [generalResult] = await generalRenamer.renameFiles([makeFileInfo(filePath, { size: stat.size })]);
+      const { results: generalResults } = await generalRenamer.renameFiles([makeFileInfo(filePath, { size: stat.size })]);
+      const [generalResult] = generalResults;
       mockAI.reset();
-      const [documentResult] = await documentRenamer.renameFiles([makeFileInfo(filePath, { size: stat.size })]);
+      const { results: documentResults } = await documentRenamer.renameFiles([makeFileInfo(filePath, { size: stat.size })]);
+      const [documentResult] = documentResults;
 
       expect(generalResult.success).toBe(true);
       expect(documentResult.success).toBe(true);
@@ -239,6 +241,51 @@ describe('Workflow Integration Tests', () => {
       // Document template includes personalName → the names differ
       expect(generalResult.suggestedName).not.toBe(documentResult.suggestedName);
       expect(documentResult.suggestedName).toContain('testuser');
+    });
+  });
+
+  describe('token usage in RenameSessionResult', () => {
+    it('should return token counts from MockAIService in RenameSessionResult', async () => {
+      const filePath = await copyTestFile('sample-text.txt', tempDir);
+      const stat = await fs.stat(filePath);
+      const fileInfo = makeFileInfo(filePath, { size: stat.size });
+      mockAI.setTokenValues(120, 8);
+      const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
+
+      const { results, tokenUsage } = await renamer.renameFiles([fileInfo]);
+
+      expect(results[0].success).toBe(true);
+      expect(tokenUsage.inputTokens).toBe(120);
+      expect(tokenUsage.outputTokens).toBe(8);
+    });
+
+    it('should return undefined token totals when provider returns undefined tokens', async () => {
+      const filePath = await copyTestFile('sample-text.txt', tempDir);
+      const stat = await fs.stat(filePath);
+      const fileInfo = makeFileInfo(filePath, { size: stat.size });
+      mockAI.setTokenValues(undefined, undefined);
+      const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
+
+      const { tokenUsage } = await renamer.renameFiles([fileInfo]);
+
+      expect(tokenUsage.inputTokens).toBeUndefined();
+      expect(tokenUsage.outputTokens).toBeUndefined();
+    });
+
+    it('should accumulate tokens across multiple files', async () => {
+      const txtPath = await copyTestFile('sample-text.txt', tempDir);
+      const mdPath = await copyTestFile('sample-markdown.md', tempDir);
+      const [txtStat, mdStat] = await Promise.all([fs.stat(txtPath), fs.stat(mdPath)]);
+      mockAI.setTokenValues(50, 5);
+      const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
+
+      const { tokenUsage } = await renamer.renameFiles([
+        makeFileInfo(txtPath, { size: txtStat.size }),
+        makeFileInfo(mdPath, { size: mdStat.size })
+      ]);
+
+      expect(tokenUsage.inputTokens).toBe(100);  // 50 × 2
+      expect(tokenUsage.outputTokens).toBe(10);  // 5 × 2
     });
   });
 });

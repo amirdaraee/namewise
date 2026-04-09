@@ -85,7 +85,8 @@ How it works:
   5. Uses AI to analyze content and generate descriptive names
   6. Applies your chosen template and naming convention
   7. Renames files (or shows preview with --dry-run)
-  8. Saves session to ~/.namewise/history.json for later undo
+  8. Saves session to ~/.namewise/history.json for later undo (includes token usage for cloud providers)
+  9. Displays token usage stats (input/output tokens) for Claude and OpenAI; local providers show N/A
 
 Pro Tips:
   - Always use --dry-run first to preview changes
@@ -93,6 +94,7 @@ Pro Tips:
   - Run "namewise init" once to save your API key and preferences
   - Use "namewise undo" to reverse the last rename session
   - Set API keys as environment variables: ANTHROPIC_API_KEY or OPENAI_API_KEY
+  - Token counts (input/output) are shown after each session and saved to history for cloud providers
 
 Local LLM Setup:
   Ollama:   start with "ollama serve" (default: http://localhost:11434)

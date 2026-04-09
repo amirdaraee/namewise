@@ -3,7 +3,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { DocumentParserFactory } from '../../src/parsers/factory.js';
 import { FileRenamer } from '../../src/services/file-renamer.js';
-import { AIProvider, FileInfo } from '../../src/types/index.js';
+import { AIProvider, AINameResult, FileInfo } from '../../src/types/index.js';
 import {
   createTempDir,
   copyTestFile,
@@ -25,12 +25,12 @@ class TrackingAIService implements AIProvider {
   async generateFileName(
     _content: string,
     originalName: string
-  ): Promise<string> {
+  ): Promise<AINameResult> {
     this.active++;
     if (this.active > this.maxSimultaneous) this.maxSimultaneous = this.active;
     await new Promise(r => setTimeout(r, this.delay));
     this.active--;
-    return `renamed-${originalName.replace(/\.[^/.]+$/, '')}`;
+    return { name: `renamed-${originalName.replace(/\.[^/.]+$/, '')}` };
   }
 }
 
@@ -79,7 +79,7 @@ describe('Concurrency control', () => {
     const trackingAI = new TrackingAIService(10);
     const renamer = new FileRenamer(parserFactory, trackingAI, makeConfig({ dryRun: true, concurrency: 1 }));
 
-    const results = await renamer.renameFiles(files);
+    const { results } = await renamer.renameFiles(files);
 
     expect(results).toHaveLength(3);
     expect(results.every(r => r.success)).toBe(true);
@@ -99,7 +99,7 @@ describe('Concurrency control', () => {
     const trackingAI = new TrackingAIService(20);
     const renamer = new FileRenamer(parserFactory, trackingAI, makeConfig({ dryRun: true, concurrency: 4 }));
 
-    const results = await renamer.renameFiles(files);
+    const { results } = await renamer.renameFiles(files);
 
     expect(results).toHaveLength(count);
     expect(results.filter(r => r.success)).toHaveLength(count);

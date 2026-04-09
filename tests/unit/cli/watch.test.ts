@@ -62,12 +62,15 @@ vi.mock('../../../src/utils/history.js', () => ({
 // ─── FileRenamer mock ─────────────────────────────────────────────────────────
 vi.mock('../../../src/services/file-renamer.js', () => ({
   FileRenamer: vi.fn().mockImplementation(() => ({
-    renameFiles: vi.fn().mockResolvedValue([{
-      originalPath: '/watch/dir/document.pdf',
-      newPath: '/watch/dir/renamed.pdf',
-      suggestedName: 'renamed.pdf',
-      success: true
-    }])
+    renameFiles: vi.fn().mockResolvedValue({
+      results: [{
+        originalPath: '/watch/dir/document.pdf',
+        newPath: '/watch/dir/renamed.pdf',
+        suggestedName: 'renamed.pdf',
+        success: true
+      }],
+      tokenUsage: { inputTokens: 100, outputTokens: 10 }
+    })
   }))
 }));
 
@@ -156,12 +159,15 @@ describe('watchDirectory()', () => {
 
     // Re-set FileRenamer mock
     vi.mocked(FileRenamer).mockImplementation(() => ({
-      renameFiles: vi.fn().mockResolvedValue([{
-        originalPath: '/watch/dir/document.pdf',
-        newPath: '/watch/dir/renamed.pdf',
-        suggestedName: 'renamed.pdf',
-        success: true
-      }])
+      renameFiles: vi.fn().mockResolvedValue({
+        results: [{
+          originalPath: '/watch/dir/document.pdf',
+          newPath: '/watch/dir/renamed.pdf',
+          suggestedName: 'renamed.pdf',
+          success: true
+        }],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      })
     }) as any);
 
     // Re-set appendHistory mock
@@ -337,12 +343,15 @@ describe('watchDirectory()', () => {
 
     it('logs "no rename needed" when original and new path are the same', async () => {
       vi.mocked(FileRenamer).mockImplementationOnce(() => ({
-        renameFiles: vi.fn().mockResolvedValue([{
-          originalPath: '/watch/dir/document.pdf',
-          newPath: '/watch/dir/document.pdf',
-          suggestedName: 'document.pdf',
-          success: true
-        }])
+        renameFiles: vi.fn().mockResolvedValue({
+          results: [{
+            originalPath: '/watch/dir/document.pdf',
+            newPath: '/watch/dir/document.pdf',
+            suggestedName: 'document.pdf',
+            success: true
+          }],
+          tokenUsage: { inputTokens: undefined, outputTokens: undefined }
+        })
       }) as any);
 
       const logCalls: string[] = [];

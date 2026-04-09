@@ -45,7 +45,7 @@ describe('Parser Pipeline Integration Tests', () => {
       const stat = await fs.stat(filePath);
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
 
-      const results = await renamer.renameFiles([makeFileInfo(filePath, { size: stat.size })]);
+      const { results } = await renamer.renameFiles([makeFileInfo(filePath, { size: stat.size })]);
 
       expect(results[0].success).toBe(true);
       expect(results[0].suggestedName).toMatch(/\.txt$/);
@@ -84,7 +84,7 @@ describe('Parser Pipeline Integration Tests', () => {
       const stat = await fs.stat(filePath);
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
 
-      const results = await renamer.renameFiles([makeFileInfo(filePath, { size: stat.size })]);
+      const { results } = await renamer.renameFiles([makeFileInfo(filePath, { size: stat.size })]);
 
       expect(results[0].success).toBe(true);
       expect(results[0].suggestedName).toMatch(/\.md$/);
@@ -110,7 +110,7 @@ describe('Parser Pipeline Integration Tests', () => {
       const stat = await fs.stat(filePath);
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
 
-      const results = await renamer.renameFiles([makeFileInfo(filePath, { size: stat.size, extension: '.pdf' })]);
+      const { results } = await renamer.renameFiles([makeFileInfo(filePath, { size: stat.size, extension: '.pdf' })]);
 
       expect(results[0].success).toBe(true);
       expect(results[0].suggestedName).toMatch(/\.pdf$/);
@@ -142,7 +142,7 @@ describe('Parser Pipeline Integration Tests', () => {
       const stat = await fs.stat(filePath);
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
 
-      const results = await renamer.renameFiles([makeFileInfo(filePath, { size: stat.size, extension: '.docx' })]);
+      const { results } = await renamer.renameFiles([makeFileInfo(filePath, { size: stat.size, extension: '.docx' })]);
 
       expect(results[0].success).toBe(true);
       expect(results[0].suggestedName).toMatch(/\.docx$/);
@@ -178,7 +178,7 @@ describe('Parser Pipeline Integration Tests', () => {
       const stat = await fs.stat(filePath);
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
 
-      const results = await renamer.renameFiles([makeFileInfo(filePath, { size: stat.size, extension: '.xlsx' })]);
+      const { results } = await renamer.renameFiles([makeFileInfo(filePath, { size: stat.size, extension: '.xlsx' })]);
 
       expect(results[0].success).toBe(true);
       expect(results[0].suggestedName).toMatch(/\.xlsx$/);
@@ -193,7 +193,7 @@ describe('Parser Pipeline Integration Tests', () => {
       const fileInfo = makeFileInfo(unsupportedPath, { extension: '.xyz', size: 12 });
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig());
 
-      const results = await renamer.renameFiles([fileInfo]);
+      const { results } = await renamer.renameFiles([fileInfo]);
 
       expect(results[0].success).toBe(false);
       expect(results[0].error).toContain('No parser available');

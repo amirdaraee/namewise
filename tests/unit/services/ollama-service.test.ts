@@ -50,7 +50,7 @@ describe('OllamaService', () => {
         'document'
       );
 
-      expect(result).toBe('project-requirements-document');
+      expect(result.name).toBe('project-requirements-document');
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:11434/api/chat',
         expect.objectContaining({
@@ -100,7 +100,7 @@ describe('OllamaService', () => {
         mockFileInfo
       );
 
-      expect(result).toBe('service-contract-agreement-john-doe');
+      expect(result.name).toBe('service-contract-agreement-john-doe');
       
       const fetchCall = mockFetch.mock.calls[0];
       const requestBody = JSON.parse(fetchCall[1].body);
@@ -132,7 +132,7 @@ describe('OllamaService', () => {
         'kebab-case'
       );
 
-      expect(result).toBe('project-report'); // Should remove quotes and extension
+      expect(result.name).toBe('project-report'); // Should remove quotes and extension
     });
 
     it('should strip Windows-illegal characters from AI suggestions', async () => {
@@ -153,7 +153,7 @@ describe('OllamaService', () => {
           })
         });
         const result = await ollamaService.generateFileName('content', 'file.txt', 'kebab-case');
-        expect(result).toBe(expected);
+        expect(result.name).toBe(expected);
       }
     });
 
@@ -387,6 +387,25 @@ describe('OllamaService', () => {
       const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
       const userMsg = requestBody.messages.find((m: any) => m.role === 'user');
       expect(userMsg.images[0]).toBe(rawBase64);
+    });
+  });
+
+  describe('Token usage (always undefined for local provider)', () => {
+    it('should return undefined inputTokens and outputTokens', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          model: 'llama3.1',
+          message: { content: 'some-document', role: 'assistant' },
+          done: true
+        })
+      });
+
+      const result = await ollamaService.generateFileName('content', 'file.txt');
+
+      expect(result.name).toBe('some-document');
+      expect(result.inputTokens).toBeUndefined();
+      expect(result.outputTokens).toBeUndefined();
     });
   });
 });

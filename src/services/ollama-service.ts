@@ -1,4 +1,4 @@
-import { AIProvider, FileInfo } from '../types/index.js';
+import { AIProvider, FileInfo, AINameResult } from '../types/index.js';
 import { buildFileNamePrompt, AI_SYSTEM_PROMPT } from '../utils/ai-prompts.js';
 import { NamingConvention } from '../utils/naming-conventions.js';
 import { FileCategory } from '../utils/file-templates.js';
@@ -54,7 +54,7 @@ export class OllamaService implements AIProvider {
     category = 'general',
     fileInfo?: FileInfo,
     language?: string
-  ): Promise<string> {
+  ): Promise<AINameResult> {
     try {
       // Check if this is a scanned PDF image
       const isScannedPDF = content.startsWith('[SCANNED_PDF_IMAGE]:');
@@ -114,7 +114,11 @@ export class OllamaService implements AIProvider {
       }
 
       if (response.message?.content) {
-        return this.sanitizeFilename(response.message.content);
+        return {
+          name: this.sanitizeFilename(response.message.content),
+          inputTokens: undefined,
+          outputTokens: undefined
+        };
       } else {
         throw new Error('No response content from Ollama');
       }

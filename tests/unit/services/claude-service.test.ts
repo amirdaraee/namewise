@@ -38,13 +38,14 @@ describe('ClaudeService', () => {
 
     beforeEach(() => {
       mockClient.messages.create.mockResolvedValue({
-        content: [{ type: 'text', text: 'project requirements document q4 2024' }]
+        content: [{ type: 'text', text: 'project requirements document q4 2024' }],
+        usage: { input_tokens: 100, output_tokens: 10 }
       });
     });
 
     it('should generate filename with kebab-case convention (default)', async () => {
       const result = await service.generateFileName(sampleContent, originalName);
-      
+
       expect(mockClient.messages.create).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'claude-sonnet-4-5-20250929',
@@ -54,13 +55,13 @@ describe('ClaudeService', () => {
           })]
         })
       );
-      
-      expect(result).toBe('project-requirements-document-q4-2024');
+
+      expect(result.name).toBe('project-requirements-document-q4-2024');
     });
 
     it('should generate filename with snake_case convention', async () => {
       const result = await service.generateFileName(sampleContent, originalName, 'snake_case');
-      
+
       expect(mockClient.messages.create).toHaveBeenCalledWith(
         expect.objectContaining({
           messages: [expect.objectContaining({
@@ -68,17 +69,18 @@ describe('ClaudeService', () => {
           })]
         })
       );
-      
-      expect(result).toBe('project_requirements_document_q4_2024');
+
+      expect(result.name).toBe('project_requirements_document_q4_2024');
     });
 
     it('should generate filename with camelCase convention', async () => {
       mockClient.messages.create.mockResolvedValue({
-        content: [{ type: 'text', text: 'project requirements document q4 2024' }]
+        content: [{ type: 'text', text: 'project requirements document q4 2024' }],
+        usage: { input_tokens: 100, output_tokens: 10 }
       });
 
       const result = await service.generateFileName(sampleContent, originalName, 'camelCase');
-      
+
       expect(mockClient.messages.create).toHaveBeenCalledWith(
         expect.objectContaining({
           messages: [expect.objectContaining({
@@ -86,13 +88,13 @@ describe('ClaudeService', () => {
           })]
         })
       );
-      
-      expect(result).toBe('projectRequirementsDocumentQ42024');
+
+      expect(result.name).toBe('projectRequirementsDocumentQ42024');
     });
 
     it('should generate filename with PascalCase convention', async () => {
       const result = await service.generateFileName(sampleContent, originalName, 'PascalCase');
-      
+
       expect(mockClient.messages.create).toHaveBeenCalledWith(
         expect.objectContaining({
           messages: [expect.objectContaining({
@@ -100,8 +102,8 @@ describe('ClaudeService', () => {
           })]
         })
       );
-      
-      expect(result).toBe('ProjectRequirementsDocumentQ42024');
+
+      expect(result.name).toBe('ProjectRequirementsDocumentQ42024');
     });
 
     it('should include original filename and content in prompt', async () => {
@@ -142,54 +144,59 @@ describe('ClaudeService', () => {
 
     it('should handle non-text response content', async () => {
       mockClient.messages.create.mockResolvedValue({
-        content: [{ type: 'image', text: null }]
+        content: [{ type: 'image', text: null }],
+        usage: { input_tokens: 100, output_tokens: 10 }
       });
-      
+
       const result = await service.generateFileName('content', 'file.txt');
-      expect(result).toBe('untitled-document');
+      expect(result.name).toBe('untitled-document');
     });
 
     it('should handle empty response', async () => {
       mockClient.messages.create.mockResolvedValue({
-        content: [{ type: 'text', text: '   ' }]
+        content: [{ type: 'text', text: '   ' }],
+        usage: { input_tokens: 100, output_tokens: 10 }
       });
-      
+
       const result = await service.generateFileName('content', 'file.txt');
-      expect(result).toBe('untitled-document');
+      expect(result.name).toBe('untitled-document');
     });
   });
 
   describe('Filename Sanitization', () => {
     beforeEach(() => {
       mockClient.messages.create.mockResolvedValue({
-        content: [{ type: 'text', text: 'Test File@#$ Name.pdf' }]
+        content: [{ type: 'text', text: 'Test File@#$ Name.pdf' }],
+        usage: { input_tokens: 100, output_tokens: 10 }
       });
     });
 
     it('should remove file extensions from AI suggestions', async () => {
       const result = await service.generateFileName('content', 'original.txt', 'kebab-case');
-      expect(result).toBe('test-file-name');
+      expect(result.name).toBe('test-file-name');
     });
 
     it('should handle very long filenames', async () => {
       mockClient.messages.create.mockResolvedValue({
-        content: [{ type: 'text', text: 'a'.repeat(150) }]
+        content: [{ type: 'text', text: 'a'.repeat(150) }],
+        usage: { input_tokens: 100, output_tokens: 10 }
       });
 
       const result = await service.generateFileName('content', 'file.txt', 'kebab-case');
-      expect(result.length).toBeLessThanOrEqual(100);
+      expect(result.name.length).toBeLessThanOrEqual(100);
     });
 
     it('should preserve naming convention when truncating', async () => {
       mockClient.messages.create.mockResolvedValue({
-        content: [{ type: 'text', text: 'very long filename that should be truncated properly' }]
+        content: [{ type: 'text', text: 'very long filename that should be truncated properly' }],
+        usage: { input_tokens: 100, output_tokens: 10 }
       });
 
       const kebabResult = await service.generateFileName('content', 'file.txt', 'kebab-case');
-      expect(kebabResult).not.toMatch(/-$/); // Should not end with hyphen
+      expect(kebabResult.name).not.toMatch(/-$/); // Should not end with hyphen
 
       const snakeResult = await service.generateFileName('content', 'file.txt', 'snake_case');
-      expect(snakeResult).not.toMatch(/_$/); // Should not end with underscore
+      expect(snakeResult.name).not.toMatch(/_$/); // Should not end with underscore
     });
 
     it('should strip Windows-illegal characters from AI suggestions', async () => {
@@ -203,10 +210,11 @@ describe('ClaudeService', () => {
 
       for (const [input, expected] of illegalChars) {
         mockClient.messages.create.mockResolvedValue({
-          content: [{ type: 'text', text: input }]
+          content: [{ type: 'text', text: input }],
+          usage: { input_tokens: 100, output_tokens: 10 }
         });
         const result = await service.generateFileName('content', 'file.txt', 'kebab-case');
-        expect(result).toBe(expected);
+        expect(result.name).toBe(expected);
       }
     });
 
@@ -214,12 +222,13 @@ describe('ClaudeService', () => {
       // This name becomes exactly 101 chars in snake_case, so truncation is triggered
       // After substring(0, 100), it ends with '_' which gets cleaned up
       mockClient.messages.create.mockResolvedValue({
-        content: [{ type: 'text', text: 'a_very_long_filename_that_exceeds_the_one_hundred_character_limit_and_needs_truncation_applied_here_x' }]
+        content: [{ type: 'text', text: 'a_very_long_filename_that_exceeds_the_one_hundred_character_limit_and_needs_truncation_applied_here_x' }],
+        usage: { input_tokens: 100, output_tokens: 10 }
       });
 
       const result = await service.generateFileName('content', 'file.txt', 'snake_case');
-      expect(result.length).toBeLessThanOrEqual(100);
-      expect(result).not.toMatch(/_$/);
+      expect(result.name.length).toBeLessThanOrEqual(100);
+      expect(result.name).not.toMatch(/_$/);
     });
   });
 
@@ -240,7 +249,8 @@ describe('ClaudeService', () => {
 
     it('should handle scanned PDF with JPEG image using vision model', async () => {
       mockClient.messages.create.mockResolvedValue({
-        content: [{ type: 'text', text: 'visa-application' }]
+        content: [{ type: 'text', text: 'visa-application' }],
+        usage: { input_tokens: 100, output_tokens: 10 }
       });
 
       const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fakebase64data';
@@ -260,12 +270,13 @@ describe('ClaudeService', () => {
           })]
         })
       );
-      expect(result).toBe('visa-application');
+      expect(result.name).toBe('visa-application');
     });
 
     it('should handle scanned PDF with PNG image', async () => {
       mockClient.messages.create.mockResolvedValue({
-        content: [{ type: 'text', text: 'document-scan' }]
+        content: [{ type: 'text', text: 'document-scan' }],
+        usage: { input_tokens: 100, output_tokens: 10 }
       });
 
       const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/png;base64,iVBORwfakedata';
@@ -274,12 +285,13 @@ describe('ClaudeService', () => {
       const call = mockClient.messages.create.mock.calls[0][0];
       const imageContent = call.messages[0].content.find((c: any) => c.type === 'image');
       expect(imageContent.source.media_type).toBe('image/png');
-      expect(result).toBe('document-scan');
+      expect(result.name).toBe('document-scan');
     });
 
     it('should extract base64 data correctly from scanned PDF content', async () => {
       mockClient.messages.create.mockResolvedValue({
-        content: [{ type: 'text', text: 'scanned-document' }]
+        content: [{ type: 'text', text: 'scanned-document' }],
+        usage: { input_tokens: 100, output_tokens: 10 }
       });
 
       const base64Data = '/9j/4AAQSkZJRgABAQ==';
@@ -297,7 +309,8 @@ describe('ClaudeService', () => {
       const defaultService = new ClaudeService('test-key');
       const defaultClient = (defaultService as any).client;
       defaultClient.messages.create.mockResolvedValue({
-        content: [{ type: 'text', text: 'test-name' }]
+        content: [{ type: 'text', text: 'test-name' }],
+        usage: { input_tokens: 100, output_tokens: 10 }
       });
 
       await defaultService.generateFileName('sample content', 'file.txt');
@@ -312,7 +325,8 @@ describe('ClaudeService', () => {
       const customService = new ClaudeService('test-key', customModel);
       const customClient = (customService as any).client;
       customClient.messages.create.mockResolvedValue({
-        content: [{ type: 'text', text: 'test-name' }]
+        content: [{ type: 'text', text: 'test-name' }],
+        usage: { input_tokens: 100, output_tokens: 10 }
       });
 
       await customService.generateFileName('sample content', 'file.txt');
@@ -327,7 +341,8 @@ describe('ClaudeService', () => {
       const customService = new ClaudeService('test-key', customModel);
       const customClient = (customService as any).client;
       customClient.messages.create.mockResolvedValue({
-        content: [{ type: 'text', text: 'scanned-doc' }]
+        content: [{ type: 'text', text: 'scanned-doc' }],
+        usage: { input_tokens: 100, output_tokens: 10 }
       });
 
       const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fake';
@@ -336,6 +351,47 @@ describe('ClaudeService', () => {
       expect(customClient.messages.create).toHaveBeenCalledWith(
         expect.objectContaining({ model: customModel })
       );
+    });
+  });
+
+  describe('Token usage extraction', () => {
+    it('should return input and output token counts from text response', async () => {
+      mockClient.messages.create.mockResolvedValue({
+        content: [{ type: 'text', text: 'document-name' }],
+        usage: { input_tokens: 250, output_tokens: 15 }
+      });
+
+      const result = await service.generateFileName('content', 'file.txt');
+
+      expect(result.name).toBe('document-name');
+      expect(result.inputTokens).toBe(250);
+      expect(result.outputTokens).toBe(15);
+    });
+
+    it('should return input and output token counts from vision (scanned PDF) response', async () => {
+      mockClient.messages.create.mockResolvedValue({
+        content: [{ type: 'text', text: 'scanned-invoice' }],
+        usage: { input_tokens: 800, output_tokens: 8 }
+      });
+
+      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fake';
+      const result = await service.generateFileName(scannedContent, 'scan.pdf');
+
+      expect(result.name).toBe('scanned-invoice');
+      expect(result.inputTokens).toBe(800);
+      expect(result.outputTokens).toBe(8);
+    });
+
+    it('should return undefined tokens when usage is absent', async () => {
+      mockClient.messages.create.mockResolvedValue({
+        content: [{ type: 'text', text: 'some-name' }]
+        // no usage field
+      });
+
+      const result = await service.generateFileName('content', 'file.txt');
+
+      expect(result.inputTokens).toBeUndefined();
+      expect(result.outputTokens).toBeUndefined();
     });
   });
 });

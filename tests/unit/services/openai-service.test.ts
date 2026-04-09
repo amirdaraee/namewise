@@ -46,13 +46,14 @@ describe('OpenAIService', () => {
               content: 'user manual software installation configuration'
             }
           }
-        ]
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
       });
     });
 
     it('should generate filename with kebab-case convention (default)', async () => {
       const result = await service.generateFileName(sampleContent, originalName);
-      
+
       expect(mockClient.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'gpt-4o',
@@ -63,13 +64,13 @@ describe('OpenAIService', () => {
           temperature: 0.3
         })
       );
-      
-      expect(result).toBe('user-manual-software-installation-configuration');
+
+      expect(result.name).toBe('user-manual-software-installation-configuration');
     });
 
     it('should generate filename with snake_case convention', async () => {
       const result = await service.generateFileName(sampleContent, originalName, 'snake_case');
-      
+
       expect(mockClient.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({
           messages: [expect.objectContaining({
@@ -77,13 +78,13 @@ describe('OpenAIService', () => {
           })]
         })
       );
-      
-      expect(result).toBe('user_manual_software_installation_configuration');
+
+      expect(result.name).toBe('user_manual_software_installation_configuration');
     });
 
     it('should generate filename with camelCase convention', async () => {
       const result = await service.generateFileName(sampleContent, originalName, 'camelCase');
-      
+
       expect(mockClient.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({
           messages: [expect.objectContaining({
@@ -91,19 +92,19 @@ describe('OpenAIService', () => {
           })]
         })
       );
-      
-      expect(result).toBe('userManualSoftwareInstallationConfiguration');
+
+      expect(result.name).toBe('userManualSoftwareInstallationConfiguration');
     });
 
     it('should generate filename with UPPERCASE convention', async () => {
       const result = await service.generateFileName(sampleContent, originalName, 'UPPERCASE');
-      
-      expect(result).toBe('USERMANUALSOFTWAREINSTALLATIONCONFIGURATION');
+
+      expect(result.name).toBe('USERMANUALSOFTWAREINSTALLATIONCONFIGURATION');
     });
 
     it('should include original filename and content in prompt', async () => {
       await service.generateFileName(sampleContent, originalName, 'kebab-case');
-      
+
       const call = mockClient.chat.completions.create.mock.calls[0][0];
       expect(call.messages[0].content).toContain(sampleContent.substring(0, 5000));
       expect(call.messages[0].content).toContain('Document content (first 5000 characters)');
@@ -141,11 +142,12 @@ describe('OpenAIService', () => {
 
     it('should handle empty choices response', async () => {
       mockClient.chat.completions.create.mockResolvedValue({
-        choices: []
+        choices: [],
+        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
       });
-      
+
       const result = await service.generateFileName('content', 'file.txt');
-      expect(result).toBe('untitled-document');
+      expect(result.name).toBe('untitled-document');
     });
 
     it('should handle missing message content', async () => {
@@ -156,20 +158,22 @@ describe('OpenAIService', () => {
               content: null
             }
           }
-        ]
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
       });
-      
+
       const result = await service.generateFileName('content', 'file.txt');
-      expect(result).toBe('untitled-document');
+      expect(result.name).toBe('untitled-document');
     });
 
     it('should handle undefined choices', async () => {
       mockClient.chat.completions.create.mockResolvedValue({
-        choices: [undefined]
+        choices: [undefined],
+        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
       });
-      
+
       const result = await service.generateFileName('content', 'file.txt');
-      expect(result).toBe('untitled-document');
+      expect(result.name).toBe('untitled-document');
     });
   });
 
@@ -182,13 +186,14 @@ describe('OpenAIService', () => {
               content: 'Test@Document#With$Special%Characters.xlsx'
             }
           }
-        ]
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
       });
     });
 
     it('should sanitize special characters and apply naming convention', async () => {
       const result = await service.generateFileName('content', 'original.txt', 'kebab-case');
-      expect(result).toBe('testdocumentwithspecialcharacters');
+      expect(result.name).toBe('testdocumentwithspecialcharacters');
     });
 
     it('should handle different conventions for sanitized input', async () => {
@@ -196,28 +201,30 @@ describe('OpenAIService', () => {
       const snakeResult = await service.generateFileName('content', 'file.txt', 'snake_case');
       const camelResult = await service.generateFileName('content', 'file.txt', 'camelCase');
 
-      expect(kebabResult).toBe('testdocumentwithspecialcharacters');
-      expect(snakeResult).toBe('testdocumentwithspecialcharacters');
-      expect(camelResult).toBe('testdocumentwithspecialcharacters');
+      expect(kebabResult.name).toBe('testdocumentwithspecialcharacters');
+      expect(snakeResult.name).toBe('testdocumentwithspecialcharacters');
+      expect(camelResult.name).toBe('testdocumentwithspecialcharacters');
     });
 
     it('should use untitled-document when sanitized name is empty', async () => {
       // Special chars that are not alphanumeric, spaces, or hyphens → empty after normalization
       mockClient.chat.completions.create.mockResolvedValue({
-        choices: [{ message: { content: '@@@###$$$' } }]
+        choices: [{ message: { content: '@@@###$$$' } }],
+        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
       });
       const result = await service.generateFileName('content', 'file.txt', 'kebab-case');
-      expect(result).toBe('untitled-document');
+      expect(result.name).toBe('untitled-document');
     });
 
     it('should truncate long kebab-case filenames removing partial word at end', async () => {
       // This name becomes exactly 101 chars in kebab-case, triggering truncation
       mockClient.chat.completions.create.mockResolvedValue({
-        choices: [{ message: { content: 'a-very-long-kebab-case-filename-that-is-definitely-over-one-hundred-characters-in-total-length-yes-xy' } }]
+        choices: [{ message: { content: 'a-very-long-kebab-case-filename-that-is-definitely-over-one-hundred-characters-in-total-length-yes-xy' } }],
+        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
       });
       const result = await service.generateFileName('content', 'file.txt', 'kebab-case');
-      expect(result.length).toBeLessThanOrEqual(100);
-      expect(result).not.toMatch(/-$/);
+      expect(result.name.length).toBeLessThanOrEqual(100);
+      expect(result.name).not.toMatch(/-$/);
     });
 
     it('should strip Windows-illegal characters from AI suggestions', async () => {
@@ -231,21 +238,23 @@ describe('OpenAIService', () => {
 
       for (const [input, expected] of illegalChars) {
         mockClient.chat.completions.create.mockResolvedValue({
-          choices: [{ message: { content: input } }]
+          choices: [{ message: { content: input } }],
+          usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
         });
         const result = await service.generateFileName('content', 'file.txt', 'kebab-case');
-        expect(result).toBe(expected);
+        expect(result.name).toBe(expected);
       }
     });
 
     it('should truncate long snake_case filenames removing partial word at end', async () => {
       // 102-char snake_case string → triggers the > 100 truncation branch
       mockClient.chat.completions.create.mockResolvedValue({
-        choices: [{ message: { content: 'a_very_long_snake_case_name_that_is_definitely_over_one_hundred_characters_in_total_length_yes_yes_x_z' } }]
+        choices: [{ message: { content: 'a_very_long_snake_case_name_that_is_definitely_over_one_hundred_characters_in_total_length_yes_yes_x_z' } }],
+        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
       });
       const result = await service.generateFileName('content', 'file.txt', 'snake_case');
-      expect(result.length).toBeLessThanOrEqual(100);
-      expect(result).not.toMatch(/_$/);
+      expect(result.name.length).toBeLessThanOrEqual(100);
+      expect(result.name).not.toMatch(/_$/);
     });
   });
 
@@ -266,7 +275,8 @@ describe('OpenAIService', () => {
 
     it('should handle scanned PDF with image_url using gpt-4o', async () => {
       mockClient.chat.completions.create.mockResolvedValue({
-        choices: [{ message: { content: 'visa-document' } }]
+        choices: [{ message: { content: 'visa-document' } }],
+        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
       });
 
       const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fakebase64data';
@@ -283,12 +293,13 @@ describe('OpenAIService', () => {
           })]
         })
       );
-      expect(result).toBe('visa-document');
+      expect(result.name).toBe('visa-document');
     });
 
     it('should pass the full base64 URL to image_url', async () => {
       mockClient.chat.completions.create.mockResolvedValue({
-        choices: [{ message: { content: 'scanned-doc' } }]
+        choices: [{ message: { content: 'scanned-doc' } }],
+        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
       });
 
       const imageUrl = 'data:image/jpeg;base64,/9j/fakebase64data';
@@ -306,7 +317,8 @@ describe('OpenAIService', () => {
       const defaultService = new OpenAIService('test-key');
       const defaultClient = (defaultService as any).client;
       defaultClient.chat.completions.create.mockResolvedValue({
-        choices: [{ message: { content: 'test-name' } }]
+        choices: [{ message: { content: 'test-name' } }],
+        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
       });
 
       await defaultService.generateFileName('sample content', 'file.txt');
@@ -321,7 +333,8 @@ describe('OpenAIService', () => {
       const customService = new OpenAIService('test-key', customModel);
       const customClient = (customService as any).client;
       customClient.chat.completions.create.mockResolvedValue({
-        choices: [{ message: { content: 'test-name' } }]
+        choices: [{ message: { content: 'test-name' } }],
+        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
       });
 
       await customService.generateFileName('sample content', 'file.txt');
@@ -336,7 +349,8 @@ describe('OpenAIService', () => {
       const customService = new OpenAIService('test-key', customModel);
       const customClient = (customService as any).client;
       customClient.chat.completions.create.mockResolvedValue({
-        choices: [{ message: { content: 'scanned-doc' } }]
+        choices: [{ message: { content: 'scanned-doc' } }],
+        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
       });
 
       const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fake';
@@ -345,6 +359,45 @@ describe('OpenAIService', () => {
       expect(customClient.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({ model: customModel })
       );
+    });
+  });
+
+  describe('Token usage extraction', () => {
+    it('should return prompt and completion token counts', async () => {
+      mockClient.chat.completions.create.mockResolvedValue({
+        choices: [{ message: { content: 'quarterly-report', role: 'assistant' }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 320, completion_tokens: 12, total_tokens: 332 }
+      });
+
+      const result = await service.generateFileName('report content', 'report.pdf');
+
+      expect(result.name).toBe('quarterly-report');
+      expect(result.inputTokens).toBe(320);
+      expect(result.outputTokens).toBe(12);
+    });
+
+    it('should return undefined tokens when usage is absent', async () => {
+      mockClient.chat.completions.create.mockResolvedValue({
+        choices: [{ message: { content: 'some-name', role: 'assistant' }, finish_reason: 'stop' }]
+        // no usage field
+      });
+
+      const result = await service.generateFileName('content', 'file.txt');
+
+      expect(result.inputTokens).toBeUndefined();
+      expect(result.outputTokens).toBeUndefined();
+    });
+
+    it('should return undefined tokens for vision (scanned PDF) when usage is absent', async () => {
+      mockClient.chat.completions.create.mockResolvedValue({
+        choices: [{ message: { content: 'scanned-doc', role: 'assistant' }, finish_reason: 'stop' }]
+      });
+
+      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fakedata';
+      const result = await service.generateFileName(scannedContent, 'scan.pdf');
+
+      expect(result.inputTokens).toBeUndefined();
+      expect(result.outputTokens).toBeUndefined();
     });
   });
 });

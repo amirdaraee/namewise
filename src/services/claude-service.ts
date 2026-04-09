@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { AIProvider, FileInfo } from '../types/index.js';
+import { AIProvider, FileInfo, AINameResult } from '../types/index.js';
 import { applyNamingConvention, stripWindowsIllegalChars, NamingConvention } from '../utils/naming-conventions.js';
 import { FileCategory } from '../utils/file-templates.js';
 import { buildFileNamePrompt } from '../utils/ai-prompts.js';
@@ -14,7 +14,7 @@ export class ClaudeService implements AIProvider {
     this.model = model ?? 'claude-sonnet-4-5-20250929';
   }
 
-  async generateFileName(content: string, originalName: string, namingConvention: string = 'kebab-case', category: string = 'general', fileInfo?: FileInfo, language?: string): Promise<string> {
+  async generateFileName(content: string, originalName: string, namingConvention: string = 'kebab-case', category: string = 'general', fileInfo?: FileInfo, language?: string): Promise<AINameResult> {
     const convention = namingConvention as NamingConvention;
     const fileCategory = category as FileCategory;
 
@@ -91,7 +91,12 @@ export class ClaudeService implements AIProvider {
         : 'untitled-document';
 
       // Apply naming convention and clean the suggested name
-      return this.sanitizeFileName(suggestedName, convention);
+      const name = this.sanitizeFileName(suggestedName, convention);
+      return {
+        name,
+        inputTokens: response.usage?.input_tokens,
+        outputTokens: response.usage?.output_tokens
+      };
     } catch (error) {
       console.error('Claude API error:', error);
       throw new Error(`Failed to generate filename with Claude: ${error instanceof Error ? error.message : 'Unknown error'}`);

@@ -35,7 +35,7 @@ describe('Conflict auto-numbering', () => {
     await fs.writeFile(path.join(tempDir, 'project-requirements-document.txt'), 'existing');
 
     const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: false }));
-    const [result] = await renamer.renameFiles([makeFileInfo(srcPath, { size: stat.size })]);
+    const { results: [result] } = await renamer.renameFiles([makeFileInfo(srcPath, { size: stat.size })]);
 
     expect(result.success).toBe(true);
     expect(path.basename(result.newPath)).toBe('project-requirements-document-2.txt');
@@ -50,7 +50,7 @@ describe('Conflict auto-numbering', () => {
     await fs.writeFile(path.join(tempDir, 'project-requirements-document-2.txt'), 'existing-2');
 
     const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: false }));
-    const [result] = await renamer.renameFiles([makeFileInfo(srcPath, { size: stat.size })]);
+    const { results: [result] } = await renamer.renameFiles([makeFileInfo(srcPath, { size: stat.size })]);
 
     expect(result.success).toBe(true);
     expect(path.basename(result.newPath)).toBe('project-requirements-document-3.txt');
@@ -63,7 +63,7 @@ describe('Conflict auto-numbering', () => {
     await fs.writeFile(path.join(tempDir, 'project-requirements-document.txt'), 'existing');
 
     const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
-    const [result] = await renamer.renameFiles([makeFileInfo(srcPath, { size: stat.size })]);
+    const { results: [result] } = await renamer.renameFiles([makeFileInfo(srcPath, { size: stat.size })]);
 
     expect(result.success).toBe(true);
     expect(path.basename(result.newPath)).toBe('project-requirements-document-2.txt');

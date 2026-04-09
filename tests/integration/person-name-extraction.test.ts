@@ -3,7 +3,7 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import { DocumentParserFactory } from '../../src/parsers/factory.js';
 import { FileRenamer } from '../../src/services/file-renamer.js';
-import { AIProvider, FileInfo } from '../../src/types/index.js';
+import { AIProvider, AINameResult, FileInfo } from '../../src/types/index.js';
 import {
   createTempDir,
   copyTestFile,
@@ -26,7 +26,7 @@ class PersonAwareMockAI implements AIProvider {
     _namingConvention?: string,
     _category?: string,
     fileInfo?: FileInfo
-  ): Promise<string> {
+  ): Promise<AINameResult> {
     const lower = content.toLowerCase();
     const folderName = fileInfo?.parentFolder?.toLowerCase().replace(/[^a-z]/g, '') ?? '';
     const shouldIgnoreFolder = this.irrelevantFolders.has(folderName);
@@ -35,28 +35,25 @@ class PersonAwareMockAI implements AIProvider {
     const extractedName = this.extractPersonName(content);
     const prefix = extractedName ? `${extractedName}-` : '';
 
+    let name: string;
     if (lower.includes('visa') && lower.includes('application')) {
-      return `${prefix}visitor-visa-application-for-family-members-in-canada`;
-    }
-    if (lower.includes('contract') || lower.includes('employment')) {
-      return `${prefix}employment-contract`;
-    }
-    if (lower.includes('medical') || lower.includes('health')) {
-      return `${prefix}medical-record-annual-checkup`;
-    }
-    if (lower.includes('certificate') || lower.includes('diploma')) {
-      return `${prefix}certificate-completion`;
-    }
-    if (lower.includes('meeting') || lower.includes('attendees')) {
-      return `${prefix}team-meeting-notes`;
-    }
-
-    // Do NOT include the folder name if it's irrelevant
-    if (!shouldIgnoreFolder && folderName && folderName.length > 3) {
-      return `${prefix}document-${folderName}`;
+      name = `${prefix}visitor-visa-application-for-family-members-in-canada`;
+    } else if (lower.includes('contract') || lower.includes('employment')) {
+      name = `${prefix}employment-contract`;
+    } else if (lower.includes('medical') || lower.includes('health')) {
+      name = `${prefix}medical-record-annual-checkup`;
+    } else if (lower.includes('certificate') || lower.includes('diploma')) {
+      name = `${prefix}certificate-completion`;
+    } else if (lower.includes('meeting') || lower.includes('attendees')) {
+      name = `${prefix}team-meeting-notes`;
+    } else if (!shouldIgnoreFolder && folderName && folderName.length > 3) {
+      // Do NOT include the folder name if it's irrelevant
+      name = `${prefix}document-${folderName}`;
+    } else {
+      name = `${prefix}document-summary-report`;
     }
 
-    return `${prefix}document-summary-report`;
+    return { name };
   }
 
   private extractPersonName(content: string): string {
@@ -104,7 +101,7 @@ describe('Person Name Extraction and Folder Filtering Integration Tests', () => 
       });
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
 
-      const results = await renamer.renameFiles([fileInfo]);
+      const { results } = await renamer.renameFiles([fileInfo]);
 
       expect(results[0].success).toBe(true);
       expect(results[0].suggestedName).toMatch(/setareh/i);
@@ -122,7 +119,7 @@ describe('Person Name Extraction and Folder Filtering Integration Tests', () => 
       });
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
 
-      const results = await renamer.renameFiles([fileInfo]);
+      const { results } = await renamer.renameFiles([fileInfo]);
 
       expect(results[0].success).toBe(true);
       expect(results[0].suggestedName).toMatch(/contract|employment/i);
@@ -140,7 +137,7 @@ describe('Person Name Extraction and Folder Filtering Integration Tests', () => 
       });
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
 
-      const results = await renamer.renameFiles([fileInfo]);
+      const { results } = await renamer.renameFiles([fileInfo]);
 
       expect(results[0].success).toBe(true);
       expect(results[0].suggestedName).toMatch(/meeting/i);
@@ -161,7 +158,7 @@ describe('Person Name Extraction and Folder Filtering Integration Tests', () => 
         });
         const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
 
-        const results = await renamer.renameFiles([fileInfo]);
+        const { results } = await renamer.renameFiles([fileInfo]);
 
         expect(results[0].success).toBe(true);
         // The irrelevant folder name should not appear as a word in the filename
@@ -181,7 +178,7 @@ describe('Person Name Extraction and Folder Filtering Integration Tests', () => 
       });
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
 
-      const results = await renamer.renameFiles([fileInfo]);
+      const { results } = await renamer.renameFiles([fileInfo]);
 
       expect(results[0].success).toBe(true);
       // The file should process successfully — meaningful folder context is available to AI
@@ -200,7 +197,7 @@ describe('Person Name Extraction and Folder Filtering Integration Tests', () => 
       });
       const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
 
-      const results = await renamer.renameFiles([fileInfo]);
+      const { results } = await renamer.renameFiles([fileInfo]);
 
       expect(results[0].success).toBe(true);
       expect(results[0].suggestedName).toMatch(/visa/i);

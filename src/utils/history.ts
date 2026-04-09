@@ -8,6 +8,10 @@ export interface HistoryEntry {
   directory: string;
   dryRun: boolean;
   renames: Array<{ originalPath: string; newPath: string }>;
+  tokenUsage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+  };
 }
 
 const HISTORY_DIR = path.join(os.homedir(), '.namewise');

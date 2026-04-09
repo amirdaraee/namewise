@@ -49,7 +49,7 @@ vi.mock('../../../src/utils/history.js', () => ({
 
 // Mock FileRenamer - use a module-level variable accessible in the factory
 vi.mock('../../../src/services/file-renamer.js', () => {
-  const mockRenameFilesMethod = vi.fn().mockResolvedValue([]);
+  const mockRenameFilesMethod = vi.fn().mockResolvedValue({ results: [], tokenUsage: { inputTokens: 100, outputTokens: 10 } });
   const MockFileRenamer = vi.fn().mockImplementation(() => ({
     renameFiles: mockRenameFilesMethod
   }));
@@ -104,7 +104,7 @@ describe('renameFiles()', () => {
     } as any);
     mockReaddir.mockResolvedValue([]);
     mockInquirerPrompt.mockResolvedValue({ proceed: true });
-    mockRenameFilesMethod.mockResolvedValue([]);
+    mockRenameFilesMethod.mockResolvedValue({ results: [], tokenUsage: { inputTokens: 100, outputTokens: 10 } });
     vi.mocked(loadConfig).mockResolvedValue({});
     vi.mocked(appendHistory).mockResolvedValue(undefined);
     // Reset FileRenamer mock implementation
@@ -246,9 +246,10 @@ describe('renameFiles()', () => {
         .mockResolvedValueOnce({ isDirectory: () => true } as any)
         .mockResolvedValueOnce({ size: 1024, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any);
 
-      mockRenameFilesMethod.mockResolvedValue([
-        { success: true, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/document.pdf' }
-      ]);
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [{ success: true, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/document.pdf' }],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      });
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -269,9 +270,10 @@ describe('renameFiles()', () => {
         .mockResolvedValueOnce({ isDirectory: () => true } as any)
         .mockResolvedValueOnce({ size: 1024, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any);
 
-      mockRenameFilesMethod.mockResolvedValue([
-        { success: true, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/document.pdf' }
-      ]);
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [{ success: true, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/document.pdf' }],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      });
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -311,9 +313,10 @@ describe('renameFiles()', () => {
         .mockResolvedValueOnce({ size: 1024, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any);
 
       mockInquirerPrompt.mockResolvedValue({ proceed: true });
-      mockRenameFilesMethod.mockResolvedValue([
-        { success: true, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/document.pdf' }
-      ]);
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [{ success: true, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/document.pdf' }],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      });
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -432,9 +435,10 @@ describe('renameFiles()', () => {
         .mockResolvedValueOnce({ isDirectory: () => true } as any)
         .mockResolvedValueOnce({ size: 1024, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any);
 
-      mockRenameFilesMethod.mockResolvedValue([
-        { success: true, originalPath: '/test/dir/old-name.pdf', newPath: '/test/dir/new-name.pdf' }
-      ]);
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [{ success: true, originalPath: '/test/dir/old-name.pdf', newPath: '/test/dir/new-name.pdf' }],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      });
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -454,9 +458,10 @@ describe('renameFiles()', () => {
         .mockResolvedValueOnce({ isDirectory: () => true } as any)
         .mockResolvedValueOnce({ size: 1024, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any);
 
-      mockRenameFilesMethod.mockResolvedValue([
-        { success: false, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/doc.pdf', error: 'Permission denied' }
-      ]);
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [{ success: false, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/doc.pdf', error: 'Permission denied' }],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      });
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -480,10 +485,13 @@ describe('renameFiles()', () => {
         .mockResolvedValueOnce({ size: 1024, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any)
         .mockResolvedValueOnce({ size: 1024, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any);
 
-      mockRenameFilesMethod.mockResolvedValue([
-        { success: true, originalPath: '/test/dir/good.pdf', newPath: '/test/dir/renamed.pdf' },
-        { success: false, originalPath: '/test/dir/bad.pdf', newPath: '/test/dir/bad.pdf', error: 'Failed' }
-      ]);
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [
+          { success: true, originalPath: '/test/dir/good.pdf', newPath: '/test/dir/renamed.pdf' },
+          { success: false, originalPath: '/test/dir/bad.pdf', newPath: '/test/dir/bad.pdf', error: 'Failed' }
+        ],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      });
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -503,9 +511,10 @@ describe('renameFiles()', () => {
         .mockResolvedValueOnce({ size: 1024, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any);
 
       mockInquirerPrompt.mockResolvedValue({ proceed: true });
-      mockRenameFilesMethod.mockResolvedValue([
-        { success: true, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/document.pdf' }
-      ]);
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [{ success: true, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/document.pdf' }],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      });
 
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -627,10 +636,13 @@ describe('renameFiles()', () => {
         }
         return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
       });
-      mockRenameFilesMethod.mockResolvedValue([
-        { originalPath: '/test/dir/report.pdf', newPath: '/test/dir/document.pdf', success: true },
-        { originalPath: '/test/dir/notes.txt', newPath: '/test/dir/notes.txt', success: true }
-      ]);
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [
+          { originalPath: '/test/dir/report.pdf', newPath: '/test/dir/document.pdf', success: true },
+          { originalPath: '/test/dir/notes.txt', newPath: '/test/dir/notes.txt', success: true }
+        ],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      });
       mockInquirerPrompt.mockResolvedValue({ proceed: true });
 
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -655,9 +667,10 @@ describe('renameFiles()', () => {
         }
         return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
       });
-      mockRenameFilesMethod.mockResolvedValue([
-        { originalPath: '/test/dir/report.txt', newPath: '/test/dir/renamed.txt', suggestedName: 'renamed.txt', success: true }
-      ]);
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [{ originalPath: '/test/dir/report.txt', newPath: '/test/dir/renamed.txt', suggestedName: 'renamed.txt', success: true }],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      });
       mockInquirerPrompt.mockResolvedValue({ proceed: true });
 
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -674,6 +687,51 @@ describe('renameFiles()', () => {
     });
   });
 
+  describe('token usage output', () => {
+    beforeEach(() => {
+      mockReaddir.mockResolvedValue([
+        { name: 'doc.pdf', isDirectory: () => false, isFile: () => true } as any
+      ]);
+      mockStat.mockImplementation(async (p: any) => {
+        if (String(p).endsWith('doc.pdf')) {
+          return { isDirectory: () => false, isFile: () => true, size: 1024, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+        }
+        return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+      });
+      mockInquirerPrompt.mockResolvedValue({ proceed: true });
+    });
+
+    it('displays cloud token counts when inputTokens and outputTokens are defined', async () => {
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [{ success: true, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/document.pdf' }],
+        tokenUsage: { inputTokens: 1240, outputTokens: 87 }
+      });
+
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      await renameFiles('/test/dir', defaultOptions);
+
+      const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(allOutput).toContain('Tokens: 1,240 input / 87 output');
+
+      logSpy.mockRestore();
+    });
+
+    it('displays N/A for local provider when tokenUsage has no values', async () => {
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [{ success: true, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/document.pdf' }],
+        tokenUsage: { inputTokens: undefined, outputTokens: undefined }
+      });
+
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      await renameFiles('/test/dir', defaultOptions);
+
+      const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(allOutput).toContain('Tokens: N/A (local provider)');
+
+      logSpy.mockRestore();
+    });
+  });
+
   describe('--output flag (JSON report)', () => {
     beforeEach(() => {
       mockReaddir.mockResolvedValue([
@@ -685,9 +743,10 @@ describe('renameFiles()', () => {
         }
         return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
       });
-      mockRenameFilesMethod.mockResolvedValue([
-        { success: true, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/document.pdf' }
-      ]);
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [{ success: true, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/document.pdf' }],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      });
       mockInquirerPrompt.mockResolvedValue({ proceed: true });
     });
 
@@ -788,9 +847,10 @@ describe('renameFiles()', () => {
         }
         return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
       });
-      mockRenameFilesMethod.mockResolvedValue([
-        { originalPath: '/test/dir/doc.txt', newPath: '/test/dir/renamed.txt', success: true }
-      ]);
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [{ originalPath: '/test/dir/doc.txt', newPath: '/test/dir/renamed.txt', success: true }],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      });
       mockInquirerPrompt.mockResolvedValue({ proceed: true });
 
       // Mock Date.now to simulate 1500ms elapsed

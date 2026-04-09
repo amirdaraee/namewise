@@ -106,7 +106,7 @@ export async function watchDirectory(directory: string, options: any): Promise<v
         documentMetadata: undefined
       };
 
-      const results = await renamer.renameFiles([fileInfo]);
+      const { results } = await renamer.renameFiles([fileInfo]);
 
       const result = results[0];
       if (result?.success && result.newPath !== result.originalPath) {

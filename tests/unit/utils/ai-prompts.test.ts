@@ -177,6 +177,30 @@ describe('AI Prompts', () => {
       expect(prompt).toContain('Generate the filename in English, regardless of the document\'s original language');
     });
 
+    it('should include user context when provided', () => {
+      const prompt = buildFileNamePrompt({
+        content: 'Some document content.',
+        originalName: 'document.pdf',
+        namingConvention: 'kebab-case',
+        category: 'general',
+        context: 'These are John Doe tax documents from 2023'
+      });
+
+      expect(prompt).toContain('User-provided context:');
+      expect(prompt).toContain('These are John Doe tax documents from 2023');
+    });
+
+    it('should not include context section when context is absent', () => {
+      const prompt = buildFileNamePrompt({
+        content: 'Some document content.',
+        originalName: 'document.pdf',
+        namingConvention: 'kebab-case',
+        category: 'general'
+      });
+
+      expect(prompt).not.toContain('User-provided context:');
+    });
+
     it('should not include language instruction when language is not provided', () => {
       const prompt = buildFileNamePrompt({
         content: 'Document content.',

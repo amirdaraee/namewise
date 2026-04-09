@@ -1,6 +1,6 @@
 # Namewise
 
-[![Tests](https://img.shields.io/badge/tests-778%20passing-brightgreen.svg)](#testing--development)
+[![Tests](https://img.shields.io/badge/tests-816%20passing-brightgreen.svg)](#testing--development)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#testing--development)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
@@ -116,6 +116,7 @@ Run `namewise init` to launch the interactive setup wizard. It will ask:
 | 7 | **Output language** | e.g. `English`, `French` — leave blank to match document language |
 | 8 | **Always dry-run by default?** | Recommended `Yes` for first-time users |
 | 9 | **Your name** | Optional; used in document/photo templates |
+| 10 | **Context** | Optional; guides AI naming for files in this scope |
 
 After init, all saved settings apply automatically — no flags needed on every run.
 
@@ -140,6 +141,7 @@ After init, all saved settings apply automatically — no flags needed on every 
 | `--pattern <pattern>` | Regex rename pattern (repeatable); skips AI | - |
 | `--no-ai` | Use file metadata instead of AI (no API call) | `false` |
 | `--language <lang>` | Output language for generated filenames (e.g. `English`, `French`) | Document language |
+| `--context <text>` | Free-form context about the files to guide AI naming (e.g. `"These are John's 2023 tax documents"`) | - |
 
 ### `sanitize` Options
 
@@ -261,6 +263,12 @@ namewise rename ./documents --no-ai --dry-run
 ```bash
 namewise rename ./farsi-docs --language English --dry-run
 namewise rename ./documents --language French
+```
+
+**Provide context to guide AI naming:**
+```bash
+namewise rename ./tax-docs --context "These are John's 2023 tax documents" --dry-run
+namewise rename ./contracts --context "Legal agreements for Acme Corp projects"
 ```
 
 **Regex pattern rename (no AI):**
@@ -450,7 +458,7 @@ Set persistent defaults so you don't have to repeat flags on every run.
 
 Priority order (highest to lowest): CLI flags > project config > user config.
 
-Supported keys: `provider`, `apiKey`, `case`, `template`, `name`, `date`, `maxSize`, `model`, `baseUrl`, `concurrency`, `recursive`, `depth`, `output`, `dryRun`, `language`.
+Supported keys: `provider`, `apiKey`, `case`, `template`, `name`, `date`, `maxSize`, `model`, `baseUrl`, `concurrency`, `recursive`, `depth`, `output`, `dryRun`, `language`, `context`.
 
 ## Supported File Types
 
@@ -538,7 +546,7 @@ Tokens: N/A (local provider)
 - **Conflict Auto-Numbering**: Never overwrites an existing file
 - **File Size Limits**: Skips files above `--max-size`
 - **Extension Preservation**: Original file extensions are never changed
-- **Comprehensive Testing**: 621 tests with 100% coverage
+- **Comprehensive Testing**: 816 tests with 100% coverage
 
 ## Testing & Development
 

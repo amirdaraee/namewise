@@ -9,6 +9,7 @@ export interface PromptContext {
   category: FileCategory;
   fileInfo?: FileInfo;
   language?: string;
+  context?: string;
 }
 
 /**
@@ -16,7 +17,7 @@ export interface PromptContext {
  * This prompt is used across all AI providers (Claude, OpenAI, LMStudio, Ollama)
  */
 export function buildFileNamePrompt(context: PromptContext): string {
-  const { content, originalName, namingConvention, category, fileInfo, language } = context;
+  const { content, originalName, namingConvention, category, fileInfo, language, context: userContext } = context;
   
   const namingInstructions = getNamingInstructions(namingConvention);
   const templateInstructions = getTemplateInstructions(category);
@@ -49,6 +50,7 @@ Document Properties:`;
   }
 
   const languageInstruction = language ? `- Generate the filename in ${language}, regardless of the document's original language` : '';
+  const contextSection = userContext ? `\nUser-provided context:\n${userContext}\n` : '';
 
   return `Based on the following document information, generate a descriptive filename that captures the main topic/purpose of the document. The filename should be:
 - Descriptive and meaningful
@@ -64,7 +66,7 @@ Document Properties:`;
 - Focus on the document's actual content and purpose, not just metadata
 
 ${metadataContext}
-
+${contextSection}
 Document content (first 5000 characters):
 ${content.substring(0, 5000)}
 

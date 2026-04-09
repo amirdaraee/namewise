@@ -46,7 +46,8 @@ describe('initCommand()', () => {
       { namingConvention: 'snake_case' },
       { language: '' },
       { dryRun: true },
-      { personalName: 'alice' }
+      { personalName: 'alice' },
+      { context: '' }
     );
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await initCommand();
@@ -70,7 +71,8 @@ describe('initCommand()', () => {
       { namingConvention: 'kebab-case' },
       { language: '' },
       { dryRun: false },
-      { personalName: '' }
+      { personalName: '' },
+      { context: '' }
     );
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await initCommand();
@@ -94,7 +96,8 @@ describe('initCommand()', () => {
       { namingConvention: 'kebab-case' },
       { language: '' },
       { dryRun: false },
-      { personalName: '' }
+      { personalName: '' },
+      { context: '' }
     );
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await initCommand();
@@ -111,7 +114,8 @@ describe('initCommand()', () => {
       { namingConvention: 'kebab-case' },
       { language: '' },
       { dryRun: false },
-      { personalName: '' }
+      { personalName: '' },
+      { context: '' }
     );
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await initCommand();
@@ -128,7 +132,8 @@ describe('initCommand()', () => {
       { namingConvention: 'kebab-case' },
       { language: '' },
       { dryRun: false },
-      { personalName: '' }
+      { personalName: '' },
+      { context: '' }
     );
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await initCommand();
@@ -145,7 +150,8 @@ describe('initCommand()', () => {
       { namingConvention: 'kebab-case' },
       { language: '' },
       { dryRun: false },
-      { personalName: '' }
+      { personalName: '' },
+      { context: '' }
     );
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await initCommand();
@@ -162,7 +168,8 @@ describe('initCommand()', () => {
       { namingConvention: 'camelCase' },
       { language: '' },
       { dryRun: true },
-      { personalName: '' }
+      { personalName: '' },
+      { context: '' }
     );
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await initCommand();
@@ -180,7 +187,8 @@ describe('initCommand()', () => {
       { namingConvention: 'kebab-case' },
       { language: '' },
       { dryRun: false },
-      { personalName: '' }
+      { personalName: '' },
+      { context: '' }
     );
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await initCommand();
@@ -212,7 +220,8 @@ describe('initCommand()', () => {
       { namingConvention: 'snake_case' },
       { language: '' },
       { dryRun: false },
-      { personalName: '' }
+      { personalName: '' },
+      { context: '' }
     );
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await initCommand();
@@ -228,7 +237,8 @@ describe('initCommand()', () => {
       { namingConvention: 'kebab-case' },
       { language: '' },
       { dryRun: false },
-      { personalName: '' }
+      { personalName: '' },
+      { context: '' }
     );
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     await initCommand();
@@ -246,7 +256,8 @@ describe('initCommand()', () => {
       { namingConvention: 'kebab-case' },
       { language: '' },
       { dryRun: true },
-      { personalName: '' }
+      { personalName: '' },
+      { context: '' }
     );
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     await initCommand();
@@ -265,7 +276,8 @@ describe('initCommand()', () => {
       { namingConvention: 'kebab-case' },
       { language: 'English' },
       { dryRun: false },
-      { personalName: '' }
+      { personalName: '' },
+      { context: '' }
     );
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await initCommand();
@@ -282,11 +294,66 @@ describe('initCommand()', () => {
       { namingConvention: 'kebab-case' },
       { language: '' },
       { dryRun: false },
-      { personalName: '' }
+      { personalName: '' },
+      { context: '' }
     );
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await initCommand();
     const written = JSON.parse(vi.mocked(fs.writeFile).mock.calls[0][1] as string);
     expect(written.language).toBeUndefined();
+  });
+
+  it('saves context for global scope when provided', async () => {
+    queueAnswers(
+      { scope: 'global' },
+      { provider: 'claude' },
+      { apiKey: 'sk-ant-abc' },
+      { model: '' },
+      { namingConvention: 'kebab-case' },
+      { language: '' },
+      { dryRun: false },
+      { personalName: '' },
+      { context: 'All documents belong to John Doe' }
+    );
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await initCommand();
+    const written = JSON.parse(vi.mocked(fs.writeFile).mock.calls[0][1] as string);
+    expect(written.context).toBe('All documents belong to John Doe');
+  });
+
+  it('saves context for project scope when provided', async () => {
+    queueAnswers(
+      { scope: 'project' },
+      { provider: 'claude' },
+      { apiKey: 'sk-ant-abc' },
+      { model: '' },
+      { namingConvention: 'kebab-case' },
+      { language: '' },
+      { dryRun: false },
+      { personalName: '' },
+      { context: 'These are 2023 tax returns' }
+    );
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await initCommand();
+    const written = JSON.parse(vi.mocked(fs.writeFile).mock.calls[0][1] as string);
+    expect(written.context).toBe('These are 2023 tax returns');
+  });
+
+  it('does not save context field when left blank', async () => {
+    queueAnswers(
+      { scope: 'global' },
+      { provider: 'claude' },
+      { apiKey: 'sk-ant-abc' },
+      { model: '' },
+      { namingConvention: 'kebab-case' },
+      { language: '' },
+      { dryRun: false },
+      { personalName: '' },
+      { context: '' }
+    );
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await initCommand();
+    const written = JSON.parse(vi.mocked(fs.writeFile).mock.calls[0][1] as string);
+    expect(written.context).toBeUndefined();
   });
 });

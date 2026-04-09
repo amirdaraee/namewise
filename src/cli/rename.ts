@@ -97,7 +97,8 @@ export async function renameFiles(directory: string, options: any): Promise<void
       outputPath: options.output ?? fileConfig.output,
       patterns: Array.isArray(options.pattern) ? options.pattern : (options.pattern ? [options.pattern] : []),
       noAi: options.ai === false,
-      language: options.language ?? fileConfig.language
+      language: options.language ?? fileConfig.language,
+      context: options.context ?? fileConfig.context
     };
 
     // Initialize services

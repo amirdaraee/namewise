@@ -18,6 +18,7 @@ export interface NamiwiseFileConfig {
   output?: string;
   dryRun?: boolean;
   language?: string;
+  context?: string;
 }
 
 async function readConfigFile(filePath: string): Promise<NamiwiseFileConfig> {

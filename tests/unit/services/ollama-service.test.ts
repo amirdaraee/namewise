@@ -408,4 +408,18 @@ describe('OllamaService', () => {
       expect(result.outputTokens).toBeUndefined();
     });
   });
+
+  describe('context parameter', () => {
+    it('should pass context to prompt when provided', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ message: { content: 'tax-return-2023' }, done: true })
+      });
+      await ollamaService.generateFileName('Document content', 'doc.pdf', 'kebab-case', 'general', undefined, undefined, 'These are tax documents');
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const userMsg = body.messages.find((m: any) => m.role === 'user');
+      expect(userMsg.content).toContain('User-provided context:');
+      expect(userMsg.content).toContain('These are tax documents');
+    });
+  });
 });

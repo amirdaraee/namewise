@@ -64,7 +64,8 @@ export class LMStudioService implements AIProvider {
     namingConvention = 'kebab-case',
     category = 'general',
     fileInfo?: FileInfo,
-    language?: string
+    language?: string,
+    context?: string
   ): Promise<AINameResult> {
     try {
       // Check if this is a scanned PDF image
@@ -76,7 +77,7 @@ export class LMStudioService implements AIProvider {
         return { name: this.sanitizeFilename(originalName), inputTokens: undefined, outputTokens: undefined };
       }
 
-      const prompt = this.buildPrompt(content, originalName, namingConvention, category, fileInfo, language);
+      const prompt = this.buildPrompt(content, originalName, namingConvention, category, fileInfo, language, context);
       
       const response = await this.makeRequest('/v1/chat/completions', {
         model: this.model,
@@ -116,7 +117,8 @@ export class LMStudioService implements AIProvider {
     namingConvention: string,
     category: string,
     fileInfo?: FileInfo,
-    language?: string
+    language?: string,
+    context?: string
   ): string {
     return buildFileNamePrompt({
       content,
@@ -124,7 +126,8 @@ export class LMStudioService implements AIProvider {
       namingConvention: namingConvention as NamingConvention,
       category: category as FileCategory,
       fileInfo,
-      language
+      language,
+      context
     });
   }
 

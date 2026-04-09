@@ -53,7 +53,8 @@ export class OllamaService implements AIProvider {
     namingConvention = 'kebab-case',
     category = 'general',
     fileInfo?: FileInfo,
-    language?: string
+    language?: string,
+    context?: string
   ): Promise<AINameResult> {
     try {
       // Check if this is a scanned PDF image
@@ -72,7 +73,8 @@ export class OllamaService implements AIProvider {
           namingConvention,
           category,
           fileInfo,
-          language
+          language,
+          context
         );
         
         // Use LLaVA model for vision capabilities
@@ -95,7 +97,7 @@ export class OllamaService implements AIProvider {
         });
       } else {
         // Standard text processing
-        const prompt = this.buildPrompt(content, originalName, namingConvention, category, fileInfo, language);
+        const prompt = this.buildPrompt(content, originalName, namingConvention, category, fileInfo, language, context);
         
         response = await this.makeRequest('/api/chat', {
           model: this.model,
@@ -134,7 +136,8 @@ export class OllamaService implements AIProvider {
     namingConvention: string,
     category: string,
     fileInfo?: FileInfo,
-    language?: string
+    language?: string,
+    context?: string
   ): string {
     return buildFileNamePrompt({
       content,
@@ -142,7 +145,8 @@ export class OllamaService implements AIProvider {
       namingConvention: namingConvention as NamingConvention,
       category: category as FileCategory,
       fileInfo,
-      language
+      language,
+      context
     });
   }
 

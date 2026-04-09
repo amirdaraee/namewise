@@ -124,7 +124,7 @@ export class FileRenamer {
     if (this.config.noAi) {
       aiResult = { name: this.buildNameFromMetadata(file), inputTokens: undefined, outputTokens: undefined };
     } else {
-      aiResult = await this.aiService.generateFileName(content, file.name, this.config.namingConvention, fileCategory, file, this.config.language);
+      aiResult = await this.aiService.generateFileName(content, file.name, this.config.namingConvention, fileCategory, file, this.config.language, this.config.context);
     }
     if (!aiResult.name || aiResult.name.trim().length === 0) {
       throw new Error('Failed to generate a filename');

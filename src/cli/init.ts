@@ -133,6 +133,17 @@ export async function initCommand(): Promise<void> {
   }]);
   if (personalName) config.name = personalName;
 
+  // Context
+  const { context } = await inquirer.prompt([{
+    type: 'input',
+    name: 'context',
+    message: scope === 'global'
+      ? 'Any general context for renaming? (optional, e.g. \'All documents belong to John Doe\'):'
+      : 'Any context about the files in this folder? (optional, e.g. \'These are John\'s tax documents\'):',
+    default: existing.context ?? ''
+  }]);
+  if (context) config.context = context;
+
   // Write config
   await fs.mkdir(path.dirname(configPath), { recursive: true });
   await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');

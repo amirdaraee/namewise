@@ -14,7 +14,7 @@ export class ClaudeService implements AIProvider {
     this.model = model ?? 'claude-sonnet-4-5-20250929';
   }
 
-  async generateFileName(content: string, originalName: string, namingConvention: string = 'kebab-case', category: string = 'general', fileInfo?: FileInfo, language?: string): Promise<AINameResult> {
+  async generateFileName(content: string, originalName: string, namingConvention: string = 'kebab-case', category: string = 'general', fileInfo?: FileInfo, language?: string, context?: string): Promise<AINameResult> {
     const convention = namingConvention as NamingConvention;
     const fileCategory = category as FileCategory;
 
@@ -37,7 +37,8 @@ export class ClaudeService implements AIProvider {
           namingConvention: convention,
           category: fileCategory,
           fileInfo,
-          language
+          language,
+          context
         });
 
         response = await this.client.messages.create({
@@ -71,7 +72,8 @@ export class ClaudeService implements AIProvider {
           namingConvention: convention,
           category: fileCategory,
           fileInfo,
-          language
+          language,
+          context
         });
 
         response = await this.client.messages.create({

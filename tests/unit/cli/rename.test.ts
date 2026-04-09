@@ -866,4 +866,26 @@ describe('renameFiles()', () => {
       logSpy.mockRestore();
     });
   });
+
+  describe('--context flag', () => {
+    it('should pass --context flag to Config.context', async () => {
+      mockStat.mockImplementation(async (p: any) => {
+        if (p === '.') return { isDirectory: () => true } as any;
+        return { size: 1000, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+      });
+      mockReaddir.mockResolvedValue([
+        { name: 'report.pdf', isFile: () => true, isDirectory: () => false }
+      ] as any);
+
+      await renameFiles('.', {
+        ...defaultOptions,
+        dryRun: true,
+        context: 'These are tax documents'
+      });
+
+      const constructorCall = vi.mocked(FileRenamer).mock.calls[0];
+      const config = constructorCall[2] as any;
+      expect(config.context).toBe('These are tax documents');
+    });
+  });
 });

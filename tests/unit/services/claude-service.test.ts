@@ -394,4 +394,17 @@ describe('ClaudeService', () => {
       expect(result.outputTokens).toBeUndefined();
     });
   });
+
+  describe('context parameter', () => {
+    it('should pass context to buildFileNamePrompt when provided', async () => {
+      mockClient.messages.create.mockResolvedValue({
+        content: [{ type: 'text', text: 'tax-return-2023' }],
+        usage: { input_tokens: 50, output_tokens: 5 }
+      });
+      await service.generateFileName('Document content', 'doc.pdf', 'kebab-case', 'general', undefined, undefined, 'These are tax documents');
+      const callArg = mockClient.messages.create.mock.calls[0][0];
+      expect(callArg.messages[0].content).toContain('User-provided context:');
+      expect(callArg.messages[0].content).toContain('These are tax documents');
+    });
+  });
 });

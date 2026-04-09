@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2026-04-09
+
+### Added
+- `--context <text>` flag on `rename`: supply free-form descriptive text about the files being renamed (e.g. `--context "These are John's 2023 tax documents"`); the AI receives this as additional guidance before generating filenames
+- `context` field in config files (`~/.namewise.json` / `.namewise.json`): set a persistent context so it applies automatically without passing the flag every time; project config overrides global (same cascade as all other settings)
+- Context prompt in `namewise init` wizard: project-scope setup asks *"Any context about the files in this folder?"*; global-scope setup asks *"Any general context for renaming?"*; leaving blank omits the field
+
 ## [0.7.1] - 2026-04-09
 
 ### Added

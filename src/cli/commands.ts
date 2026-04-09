@@ -31,6 +31,7 @@ What init configures:
   Language   — language for generated filenames (e.g. English, French)
   Dry-run    — always preview before renaming by default
   Your name  — used in document and photo templates
+  Context    — optional guidance for AI naming (scope-specific)
 
 Example:
   namewise init
@@ -75,6 +76,7 @@ Example:
     .option('--strip <pattern>', 'Remove regex pattern from all filenames (skips AI)')
     .option('--truncate <n>', 'Truncate filenames to N characters (skips AI)')
     .option('--language <lang>', 'Language for generated filenames (e.g. English, French, German)')
+    .option('--context <text>', 'Additional context about the files to guide AI naming')
     .addHelpText('after', `
 
 How it works:
@@ -118,6 +120,10 @@ Examples:
   # Force output language regardless of document language
   namewise rename ./farsi-docs --language English --dry-run
   namewise rename ./documents --language French
+
+  # Provide context to guide AI naming
+  namewise rename ./tax-docs --context "These are John's 2023 tax documents" --dry-run
+  namewise rename ./contracts --context "Legal agreements for Acme Corp projects"
 
   # Local LLMs (no API key needed)
   namewise rename --provider ollama --model llama3.1 --dry-run

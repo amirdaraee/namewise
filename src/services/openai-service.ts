@@ -14,7 +14,7 @@ export class OpenAIService implements AIProvider {
     this.model = model ?? 'gpt-4o';
   }
 
-  async generateFileName(content: string, originalName: string, namingConvention: string = 'kebab-case', category: string = 'general', fileInfo?: FileInfo, language?: string): Promise<AINameResult> {
+  async generateFileName(content: string, originalName: string, namingConvention: string = 'kebab-case', category: string = 'general', fileInfo?: FileInfo, language?: string, context?: string): Promise<AINameResult> {
     const convention = namingConvention as NamingConvention;
     const fileCategory = category as FileCategory;
 
@@ -37,7 +37,8 @@ export class OpenAIService implements AIProvider {
           namingConvention: convention,
           category: fileCategory,
           fileInfo,
-          language
+          language,
+          context
         });
 
         response = await this.client.chat.completions.create({
@@ -70,7 +71,8 @@ export class OpenAIService implements AIProvider {
           namingConvention: convention,
           category: fileCategory,
           fileInfo,
-          language
+          language,
+          context
         });
 
         response = await this.client.chat.completions.create({

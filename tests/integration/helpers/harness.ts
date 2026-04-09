@@ -34,6 +34,8 @@ export interface CapturedCall {
   namingConvention?: string;
   category?: string;
   fileInfo?: FileInfo;
+  language?: string;
+  context?: string;
 }
 
 export class MockAIService implements AIProvider {
@@ -92,9 +94,11 @@ export class MockAIService implements AIProvider {
     originalName: string,
     namingConvention?: string,
     category?: string,
-    fileInfo?: FileInfo
+    fileInfo?: FileInfo,
+    language?: string,
+    context?: string
   ): Promise<AINameResult> {
-    this.calls.push({ content, originalName, namingConvention, category, fileInfo });
+    this.calls.push({ content, originalName, namingConvention, category, fileInfo, language, context });
 
     if (this.shouldFail) {
       throw new Error('Mock AI service failed');

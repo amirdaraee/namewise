@@ -79,4 +79,12 @@ describe('loadConfig()', () => {
     });
     await expect(loadConfig('/some/dir')).rejects.toThrow(path.join(homeDir, '.namewise.json'));
   });
+
+  it('should include context field when present in config file', async () => {
+    mockReadFile
+      .mockResolvedValueOnce(JSON.stringify({ provider: 'claude', context: 'These are tax documents' }))
+      .mockRejectedValueOnce(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
+    const config = await loadConfig('/some/dir');
+    expect(config.context).toBe('These are tax documents');
+  });
 });

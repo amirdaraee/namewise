@@ -4,7 +4,7 @@ import path from 'path';
 import { FileRenamer } from '../../../src/services/file-renamer.js';
 import { DocumentParserFactory } from '../../../src/parsers/factory.js';
 import { MockAIService } from '../../integration/helpers/harness.js';
-import { Config, FileInfo } from '../../../src/types/index.js';
+import { Config, FileInfo, AIProvider } from '../../../src/types/index.js';
 
 // Mock fs.rename to avoid actual file operations
 vi.mock('fs', async () => {
@@ -434,7 +434,7 @@ describe('FileRenamer', () => {
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(true);
 
-      // Verify AI service was called with the naming convention, category, file info, and language
+      // Verify AI service was called with the naming convention, category, file info, language, and context
       expect(generateFileNameSpy).toHaveBeenCalledWith(
         expect.any(String),
         'sample-text.txt',
@@ -445,7 +445,8 @@ describe('FileRenamer', () => {
           extension: '.txt',
           documentMetadata: expect.any(Object)
         }),
-        undefined // no language configured
+        undefined, // no language configured
+        undefined  // no context configured
       );
     });
 
@@ -785,6 +786,40 @@ describe('FileRenamer', () => {
 
       const outputString = stdoutOutput.join('');
       expect(outputString).toContain('Processed 2 files (1 successful)');
+    });
+
+    it('should pass config.context to generateFileName', async () => {
+      const mockGenerate = vi.fn().mockResolvedValue({ name: 'tax-return-2023', inputTokens: 10, outputTokens: 5 });
+      const mockAi: AIProvider = { name: 'Mock', generateFileName: mockGenerate };
+      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+      vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+      const contextConfig: Config = { ...config, context: 'These are John Doe tax documents' };
+      const renamer = new FileRenamer(parserFactory, mockAi, contextConfig);
+
+      const testFiles: FileInfo[] = [{
+        path: path.join(testDataDir, 'sample-text.txt'),
+        name: 'sample-text.txt',
+        extension: '.txt',
+        size: 1000,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        accessedAt: new Date(),
+        parentFolder: 'data',
+        folderPath: ['tests', 'data']
+      }];
+
+      await renamer.renameFiles(testFiles);
+
+      expect(mockGenerate).toHaveBeenCalledWith(
+        expect.any(String),
+        'sample-text.txt',
+        'kebab-case',
+        'general',
+        expect.anything(),
+        undefined,
+        'These are John Doe tax documents'
+      );
     });
   });
 });

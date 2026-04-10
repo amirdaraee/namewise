@@ -16,7 +16,7 @@ export class ImageCompressor {
     if (mimeType === 'image/heic' || mimeType === 'image/heif') {
       const heicConvert = (await import('heic-convert')).default;
       workingBuffer = Buffer.from(
-        await heicConvert({ buffer: workingBuffer, format: 'JPEG', quality: 1 })
+        await heicConvert({ buffer: workingBuffer.buffer as ArrayBuffer, format: 'JPEG', quality: 1 })
       );
     }
 

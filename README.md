@@ -51,35 +51,24 @@ Automatically rename files based on their content using AI providers (Claude, Op
 ## Quick Start
 
 ```bash
-# Clone and setup
-git clone https://github.com/amirdaraee/namewise.git
-cd namewise
-npm install
-npm run build
+# Install
+npm install -g @amirdaraee/namewise
 
 # Run the interactive setup wizard (recommended for first use)
 namewise init
 
 # Preview renames (recommended first)
-npx namewise rename ./my-documents --dry-run --provider claude
+namewise rename ./my-documents --dry-run --provider claude
 
 # Actually rename
-npx namewise rename ./my-documents --provider claude --api-key your-api-key
+namewise rename ./my-documents --provider claude --api-key your-api-key
 ```
 
 ## Installation
 
-### Option 1: Clone and Build
 ```bash
-git clone https://github.com/amirdaraee/namewise.git
-cd namewise
-npm install
-npm run build
-npm link # Optional: for global usage
+npm install -g @amirdaraee/namewise
 ```
-
-### Option 2: Direct Download
-Download the latest release from [GitHub Releases](https://github.com/amirdaraee/namewise/releases)
 
 ## Usage
 

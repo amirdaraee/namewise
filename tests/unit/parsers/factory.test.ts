@@ -49,15 +49,28 @@ describe('DocumentParserFactory', () => {
     });
 
     it('should return null for unsupported file types', () => {
-      const parser1 = factory.getParser('test.png');
-      const parser2 = factory.getParser('test.jpg');
-      const parser3 = factory.getParser('test.mp4');
-      const parser4 = factory.getParser('test.zip');
-      
+      const parser1 = factory.getParser('test.mp4');
+      const parser2 = factory.getParser('test.zip');
+      const parser3 = factory.getParser('test.exe');
+
       expect(parser1).toBeNull();
       expect(parser2).toBeNull();
       expect(parser3).toBeNull();
-      expect(parser4).toBeNull();
+    });
+
+    it('should return ImageParser for JPEG files', () => {
+      const parser = factory.getParser('photo.jpg');
+      expect(parser).toBeDefined();
+      expect(parser?.supports('photo.jpg')).toBe(true);
+    });
+
+    it('should return ImageParser for all image extensions', () => {
+      const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.heic', '.webp'];
+      for (const ext of imageExts) {
+        const parser = factory.getParser(`file${ext}`);
+        expect(parser).toBeDefined();
+        expect(parser?.supports(`file${ext}`)).toBe(true);
+      }
     });
 
     it('should be case insensitive', () => {
@@ -92,9 +105,9 @@ describe('DocumentParserFactory', () => {
       expect(extensions.length).toBe(uniqueExtensions.length);
     });
 
-    it('should include at least 8 extensions', () => {
+    it('should include at least 16 extensions (8 document + 8 image)', () => {
       const extensions = factory.getSupportedExtensions();
-      expect(extensions.length).toBeGreaterThanOrEqual(8);
+      expect(extensions.length).toBeGreaterThanOrEqual(16);
     });
 
     it('should only list extensions that at least one parser actually supports', () => {
@@ -104,13 +117,23 @@ describe('DocumentParserFactory', () => {
       });
     });
 
-    it('should not include extensions that no parser supports', () => {
+    it('should not include non-image, non-document extensions', () => {
       const extensions = factory.getSupportedExtensions();
-      expect(extensions).not.toContain('.png');
-      expect(extensions).not.toContain('.jpg');
       expect(extensions).not.toContain('.mp4');
       expect(extensions).not.toContain('.zip');
       expect(extensions).not.toContain('.exe');
+    });
+
+    it('should include all 8 image extensions', () => {
+      const extensions = factory.getSupportedExtensions();
+      expect(extensions).toContain('.jpg');
+      expect(extensions).toContain('.jpeg');
+      expect(extensions).toContain('.png');
+      expect(extensions).toContain('.gif');
+      expect(extensions).toContain('.bmp');
+      expect(extensions).toContain('.tiff');
+      expect(extensions).toContain('.heic');
+      expect(extensions).toContain('.webp');
     });
   });
 });

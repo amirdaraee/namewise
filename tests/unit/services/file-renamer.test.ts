@@ -822,4 +822,127 @@ describe('FileRenamer', () => {
       );
     });
   });
+
+  describe('Image file handling', () => {
+    let imageParserFactory: any;
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockAIService.resetCallCount();
+
+      // Parser factory that returns imageData (simulates ImageParser)
+      imageParserFactory = {
+        getParser: vi.fn().mockReturnValue({
+          parse: vi.fn().mockResolvedValue({
+            content: '',
+            imageData: 'data:image/jpeg;base64,/9j/fakeimage'
+          })
+        })
+      };
+    });
+
+    it('should pass imageData to generateFileName when parser returns imageData', async () => {
+      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+      vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+      const renamer = new FileRenamer(imageParserFactory, mockAIService, config);
+      const file: FileInfo = {
+        path: '/test/photo.jpg',
+        name: 'photo.jpg',
+        extension: '.jpg',
+        size: 1000,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        accessedAt: new Date(),
+        parentFolder: 'test',
+        folderPath: ['test']
+      };
+
+      await renamer.renameFiles([file]);
+
+      const calls = mockAIService.getCalls();
+      expect(calls[0].imageData).toBe('data:image/jpeg;base64,/9j/fakeimage');
+      expect(calls[0].content).toBe('');
+    });
+
+    it('should skip image file with success:false when AI throws on imageData', async () => {
+      mockAIService.setShouldFail(true);
+
+      const renamer = new FileRenamer(imageParserFactory, mockAIService, config);
+      const file: FileInfo = {
+        path: '/test/photo.jpg',
+        name: 'photo.jpg',
+        extension: '.jpg',
+        size: 1000,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        accessedAt: new Date(),
+        parentFolder: 'test',
+        folderPath: ['test']
+      };
+
+      const { results } = await renamer.renameFiles([file]);
+
+      expect(results[0].success).toBe(false);
+      expect(results[0].error).toContain('Vision not supported');
+      // File should not be renamed
+      expect(fs.rename).not.toHaveBeenCalled();
+    });
+
+    it('should NOT skip text file (no imageData) when AI throws — error propagates', async () => {
+      mockAIService.setShouldFail(true);
+
+      const textParserFactory = {
+        getParser: vi.fn().mockReturnValue({
+          parse: vi.fn().mockResolvedValue({ content: 'some text content' })
+        })
+      };
+
+      const renamer = new FileRenamer(textParserFactory, mockAIService, config);
+      const file: FileInfo = {
+        path: path.join(testDataDir, 'sample-text.txt'),
+        name: 'sample-text.txt',
+        extension: '.txt',
+        size: 100,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        accessedAt: new Date(),
+        parentFolder: 'data',
+        folderPath: ['data']
+      };
+
+      const { results } = await renamer.renameFiles([file]);
+
+      // Error still recorded as failure but NOT with "Vision not supported" prefix
+      expect(results[0].success).toBe(false);
+      expect(results[0].error).not.toContain('Vision not supported');
+    });
+
+    it('should use "Unknown error" message when vision catch receives a non-Error throw', async () => {
+      // Simulate a non-Error being thrown (e.g. string or plain object)
+      const nonErrorService = {
+        name: 'NonErrorAI',
+        generateFileName: vi.fn().mockRejectedValueOnce('string error not an Error object')
+      } as any;
+
+      const renamer = new FileRenamer(imageParserFactory, nonErrorService, config);
+      const file: FileInfo = {
+        path: '/test/photo.jpg',
+        name: 'photo.jpg',
+        extension: '.jpg',
+        size: 1000,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        accessedAt: new Date(),
+        parentFolder: 'test',
+        folderPath: ['test']
+      };
+
+      const { results } = await renamer.renameFiles([file]);
+
+      expect(results[0].success).toBe(false);
+      expect(results[0].error).toContain('Vision not supported');
+      expect(results[0].error).toContain('Unknown error');
+    });
+  });
 });

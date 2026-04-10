@@ -51,7 +51,7 @@ export interface RenameSessionResult {
 
 export interface AIProvider {
   name: string;
-  generateFileName: (content: string, originalName: string, namingConvention?: string, category?: string, fileInfo?: FileInfo, language?: string, context?: string) => Promise<AINameResult>;
+  generateFileName: (content: string, originalName: string, namingConvention?: string, category?: string, fileInfo?: FileInfo, language?: string, context?: string, imageData?: string) => Promise<AINameResult>;
 }
 
 export type NamingConvention = 'kebab-case' | 'snake_case' | 'camelCase' | 'PascalCase' | 'lowercase' | 'UPPERCASE';
@@ -90,6 +90,7 @@ export interface Config {
 export interface ParseResult {
   content: string;
   metadata?: DocumentMetadata;
+  imageData?: string; // base64 data URL for image files and scanned PDFs
 }
 
 export interface DocumentParser {

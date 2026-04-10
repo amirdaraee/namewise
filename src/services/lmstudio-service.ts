@@ -20,7 +20,7 @@ interface OpenAICompatibleResponse {
 
 interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
 }
 
 interface ModelInfo {
@@ -65,31 +65,41 @@ export class LMStudioService implements AIProvider {
     category = 'general',
     fileInfo?: FileInfo,
     language?: string,
-    context?: string
+    context?: string,
+    imageData?: string
   ): Promise<AINameResult> {
     try {
-      // Check if this is a scanned PDF image
-      const isScannedPDF = content.startsWith('[SCANNED_PDF_IMAGE]:');
-
-      if (isScannedPDF) {
-        // LM Studio has limited vision support, so we'll fall back to using the original filename
-        console.log('Scanned PDF detected but LMStudio has limited vision support. Using original filename.');
-        return { name: this.sanitizeFilename(originalName), inputTokens: undefined, outputTokens: undefined };
+      if (imageData && (!imageData.startsWith('data:image/') || !imageData.includes(','))) {
+        throw new Error('Invalid image data format');
       }
 
-      const prompt = this.buildPrompt(content, originalName, namingConvention, category, fileInfo, language, context);
-      
+      const prompt = buildFileNamePrompt({
+        content: imageData
+          ? 'Analyze this image and generate an appropriate filename based on what you see.'
+          : content,
+        originalName,
+        namingConvention: namingConvention as NamingConvention,
+        category: category as FileCategory,
+        fileInfo,
+        language,
+        context
+      });
+
+      const userMessage: OpenAIMessage = imageData
+        ? {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: imageData } }
+            ]
+          }
+        : { role: 'user', content: prompt };
+
       const response = await this.makeRequest('/v1/chat/completions', {
         model: this.model,
         messages: [
-          {
-            role: 'system',
-            content: AI_SYSTEM_PROMPT
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
+          { role: 'system', content: AI_SYSTEM_PROMPT },
+          userMessage
         ] as OpenAIMessage[],
         temperature: 0.3,
         max_tokens: 100,
@@ -102,33 +112,12 @@ export class LMStudioService implements AIProvider {
           inputTokens: undefined,
           outputTokens: undefined
         };
-      } else {
-        throw new Error('No response content from LMStudio');
       }
+      throw new Error('No response content from LMStudio');
     } catch (error) {
       console.error('LMStudio API error:', error);
       throw new Error(`LMStudio service failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }
-
-  private buildPrompt(
-    content: string,
-    originalName: string,
-    namingConvention: string,
-    category: string,
-    fileInfo?: FileInfo,
-    language?: string,
-    context?: string
-  ): string {
-    return buildFileNamePrompt({
-      content,
-      originalName,
-      namingConvention: namingConvention as NamingConvention,
-      category: category as FileCategory,
-      fileInfo,
-      language,
-      context
-    });
   }
 
   private sanitizeFilename(filename: string): string {

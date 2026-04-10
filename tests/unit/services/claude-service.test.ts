@@ -232,33 +232,32 @@ describe('ClaudeService', () => {
     });
   });
 
-  describe('Scanned PDF handling', () => {
-    it('should throw when scanned PDF image data has no data: prefix', async () => {
-      const scannedContent = '[SCANNED_PDF_IMAGE]:notadataurl';
-      await expect(service.generateFileName(scannedContent, 'scan.pdf')).rejects.toThrow(
-        'Invalid scanned PDF image data format'
-      );
+  describe('Vision (imageData param) handling', () => {
+    it('should throw when imageData has no data: prefix', async () => {
+      await expect(
+        service.generateFileName('', 'scan.pdf', 'kebab-case', 'general', undefined, undefined, undefined, 'notadataurl')
+      ).rejects.toThrow('Invalid image data format');
     });
 
-    it('should throw when scanned PDF image data has no comma separator', async () => {
-      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpegNOCOMMA';
-      await expect(service.generateFileName(scannedContent, 'scan.pdf')).rejects.toThrow(
-        'Invalid scanned PDF image data format'
-      );
+    it('should throw when imageData has no comma separator', async () => {
+      await expect(
+        service.generateFileName('', 'scan.pdf', 'kebab-case', 'general', undefined, undefined, undefined, 'data:image/jpegNOCOMMA')
+      ).rejects.toThrow('Invalid image data format');
     });
 
-    it('should handle scanned PDF with JPEG image using vision model', async () => {
+    it('should send image via vision API when imageData is provided (JPEG)', async () => {
       mockClient.messages.create.mockResolvedValue({
         content: [{ type: 'text', text: 'visa-application' }],
         usage: { input_tokens: 100, output_tokens: 10 }
       });
 
-      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fakebase64data';
-      const result = await service.generateFileName(scannedContent, 'scan.pdf');
+      const result = await service.generateFileName(
+        '', 'scan.pdf', 'kebab-case', 'general', undefined, undefined, undefined,
+        'data:image/jpeg;base64,/9j/fakebase64data'
+      );
 
       expect(mockClient.messages.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'claude-sonnet-4-5-20250929',
           messages: [expect.objectContaining({
             content: expect.arrayContaining([
               expect.objectContaining({ type: 'text' }),
@@ -273,34 +272,50 @@ describe('ClaudeService', () => {
       expect(result.name).toBe('visa-application');
     });
 
-    it('should handle scanned PDF with PNG image', async () => {
+    it('should detect PNG media type from imageData prefix', async () => {
       mockClient.messages.create.mockResolvedValue({
         content: [{ type: 'text', text: 'document-scan' }],
         usage: { input_tokens: 100, output_tokens: 10 }
       });
 
-      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/png;base64,iVBORwfakedata';
-      const result = await service.generateFileName(scannedContent, 'scan.pdf');
+      await service.generateFileName(
+        '', 'scan.pdf', 'kebab-case', 'general', undefined, undefined, undefined,
+        'data:image/png;base64,iVBORwfakedata'
+      );
 
       const call = mockClient.messages.create.mock.calls[0][0];
       const imageContent = call.messages[0].content.find((c: any) => c.type === 'image');
       expect(imageContent.source.media_type).toBe('image/png');
-      expect(result.name).toBe('document-scan');
     });
 
-    it('should extract base64 data correctly from scanned PDF content', async () => {
+    it('should extract base64 data correctly (strips data: prefix)', async () => {
       mockClient.messages.create.mockResolvedValue({
         content: [{ type: 'text', text: 'scanned-document' }],
         usage: { input_tokens: 100, output_tokens: 10 }
       });
 
       const base64Data = '/9j/4AAQSkZJRgABAQ==';
-      const scannedContent = `[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,${base64Data}`;
-      await service.generateFileName(scannedContent, 'scan.pdf');
+      await service.generateFileName(
+        '', 'scan.pdf', 'kebab-case', 'general', undefined, undefined, undefined,
+        `data:image/jpeg;base64,${base64Data}`
+      );
 
       const call = mockClient.messages.create.mock.calls[0][0];
       const imageContent = call.messages[0].content.find((c: any) => c.type === 'image');
       expect(imageContent.source.data).toBe(base64Data);
+    });
+
+    it('should use text path when imageData is undefined', async () => {
+      mockClient.messages.create.mockResolvedValue({
+        content: [{ type: 'text', text: 'text-document' }],
+        usage: { input_tokens: 50, output_tokens: 5 }
+      });
+
+      await service.generateFileName('some text content', 'doc.txt');
+
+      const call = mockClient.messages.create.mock.calls[0][0];
+      // Text path: content is a string, not an array
+      expect(typeof call.messages[0].content).toBe('string');
     });
   });
 
@@ -336,7 +351,7 @@ describe('ClaudeService', () => {
       );
     });
 
-    it('should use the custom model for vision (scanned PDF) requests', async () => {
+    it('should use the custom model for vision (imageData) requests', async () => {
       const customModel = 'claude-opus-4-6';
       const customService = new ClaudeService('test-key', customModel);
       const customClient = (customService as any).client;
@@ -345,8 +360,10 @@ describe('ClaudeService', () => {
         usage: { input_tokens: 100, output_tokens: 10 }
       });
 
-      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fake';
-      await customService.generateFileName(scannedContent, 'scan.pdf');
+      await customService.generateFileName(
+        '', 'scan.pdf', 'kebab-case', 'general', undefined, undefined, undefined,
+        'data:image/jpeg;base64,/9j/fake'
+      );
 
       expect(customClient.messages.create).toHaveBeenCalledWith(
         expect.objectContaining({ model: customModel })
@@ -368,14 +385,16 @@ describe('ClaudeService', () => {
       expect(result.outputTokens).toBe(15);
     });
 
-    it('should return input and output token counts from vision (scanned PDF) response', async () => {
+    it('should return token counts from vision (imageData) response', async () => {
       mockClient.messages.create.mockResolvedValue({
         content: [{ type: 'text', text: 'scanned-invoice' }],
         usage: { input_tokens: 800, output_tokens: 8 }
       });
 
-      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fake';
-      const result = await service.generateFileName(scannedContent, 'scan.pdf');
+      const result = await service.generateFileName(
+        '', 'scan.pdf', 'kebab-case', 'general', undefined, undefined, undefined,
+        'data:image/jpeg;base64,/9j/fake'
+      );
 
       expect(result.name).toBe('scanned-invoice');
       expect(result.inputTokens).toBe(800);

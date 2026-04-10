@@ -14,25 +14,29 @@ export class OpenAIService implements AIProvider {
     this.model = model ?? 'gpt-4o';
   }
 
-  async generateFileName(content: string, originalName: string, namingConvention: string = 'kebab-case', category: string = 'general', fileInfo?: FileInfo, language?: string, context?: string): Promise<AINameResult> {
+  async generateFileName(
+    content: string,
+    originalName: string,
+    namingConvention: string = 'kebab-case',
+    category: string = 'general',
+    fileInfo?: FileInfo,
+    language?: string,
+    context?: string,
+    imageData?: string
+  ): Promise<AINameResult> {
     const convention = namingConvention as NamingConvention;
     const fileCategory = category as FileCategory;
-
-    // Check if this is a scanned PDF image
-    const isScannedPDF = content.startsWith('[SCANNED_PDF_IMAGE]:');
 
     try {
       let response;
 
-      if (isScannedPDF) {
-        // Extract base64 image data
-        const imageBase64 = content.replace('[SCANNED_PDF_IMAGE]:', '');
-        if (!imageBase64.startsWith('data:image/') || !imageBase64.includes(',')) {
-          throw new Error('Invalid scanned PDF image data format');
+      if (imageData) {
+        if (!imageData.startsWith('data:image/') || !imageData.includes(',')) {
+          throw new Error('Invalid image data format');
         }
 
         const prompt = buildFileNamePrompt({
-          content: 'This is a scanned PDF document converted to an image. Please analyze the image and extract the main content to generate an appropriate filename.',
+          content: 'Analyze this image and generate an appropriate filename based on what you see.',
           originalName,
           namingConvention: convention,
           category: fileCategory,
@@ -47,16 +51,8 @@ export class OpenAIService implements AIProvider {
             {
               role: 'user',
               content: [
-                {
-                  type: 'text',
-                  text: prompt
-                },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: imageBase64
-                  }
-                }
+                { type: 'text', text: prompt },
+                { type: 'image_url', image_url: { url: imageData } }
               ]
             }
           ],
@@ -64,7 +60,6 @@ export class OpenAIService implements AIProvider {
           temperature: 0.3
         });
       } else {
-        // Standard text processing
         const prompt = buildFileNamePrompt({
           content,
           originalName,
@@ -77,12 +72,7 @@ export class OpenAIService implements AIProvider {
 
         response = await this.client.chat.completions.create({
           model: this.model,
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
+          messages: [{ role: 'user', content: prompt }],
           max_tokens: 100,
           temperature: 0.3
         });
@@ -90,10 +80,8 @@ export class OpenAIService implements AIProvider {
 
       const suggestedName = response.choices[0]?.message?.content?.trim() || 'untitled-document';
 
-      // Clean and validate the suggested name
-      const name = this.sanitizeFileName(suggestedName, convention);
       return {
-        name,
+        name: this.sanitizeFileName(suggestedName, convention),
         inputTokens: response.usage?.prompt_tokens,
         outputTokens: response.usage?.completion_tokens
       };
@@ -104,22 +92,14 @@ export class OpenAIService implements AIProvider {
   }
 
   private sanitizeFileName(name: string, convention: NamingConvention): string {
-    // Remove any potential file extensions from the suggestion
     const nameWithoutExt = name.replace(/\.[^/.]+$/, '');
-
-    // Strip Windows-illegal characters before applying the naming convention
     const safeForWindows = stripWindowsIllegalChars(nameWithoutExt);
-
-    // Apply the naming convention
     let cleaned = applyNamingConvention(safeForWindows, convention);
 
-    // Ensure it's not empty and not too long
     if (!cleaned) {
       cleaned = applyNamingConvention('untitled document', convention);
     } else if (cleaned.length > 100) {
-      // Truncate while preserving naming convention structure
       cleaned = cleaned.substring(0, 100);
-      // Clean up any broken separators at the end
       if (convention === 'kebab-case') {
         cleaned = cleaned.replace(/-[^-]*$/, '');
       } else if (convention === 'snake_case') {

@@ -24,7 +24,7 @@ describe('CLI entry point (index.ts)', () => {
     await import('../../src/index.js');
 
     expect(program.name).toHaveBeenCalledWith('namewise');
-    expect(program.version).toHaveBeenCalledWith('0.7.0');
+    expect(program.version).toHaveBeenCalledWith('0.8.0');
     expect(setupCommands).toHaveBeenCalledWith(program);
     expect(program.parseAsync).toHaveBeenCalledWith(process.argv);
   });

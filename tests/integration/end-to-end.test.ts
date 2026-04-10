@@ -1,8 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { existsSync } from 'fs';
+import { promises as fs } from 'fs';
 import path from 'path';
+import { DocumentParserFactory } from '../../src/parsers/factory.js';
+import { FileRenamer } from '../../src/services/file-renamer.js';
+import { createTempDir, copyTestFile, MockAIService, makeConfig, makeFileInfo } from './helpers/harness.js';
 
 const execAsync = promisify(exec);
 const cliPath = path.join(process.cwd(), 'dist', 'index.js');
@@ -112,5 +116,38 @@ describe('End-to-End CLI Tests (build missing)', () => {
   it.skipIf(cliExists)('should note that the build is required for CLI tests', () => {
     console.warn(`CLI tests skipped: ${cliPath} not found. Run \`npm run build\` first.`);
     expect(true).toBe(true);
+  });
+});
+
+describe('Image file end-to-end (programmatic)', () => {
+  let tempDir: string;
+  let cleanup: () => Promise<void>;
+  let mockAI: MockAIService;
+  let parserFactory: DocumentParserFactory;
+
+  beforeEach(async () => {
+    ({ dir: tempDir, cleanup } = await createTempDir());
+    mockAI = new MockAIService();
+    parserFactory = new DocumentParserFactory();
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
+  it('should dry-run rename a .jpg image file', async () => {
+    const filePath = await copyTestFile('sample-image.jpg', tempDir);
+    const stat = await fs.stat(filePath);
+    const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
+
+    const { results } = await renamer.renameFiles([
+      makeFileInfo(filePath, { size: stat.size, extension: '.jpg' })
+    ]);
+
+    expect(results[0].success).toBe(true);
+    // Dry run: original file still at original path
+    await expect(fs.access(filePath)).resolves.toBeUndefined();
+    // Suggested name has .jpg extension
+    expect(results[0].suggestedName).toMatch(/\.jpg$/);
   });
 });

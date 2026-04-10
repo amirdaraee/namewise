@@ -1,6 +1,6 @@
 # Namewise
 
-[![Tests](https://img.shields.io/badge/tests-816%20passing-brightgreen.svg)](#testing--development)
+[![Tests](https://img.shields.io/badge/tests-867%20passing-brightgreen.svg)](#testing--development)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#testing--development)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
@@ -42,7 +42,9 @@ Automatically rename files based on their content using AI providers (Claude, Op
 - **Personal File Templates**: Customizable templates for different file categories (documents, movies, music, series, photos, books)
 - **Smart Categorization**: Automatic file type detection or manual category selection
 - **Naming Convention Options**: 6 different formats (kebab-case, snake_case, camelCase, PascalCase, lowercase, UPPERCASE)
-- **Multiple File Types**: Supports PDF, DOCX, DOC, XLSX, XLS, TXT, MD, and RTF files
+- **Multiple File Types**: Supports PDF, DOCX, DOC, XLSX, XLS, TXT, MD, RTF, JPG, JPEG, PNG, GIF, BMP, TIFF, HEIC, and WEBP files
+- **Image Renaming**: Vision-capable models analyze image content to generate descriptive filenames
+- **EXIF Fallback**: `--no-ai` mode extracts EXIF metadata (description, date) from image files when available
 - **Dry Run Mode**: Preview changes before renaming files
 - **Size Limits**: Configurable maximum file size limits
 
@@ -468,6 +470,7 @@ Supported keys: `provider`, `apiKey`, `case`, `template`, `name`, `date`, `maxSi
 | Microsoft Word | `.docx`, `.doc` | mammoth |
 | Microsoft Excel | `.xlsx`, `.xls` | exceljs |
 | Text Files | `.txt`, `.md`, `.rtf` | Native fs |
+| Images | `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.tiff`, `.heic`, `.webp` | canvas + heic-convert |
 
 ## File Templates
 
@@ -483,6 +486,40 @@ Supported keys: `provider`, `apiKey`, `case`, `template`, `name`, `date`, `maxSi
 | `auto` | *Automatic* | *Varies by detected type* | Let AI detect and choose best template |
 
 ## AI Provider Setup
+
+| Provider | Vision Support | API Key Required | Default Model |
+|----------|---------------|-----------------|---------------|
+| `claude` | Yes | Yes (`ANTHROPIC_API_KEY`) | `claude-sonnet-4-5-20250929` |
+| `openai` | Yes | Yes (`OPENAI_API_KEY`) | `gpt-4o` |
+| `ollama` | Model-dependent | No | `llama3.1` |
+| `lmstudio` | Model-dependent | No | `local-model` |
+
+> **Image files** require a vision-capable model. If the selected model does not support vision, the file is recorded as failed and skipped — no rename is attempted.
+
+### Image Files
+
+To rename image files, use any vision-capable provider:
+
+```bash
+# Claude (vision enabled by default)
+namewise rename ./photos --provider claude --dry-run
+
+# OpenAI GPT-4o (vision enabled by default)
+namewise rename ./photos --provider openai --dry-run
+
+# Ollama with a vision model
+namewise rename ./photos --provider ollama --model llava --dry-run
+```
+
+For `--no-ai` mode, Namewise reads EXIF metadata from image files:
+- Uses `ImageDescription` or `UserComment` if present
+- Falls back to `DateTimeOriginal` → `photo-YYYY-MM-DD` format
+- Falls back to the original filename stem if no EXIF data is found
+
+```bash
+namewise rename ./photos --no-ai --dry-run
+# Result: photo-2024-07-15.jpg (from EXIF date) or vacation-paris.jpg (from filename)
+```
 
 ### Local LLMs (no API keys required)
 
@@ -546,7 +583,7 @@ Tokens: N/A (local provider)
 - **Conflict Auto-Numbering**: Never overwrites an existing file
 - **File Size Limits**: Skips files above `--max-size`
 - **Extension Preservation**: Original file extensions are never changed
-- **Comprehensive Testing**: 816 tests with 100% coverage
+- **Comprehensive Testing**: 867 tests with 100% coverage
 
 ## Testing & Development
 

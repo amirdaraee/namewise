@@ -25,7 +25,9 @@ vi.mock('inquirer', () => ({
 
 // Mock DocumentParserFactory
 vi.mock('../../../src/parsers/factory.js', () => ({
-  DocumentParserFactory: vi.fn().mockImplementation(() => ({}))
+  DocumentParserFactory: vi.fn().mockImplementation(() => ({
+    getSupportedExtensions: vi.fn().mockReturnValue(['.pdf', '.docx', '.txt'])
+  }))
 }));
 
 // Mock AIServiceFactory
@@ -64,6 +66,7 @@ import { renameFiles, getFilesToProcessForTest } from '../../../src/cli/rename.j
 import { promises as fs } from 'fs';
 import inquirer from 'inquirer';
 import { FileRenamer } from '../../../src/services/file-renamer.js';
+import { DocumentParserFactory } from '../../../src/parsers/factory.js';
 import { loadConfig } from '../../../src/utils/config-loader.js';
 import { appendHistory } from '../../../src/utils/history.js';
 
@@ -110,6 +113,11 @@ describe('renameFiles()', () => {
     // Reset FileRenamer mock implementation
     vi.mocked(FileRenamer).mockImplementation(() => ({
       renameFiles: mockRenameFilesMethod
+    }) as any);
+    // Reset DocumentParserFactory mock implementation
+    vi.mocked(DocumentParserFactory).mockImplementation(() => ({
+      getSupportedExtensions: vi.fn().mockReturnValue(['.pdf', '.docx', '.txt']),
+      getParser: vi.fn()
     }) as any);
   });
 

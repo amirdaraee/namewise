@@ -7,11 +7,13 @@ async function main() {
   program
     .name('namewise')
     .description('🤖 AI-powered CLI tool that intelligently renames, organises, and cleans up files')
-    .version('0.7.0')
+    .version('0.8.0')
     .addHelpText('after', `
 
 📋 Supported File Types:
-  PDF, DOCX/DOC, XLSX/XLS, TXT, MD, RTF
+  Documents: PDF, DOCX/DOC, XLSX/XLS, TXT, MD, RTF
+  Images:    JPG/JPEG, PNG, GIF, BMP, TIFF, HEIC, WEBP
+  Note: Image renaming requires a vision-capable model. Files are skipped with a warning if the model does not support vision.
 
 🎯 File Templates:
   • general    - Simple descriptive names (default)

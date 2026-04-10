@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FileRenamer } from '../../../src/services/file-renamer.js';
 import { makeConfig, makeFileInfo, MockAIService } from '../../integration/helpers/harness.js';
 
@@ -14,6 +14,11 @@ vi.mock('fs', async () => {
   };
 });
 
+const mockExifrParse = vi.fn();
+vi.mock('exifr', () => ({
+  default: { parse: (...args: any[]) => mockExifrParse(...args) }
+}));
+
 vi.mock('../../../src/parsers/factory.js', () => ({
   DocumentParserFactory: vi.fn().mockImplementation(() => ({
     getParser: vi.fn().mockReturnValue({
@@ -27,13 +32,14 @@ vi.mock('../../../src/parsers/factory.js', () => ({
 
 import { DocumentParserFactory } from '../../../src/parsers/factory.js';
 
+const makeRenamer = (parserOverride?: any) => {
+  const config = makeConfig({ noAi: true, dryRun: true });
+  const ai = new MockAIService();
+  const factory = parserOverride ?? new DocumentParserFactory(config);
+  return { renamer: new FileRenamer(factory, ai, config), ai };
+};
+
 describe('FileRenamer with --no-ai', () => {
-  const makeRenamer = (parserOverride?: any) => {
-    const config = makeConfig({ noAi: true, dryRun: true });
-    const ai = new MockAIService();
-    const factory = parserOverride ?? new DocumentParserFactory(config);
-    return { renamer: new FileRenamer(factory, ai, config), ai };
-  };
 
   it('uses document title from metadata when available', async () => {
     const { renamer, ai } = makeRenamer();
@@ -99,5 +105,111 @@ describe('FileRenamer with --no-ai', () => {
     const file = makeFileInfo('/test/dir/document.pdf', { size: 100 });
     await renamer.renameFiles([file]);
     expect(ai.getCallCount()).toBe(1);
+  });
+});
+
+describe('--no-ai with image files (EXIF fallback)', () => {
+  beforeEach(() => {
+    mockExifrParse.mockReset();
+  });
+
+  it('uses EXIF ImageDescription when available', async () => {
+    mockExifrParse.mockResolvedValue({ ImageDescription: 'Family vacation Paris' });
+
+    const imageFactory = {
+      getParser: vi.fn().mockReturnValue({
+        parse: vi.fn().mockResolvedValue({
+          content: '',
+          imageData: 'data:image/jpeg;base64,fakedata'
+        })
+      })
+    };
+
+    const { renamer, ai } = makeRenamer(imageFactory);
+    const file = makeFileInfo('/test/dir/IMG_1234.jpg', { size: 100 });
+    const { results } = await renamer.renameFiles([file]);
+
+    expect(ai.getCallCount()).toBe(0);
+    expect(results[0].suggestedName.toLowerCase()).toContain('family');
+  });
+
+  it('uses EXIF UserComment when ImageDescription is absent', async () => {
+    mockExifrParse.mockResolvedValue({ UserComment: 'Birthday party 2024' });
+
+    const imageFactory = {
+      getParser: vi.fn().mockReturnValue({
+        parse: vi.fn().mockResolvedValue({
+          content: '',
+          imageData: 'data:image/jpeg;base64,fakedata'
+        })
+      })
+    };
+
+    const { renamer, ai } = makeRenamer(imageFactory);
+    const file = makeFileInfo('/test/dir/IMG_5678.jpg', { size: 100 });
+    const { results } = await renamer.renameFiles([file]);
+
+    expect(ai.getCallCount()).toBe(0);
+    expect(results[0].suggestedName.toLowerCase()).toContain('birthday');
+  });
+
+  it('uses DateTimeOriginal to produce photo-YYYY-MM-DD when description fields absent', async () => {
+    mockExifrParse.mockResolvedValue({ DateTimeOriginal: new Date('2023-07-04T12:00:00') });
+
+    const imageFactory = {
+      getParser: vi.fn().mockReturnValue({
+        parse: vi.fn().mockResolvedValue({
+          content: '',
+          imageData: 'data:image/jpeg;base64,fakedata'
+        })
+      })
+    };
+
+    const { renamer, ai } = makeRenamer(imageFactory);
+    const file = makeFileInfo('/test/dir/IMG_9999.jpg', { size: 100 });
+    const { results } = await renamer.renameFiles([file]);
+
+    expect(ai.getCallCount()).toBe(0);
+    expect(results[0].suggestedName.toLowerCase()).toContain('photo-2023-07-04');
+  });
+
+  it('falls back to filename stem when EXIF parse throws', async () => {
+    mockExifrParse.mockRejectedValue(new Error('EXIF parse error'));
+
+    const imageFactory = {
+      getParser: vi.fn().mockReturnValue({
+        parse: vi.fn().mockResolvedValue({
+          content: '',
+          imageData: 'data:image/jpeg;base64,fakedata'
+        })
+      })
+    };
+
+    const { renamer, ai } = makeRenamer(imageFactory);
+    const file = makeFileInfo('/test/dir/beach-trip.jpg', { size: 100 });
+    const { results } = await renamer.renameFiles([file]);
+
+    expect(ai.getCallCount()).toBe(0);
+    expect(results[0].suggestedName.toLowerCase()).toContain('beach');
+  });
+
+  it('falls back to filename stem when no EXIF data', async () => {
+    mockExifrParse.mockResolvedValue(null);
+
+    const imageFactory = {
+      getParser: vi.fn().mockReturnValue({
+        parse: vi.fn().mockResolvedValue({
+          content: '',
+          imageData: 'data:image/jpeg;base64,fakedata'
+        })
+      })
+    };
+
+    const { renamer, ai } = makeRenamer(imageFactory);
+    const file = makeFileInfo('/test/dir/my-photo.jpg', { size: 100 });
+    const { results } = await renamer.renameFiles([file]);
+
+    expect(ai.getCallCount()).toBe(0);
+    expect(results[0].suggestedName.toLowerCase()).toContain('my');
   });
 });

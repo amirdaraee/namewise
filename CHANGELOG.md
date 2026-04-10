@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-04-09
+
+### Added
+- Image file support: `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.tiff`, `.heic`, `.webp`
+- Smart image compression: resize to max 1024×1024px then progressive JPEG quality (0.9→0.7→0.5→0.3) to stay under the 5MB vision API limit
+- HEIC/HEIF decoding via `heic-convert` before processing with canvas
+- EXIF metadata fallback for `--no-ai` mode on image files (reads `DateTimeOriginal`, `ImageDescription`, `UserComment` via `exifr`)
+- Graceful skip with warning when the selected model does not support vision — file recorded as failed, no rename attempted
+
+### Changed
+- `ParseResult` now carries a typed `imageData?: string` field (replaces the `[SCANNED_PDF_IMAGE]:` string marker used for scanned PDFs)
+- Image compression logic unified in new `ImageCompressor` utility shared by both image files and scanned PDF conversion
+- Supported extensions now derived dynamically from `DocumentParserFactory` — `rename` and `watch` commands automatically reflect new parsers
+
 ## [0.7.2] - 2026-04-09
 
 ### Added

@@ -258,57 +258,50 @@ describe('OpenAIService', () => {
     });
   });
 
-  describe('Scanned PDF handling', () => {
-    it('should throw when scanned PDF image data has no data: prefix', async () => {
-      const scannedContent = '[SCANNED_PDF_IMAGE]:notadataurl';
-      await expect(service.generateFileName(scannedContent, 'scan.pdf')).rejects.toThrow(
-        'Invalid scanned PDF image data format'
-      );
+  describe('Vision (imageData param) handling', () => {
+    it('should throw when imageData is invalid format', async () => {
+      await expect(
+        service.generateFileName('', 'scan.pdf', 'kebab-case', 'general', undefined, undefined, undefined, 'notadataurl')
+      ).rejects.toThrow('Invalid image data format');
     });
 
-    it('should throw when scanned PDF image data has no comma separator', async () => {
-      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpegNOCOMMA';
-      await expect(service.generateFileName(scannedContent, 'scan.pdf')).rejects.toThrow(
-        'Invalid scanned PDF image data format'
-      );
-    });
-
-    it('should handle scanned PDF with image_url using gpt-4o', async () => {
+    it('should send image_url content when imageData is provided', async () => {
       mockClient.chat.completions.create.mockResolvedValue({
-        choices: [{ message: { content: 'visa-document' } }],
-        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
+        choices: [{ message: { content: 'vacation-photo' } }],
+        usage: { prompt_tokens: 200, completion_tokens: 8 }
       });
 
-      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fakebase64data';
-      const result = await service.generateFileName(scannedContent, 'scan.pdf');
+      const result = await service.generateFileName(
+        '', 'photo.jpg', 'kebab-case', 'photo', undefined, undefined, undefined,
+        'data:image/jpeg;base64,/9j/fakedata'
+      );
 
       expect(mockClient.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gpt-4o',
           messages: [expect.objectContaining({
             content: expect.arrayContaining([
               expect.objectContaining({ type: 'text' }),
-              expect.objectContaining({ type: 'image_url' })
+              expect.objectContaining({
+                type: 'image_url',
+                image_url: expect.objectContaining({ url: 'data:image/jpeg;base64,/9j/fakedata' })
+              })
             ])
           })]
         })
       );
-      expect(result.name).toBe('visa-document');
+      expect(result.name).toBe('vacation-photo');
     });
 
-    it('should pass the full base64 URL to image_url', async () => {
+    it('should use text path when imageData is undefined', async () => {
       mockClient.chat.completions.create.mockResolvedValue({
-        choices: [{ message: { content: 'scanned-doc' } }],
-        usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
+        choices: [{ message: { content: 'text-document' } }],
+        usage: { prompt_tokens: 50, completion_tokens: 5 }
       });
 
-      const imageUrl = 'data:image/jpeg;base64,/9j/fakebase64data';
-      const scannedContent = `[SCANNED_PDF_IMAGE]:${imageUrl}`;
-      await service.generateFileName(scannedContent, 'scan.pdf');
+      await service.generateFileName('some text content', 'doc.txt');
 
       const call = mockClient.chat.completions.create.mock.calls[0][0];
-      const imageContent = call.messages[0].content.find((c: any) => c.type === 'image_url');
-      expect(imageContent.image_url.url).toBe(imageUrl);
+      expect(typeof call.messages[0].content).toBe('string');
     });
   });
 
@@ -344,7 +337,7 @@ describe('OpenAIService', () => {
       );
     });
 
-    it('should use the custom model for vision (scanned PDF) requests', async () => {
+    it('should use the custom model for vision (imageData) requests', async () => {
       const customModel = 'gpt-4-turbo';
       const customService = new OpenAIService('test-key', customModel);
       const customClient = (customService as any).client;
@@ -353,8 +346,7 @@ describe('OpenAIService', () => {
         usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
       });
 
-      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fake';
-      await customService.generateFileName(scannedContent, 'scan.pdf');
+      await customService.generateFileName('', 'scan.pdf', 'kebab-case', 'general', undefined, undefined, undefined, 'data:image/jpeg;base64,/9j/fake');
 
       expect(customClient.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({ model: customModel })
@@ -388,13 +380,30 @@ describe('OpenAIService', () => {
       expect(result.outputTokens).toBeUndefined();
     });
 
-    it('should return undefined tokens for vision (scanned PDF) when usage is absent', async () => {
+    it('should return token counts from vision (imageData) response', async () => {
+      mockClient.chat.completions.create.mockResolvedValue({
+        choices: [{ message: { content: 'scanned-invoice' } }],
+        usage: { prompt_tokens: 800, completion_tokens: 8 }
+      });
+
+      const result = await service.generateFileName(
+        '', 'scan.pdf', 'kebab-case', 'general', undefined, undefined, undefined,
+        'data:image/jpeg;base64,/9j/fake'
+      );
+
+      expect(result.inputTokens).toBe(800);
+      expect(result.outputTokens).toBe(8);
+    });
+
+    it('should return undefined tokens for vision (imageData) when usage is absent', async () => {
       mockClient.chat.completions.create.mockResolvedValue({
         choices: [{ message: { content: 'scanned-doc', role: 'assistant' }, finish_reason: 'stop' }]
       });
 
-      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fakedata';
-      const result = await service.generateFileName(scannedContent, 'scan.pdf');
+      const result = await service.generateFileName(
+        '', 'scan.pdf', 'kebab-case', 'general', undefined, undefined, undefined,
+        'data:image/jpeg;base64,/9j/fakedata'
+      );
 
       expect(result.inputTokens).toBeUndefined();
       expect(result.outputTokens).toBeUndefined();

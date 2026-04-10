@@ -4,6 +4,10 @@ import { FileInfo, Config, RenameResult, AIProvider, AINameResult, RenameSession
 import { DocumentParserFactory } from '../parsers/factory.js';
 import { categorizeFile, applyTemplate } from '../utils/file-templates.js';
 
+const IMAGE_EXTENSIONS = new Set([
+  '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.heic', '.webp'
+]);
+
 export class FileRenamer {
   constructor(
     private parserFactory: DocumentParserFactory,
@@ -85,69 +89,69 @@ export class FileRenamer {
 
     return {
       results,
-      tokenUsage: {
-        inputTokens: totalInputTokens,
-        outputTokens: totalOutputTokens
-      }
+      tokenUsage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens }
     };
   }
 
   private async renameFile(file: FileInfo): Promise<{ result: RenameResult; inputTokens?: number; outputTokens?: number }> {
-    // Check file size
     if (file.size > this.config.maxFileSize) {
       throw new Error(`File size (${Math.round(file.size / 1024 / 1024)}MB) exceeds maximum allowed size (${Math.round(this.config.maxFileSize / 1024 / 1024)}MB)`);
     }
 
-    // Get appropriate parser
     const parser = this.parserFactory.getParser(file.path);
     if (!parser) {
       throw new Error(`No parser available for file type: ${file.extension}`);
     }
 
-    // Extract content and metadata
     const parseResult = await parser.parse(file.path);
-    const content = parseResult.content;
-    if (!content || content.trim().length === 0) {
+    const { content, imageData } = parseResult;
+
+    // Require content unless this is an image file (imageData replaces content)
+    if (!imageData && (!content || content.trim().length === 0)) {
       throw new Error('No content could be extracted from the file');
     }
-    
-    // Update file info with extracted document metadata
+
     file.documentMetadata = parseResult.metadata;
 
-    // Determine file category (use configured category or auto-categorize)
-    const fileCategory = this.config.templateOptions.category === 'auto' 
+    const fileCategory = this.config.templateOptions.category === 'auto'
       ? categorizeFile(file.path, content, file)
       : this.config.templateOptions.category;
 
-    // Generate core filename using AI (or metadata if --no-ai)
     let aiResult: AINameResult;
     if (this.config.noAi) {
-      aiResult = { name: this.buildNameFromMetadata(file), inputTokens: undefined, outputTokens: undefined };
+      aiResult = { name: await this.buildNameFromMetadata(file), inputTokens: undefined, outputTokens: undefined };
+    } else if (imageData) {
+      // Image file — attempt vision API; skip with warning on any failure
+      try {
+        aiResult = await this.aiService.generateFileName(
+          content, file.name, this.config.namingConvention, fileCategory, file,
+          this.config.language, this.config.context, imageData
+        );
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Unknown error';
+        console.warn(`\n⚠️  Skipped ${file.name} — model does not support vision (${msg})`);
+        throw new Error(`Vision not supported: ${msg}`);
+      }
     } else {
-      aiResult = await this.aiService.generateFileName(content, file.name, this.config.namingConvention, fileCategory, file, this.config.language, this.config.context);
+      aiResult = await this.aiService.generateFileName(
+        content, file.name, this.config.namingConvention, fileCategory, file,
+        this.config.language, this.config.context
+      );
     }
+
     if (!aiResult.name || aiResult.name.trim().length === 0) {
       throw new Error('Failed to generate a filename');
     }
-    const coreFileName = aiResult.name;
 
-    // Apply template to include personal info, dates, etc.
+    const coreFileName = aiResult.name;
     const templatedName = applyTemplate(
-      coreFileName,
-      fileCategory,
-      this.config.templateOptions,
-      this.config.namingConvention,
-      file
+      coreFileName, fileCategory, this.config.templateOptions, this.config.namingConvention, file
     );
 
-    // Create new filename with original extension
     const newFileName = `${templatedName}${file.extension}`;
     const newPath = path.join(path.dirname(file.path), newFileName);
-
-    // Resolve final path, auto-numbering if target already exists
     const finalPath = newPath === file.path ? newPath : await this.resolveConflict(newPath);
 
-    // Perform the rename (or simulate if dry run)
     if (!this.config.dryRun && finalPath !== file.path) {
       await fs.rename(file.path, finalPath);
     }
@@ -164,11 +168,32 @@ export class FileRenamer {
     };
   }
 
-  private buildNameFromMetadata(file: FileInfo): string {
-    const meta = file.documentMetadata;
-    if (meta?.title?.trim()) {
-      return meta.title.trim();
+  private async buildNameFromMetadata(file: FileInfo): Promise<string> {
+    // Image files: try EXIF metadata first
+    if (IMAGE_EXTENSIONS.has(file.extension.toLowerCase())) {
+      try {
+        const exifr = (await import('exifr')).default;
+        const exif = await exifr.parse(file.path, {
+          pick: ['DateTimeOriginal', 'ImageDescription', 'UserComment']
+        });
+        if (exif?.ImageDescription?.trim()) return exif.ImageDescription.trim();
+        if (exif?.UserComment?.trim()) return exif.UserComment.trim();
+        if (exif?.DateTimeOriginal) {
+          const d = new Date(exif.DateTimeOriginal);
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `photo-${y}-${m}-${day}`;
+        }
+      } catch {
+        // Fall through to filename stem
+      }
+      return path.basename(file.name, file.extension).replace(/[-_]/g, ' ');
     }
+
+    // Document files: use extracted metadata
+    const meta = file.documentMetadata;
+    if (meta?.title?.trim()) return meta.title.trim();
     if (meta?.author) {
       const year = meta.creationDate ? meta.creationDate.getFullYear().toString() : '';
       return [meta.author, year].filter(Boolean).join(' ');

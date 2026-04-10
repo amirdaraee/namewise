@@ -36,6 +36,7 @@ export interface CapturedCall {
   fileInfo?: FileInfo;
   language?: string;
   context?: string;
+  imageData?: string;
 }
 
 export class MockAIService implements AIProvider {
@@ -96,9 +97,10 @@ export class MockAIService implements AIProvider {
     category?: string,
     fileInfo?: FileInfo,
     language?: string,
-    context?: string
+    context?: string,
+    imageData?: string
   ): Promise<AINameResult> {
-    this.calls.push({ content, originalName, namingConvention, category, fileInfo, language, context });
+    this.calls.push({ content, originalName, namingConvention, category, fileInfo, language, context, imageData });
 
     if (this.shouldFail) {
       throw new Error('Mock AI service failed');
@@ -107,7 +109,10 @@ export class MockAIService implements AIProvider {
     const lower = content.toLowerCase();
 
     let name: string;
-    if (lower.includes('meeting') || lower.includes('attendees')) {
+    if (imageData) {
+      // Image file — return a predictable name based on original
+      name = `renamed-${originalName.replace(/\.[^/.]+$/, '')}`;
+    } else if (lower.includes('meeting') || lower.includes('attendees')) {
       name = this.responses.get('meeting') ?? 'meeting-notes';
     } else if (lower.includes('requirements') || lower.includes('project')) {
       name = this.responses.get('default') ?? 'project-document';

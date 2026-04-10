@@ -211,8 +211,61 @@ describe('Parser Pipeline Integration Tests', () => {
 
     it('should return null for unsupported extensions', () => {
       expect(parserFactory.getParser('file.xyz')).toBeNull();
-      expect(parserFactory.getParser('file.png')).toBeNull();
       expect(parserFactory.getParser('file.mp4')).toBeNull();
+      expect(parserFactory.getParser('file.zip')).toBeNull();
+    });
+  });
+
+  describe('Image parser (ImageParser)', () => {
+    it('should return a parser for .jpg files', () => {
+      const parser = parserFactory.getParser('photo.jpg');
+      expect(parser).not.toBeNull();
+      expect(parser?.supports('photo.jpg')).toBe(true);
+    });
+
+    it('should parse sample-image.jpg and return imageData with empty content', async () => {
+      const parser = parserFactory.getParser('photo.jpg');
+      expect(parser).not.toBeNull();
+
+      const result = await parser!.parse(path.join(DATA_DIR, 'sample-image.jpg'));
+
+      expect(result.content).toBe('');
+      expect(result.imageData).toBeDefined();
+      expect(result.imageData).toMatch(/^data:image\/jpeg;base64,/);
+    });
+
+    it('should flow image file through FileRenamer with mocked AI (dry-run)', async () => {
+      const filePath = await copyTestFile('sample-image.jpg', tempDir);
+      const stat = await fs.stat(filePath);
+      const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));
+
+      const { results } = await renamer.renameFiles([
+        makeFileInfo(filePath, { size: stat.size, extension: '.jpg' })
+      ]);
+
+      expect(results[0].success).toBe(true);
+      expect(results[0].suggestedName).toMatch(/\.jpg$/);
+      // MockAI was called with imageData
+      const captured = mockAI.getCalls()[0];
+      expect(captured.imageData).toBeDefined();
+      expect(captured.content).toBe('');
+    });
+
+    it('should record success:false and not rename file when AI throws on image', async () => {
+      const filePath = await copyTestFile('sample-image.jpg', tempDir);
+      const stat = await fs.stat(filePath);
+      mockAI.setShouldFail(true);
+
+      const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: false }));
+      const { results } = await renamer.renameFiles([
+        makeFileInfo(filePath, { size: stat.size, extension: '.jpg' })
+      ]);
+
+      expect(results[0].success).toBe(false);
+      expect(results[0].error).toContain('Vision not supported');
+
+      // Original file still exists at original path
+      await expect(fs.access(filePath)).resolves.toBeUndefined();
     });
   });
 });

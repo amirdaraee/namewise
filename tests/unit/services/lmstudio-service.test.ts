@@ -374,32 +374,67 @@ describe('LMStudioService', () => {
     });
   });
 
-  describe('Scanned PDF handling', () => {
-    it('should return sanitized original filename for scanned PDFs (no API call)', async () => {
-      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fakedata';
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  describe('Vision (imageData param) handling', () => {
+    it('should attempt vision API call when imageData is provided', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: 'vacation-photo', role: 'assistant' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 100, completion_tokens: 8, total_tokens: 108 }
+        })
+      });
 
-      const result = await lmstudioService.generateFileName(scannedContent, 'My Scan File.pdf');
-
-      // Should not call fetch for scanned PDFs
-      expect(mockFetch).not.toHaveBeenCalled();
-      // Should return sanitized original name
-      expect(result.name).toBe('my-scan-file');
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should log warning message for scanned PDFs', async () => {
-      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fakedata';
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      await lmstudioService.generateFileName(scannedContent, 'test.pdf');
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Scanned PDF detected')
+      const result = await lmstudioService.generateFileName(
+        '', 'photo.jpg', 'kebab-case', 'photo', undefined, undefined, undefined,
+        'data:image/jpeg;base64,/9j/fakedata'
       );
 
-      consoleSpy.mockRestore();
+      expect(result.name).toBe('vacation-photo');
+      // Verify fetch was called with multipart array content (not silently skipped)
+      const fetchCall = mockFetch.mock.calls[0];
+      const body = JSON.parse(fetchCall[1].body);
+      const userMsg = body.messages[1];
+      expect(Array.isArray(userMsg.content)).toBe(true);
+      expect(userMsg.content[0]).toMatchObject({ type: 'text' });
+      expect(userMsg.content[1]).toMatchObject({
+        type: 'image_url',
+        image_url: { url: 'data:image/jpeg;base64,/9j/fakedata' }
+      });
+    });
+
+    it('should use text path when imageData is undefined', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: 'text-document', role: 'assistant' }, finish_reason: 'stop' }]
+        })
+      });
+
+      await lmstudioService.generateFileName('some text content', 'doc.txt');
+
+      const fetchCall = mockFetch.mock.calls[0];
+      const body = JSON.parse(fetchCall[1].body);
+      // Text path: user message content is a string
+      expect(typeof body.messages[1].content).toBe('string');
+    });
+
+    it('should propagate API error when model rejects vision request', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        statusText: 'Bad Request',
+        text: async () => 'Model does not support vision'
+      });
+
+      await expect(
+        lmstudioService.generateFileName('', 'photo.jpg', 'kebab-case', 'photo', undefined, undefined, undefined, 'data:image/jpeg;base64,/9j/fake')
+      ).rejects.toThrow('LMStudio service failed');
+    });
+
+    it('should throw when imageData has invalid format', async () => {
+      await expect(
+        lmstudioService.generateFileName('', 'photo.jpg', 'kebab-case', 'photo', undefined, undefined, undefined, 'notadataurl')
+      ).rejects.toThrow('LMStudio service failed');
     });
   });
 
@@ -435,13 +470,6 @@ describe('LMStudioService', () => {
       expect(result.outputTokens).toBeUndefined();
     });
 
-    it('should return undefined tokens for scanned PDF fallback path', async () => {
-      const scannedContent = '[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,/9j/fake';
-      const result = await lmstudioService.generateFileName(scannedContent, 'original-name.pdf');
-
-      expect(result.inputTokens).toBeUndefined();
-      expect(result.outputTokens).toBeUndefined();
-    });
   });
 
   describe('context parameter', () => {

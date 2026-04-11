@@ -14,63 +14,56 @@ export class PDFParser implements DocumentParser {
 
   async parse(filePath: string): Promise<ParseResult> {
     try {
-      // Dynamic import for pdf-extraction (default export)
       const pdfExtraction = await import('pdf-extraction');
       const extract = pdfExtraction.default;
-      
+
       const dataBuffer = fs.readFileSync(filePath);
-      const data = await extract(dataBuffer, {});
-      
-      let content = data.text?.trim() || '';
-      
-      // Check if this is a scanned PDF and convert to image for AI analysis
-      if (PDFToImageConverter.isScannedPDF(content)) {
-        try {
-          console.log('🔍 Detected scanned PDF, converting to image for AI analysis...');
-          const imageBase64 = await PDFToImageConverter.convertFirstPageToBase64(dataBuffer);
-          
-          // Store the image data as a special marker for the AI service to detect
-          content = `[SCANNED_PDF_IMAGE]:${imageBase64}`;
-          console.log('PDF converted to image successfully');
-        } catch (conversionError) {
-          console.warn('PDF to image conversion failed:', conversionError instanceof Error ? conversionError.message : 'Unknown error');
-          console.log('💡 PDF-poppler requires system dependencies. Falling back to empty content.');
-          // Continue with empty content - AI services will handle this gracefully
+
+      // Suppress pdfjs noise (both stderr and console.warn) for the entire PDF
+      // pipeline — the "TT: undefined function" warning can come from either
+      // pdf-extraction (text path) or pdf-to-png-converter (scanned path).
+      const origStderrWrite = (process.stderr as any).write?.bind(process.stderr);
+      const origConsoleWarn = console.warn;
+      (process.stderr as any).write = () => true;
+      console.warn = () => {};
+
+      let data: any;
+      let content = '';
+
+      try {
+        data = await extract(dataBuffer, {});
+        content = data.text?.trim() || '';
+
+        if (PDFToImageConverter.isScannedPDF(content)) {
+          try {
+            const imageBase64 = await PDFToImageConverter.convertFirstPageToBase64(dataBuffer);
+            content = `[SCANNED_PDF_IMAGE]:${imageBase64}`;
+          } catch {
+            // Conversion failed; continue with empty content — AI handles gracefully
+          }
         }
+      } finally {
+        if (origStderrWrite) (process.stderr as any).write = origStderrWrite;
+        console.warn = origConsoleWarn;
       }
-      
-      // Extract PDF metadata if available
+
       const metadata: DocumentMetadata = {};
-      
-      // Cast data to any to access potentially existing metadata properties
       const pdfData = data as any;
-      
+
       if (pdfData.meta) {
         if (pdfData.meta.info) {
-          metadata.title = pdfData.meta.info.Title;
-          metadata.author = pdfData.meta.info.Author;
-          metadata.creator = pdfData.meta.info.Creator;
-          metadata.subject = pdfData.meta.info.Subject;
-          
-          // Parse dates if available
-          if (pdfData.meta.info.CreationDate) {
-            metadata.creationDate = this.parseDate(pdfData.meta.info.CreationDate);
-          }
-          if (pdfData.meta.info.ModDate) {
-            metadata.modificationDate = this.parseDate(pdfData.meta.info.ModDate);
-          }
+          metadata.title    = pdfData.meta.info.Title;
+          metadata.author   = pdfData.meta.info.Author;
+          metadata.creator  = pdfData.meta.info.Creator;
+          metadata.subject  = pdfData.meta.info.Subject;
+          if (pdfData.meta.info.CreationDate) metadata.creationDate = this.parseDate(pdfData.meta.info.CreationDate);
+          if (pdfData.meta.info.ModDate)      metadata.modificationDate = this.parseDate(pdfData.meta.info.ModDate);
         }
-        
-        if (pdfData.numpages) {
-          metadata.pages = pdfData.numpages;
-        }
+        if (pdfData.numpages) metadata.pages = pdfData.numpages;
       }
-      
-      // Estimate word count from text content
-      if (content) {
-        metadata.wordCount = content.split(/\s+/).filter(word => word.length > 0).length;
-      }
-      
+
+      if (content) metadata.wordCount = content.split(/\s+/).filter((w: string) => w.length > 0).length;
+
       return { content, metadata };
     } catch (error) {
       throw new Error(`Failed to parse PDF file: ${error instanceof Error ? error.message : 'Unknown error'}`);

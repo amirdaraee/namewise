@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import * as ui from '../utils/ui.js';
 
 export async function cleanEmptyDirs(
   directory: string,
@@ -12,20 +13,24 @@ export async function cleanEmptyDirs(
   const { emptyDirs } = await scan(directory);
 
   if (emptyDirs.length === 0) {
-    console.log('No empty directories found.');
+    ui.info('No empty directories found.');
     return;
   }
 
   for (const dir of emptyDirs) {
     const rel = path.relative(directory, dir);
-    console.log(`${dryRun ? '[dry-run] ' : ''}Remove: ${rel}`);
+    if (dryRun) {
+      ui.dim(`[dry-run] Remove: ${rel}`);
+    } else {
+      ui.success(`Removed: ${rel}`);
+    }
     if (!dryRun) {
       await fs.rmdir(dir);
     }
   }
 
   const count = emptyDirs.length;
-  console.log(`\n${dryRun ? 'Would remove' : 'Removed'} ${count} empty director${count === 1 ? 'y' : 'ies'}.`);
+  ui.info(`\n${dryRun ? 'Would remove' : 'Removed'} ${count} empty director${count === 1 ? 'y' : 'ies'}.`);
 }
 
 interface ScanResult {

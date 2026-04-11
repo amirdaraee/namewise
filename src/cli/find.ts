@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { collectFiles, formatBytes } from '../utils/fs-collect.js';
+import * as ui from '../utils/ui.js';
 
 export interface FindOptions {
   ext?: string;
@@ -46,7 +47,7 @@ export async function findFiles(
   }
 
   if (matches.length === 0) {
-    console.log('No files matched.');
+    ui.info('No files matched.');
     return;
   }
 
@@ -55,7 +56,7 @@ export async function findFiles(
     const dateStr = m.mtime.toISOString().slice(0, 10);
     console.log(`${rel.padEnd(50)} ${formatBytes(m.size).padStart(10)}  ${dateStr}`);
   }
-  console.log(`\n${matches.length} file(s) matched.`);
+  ui.info(`\n${matches.length} file(s) matched.`);
 }
 
 function parseSize(s: string): number {

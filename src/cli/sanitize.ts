@@ -4,6 +4,7 @@ import { appendHistory } from '../utils/history.js';
 import { sanitizeFilename } from '../utils/sanitizer.js';
 import { NamingConvention } from '../types/index.js';
 import { collectFiles } from '../utils/fs-collect.js';
+import * as ui from '../utils/ui.js';
 
 export async function sanitizeFiles(
   directory: string,
@@ -16,7 +17,7 @@ export async function sanitizeFiles(
 
   const filePaths = await collectFiles(directory, { recursive: options.recursive ?? false });
   if (filePaths.length === 0) {
-    console.log('No files found.');
+    ui.info('No files found.');
     return;
   }
 
@@ -33,7 +34,11 @@ export async function sanitizeFiles(
     if (newName === path.basename(filePath)) continue;
 
     const newPath = path.join(path.dirname(filePath), newName);
-    console.log(`${options.dryRun ? '[dry-run] ' : ''}${path.basename(filePath)} → ${newName}`);
+    if (options.dryRun) {
+      ui.dim(`[dry-run] ${path.basename(filePath)} → ${newName}`);
+    } else {
+      ui.success(`${path.basename(filePath)} → ${newName}`);
+    }
 
     if (!options.dryRun) {
       await fs.rename(filePath, newPath);
@@ -55,6 +60,6 @@ export async function sanitizeFiles(
 
   const count = options.dryRun ? previewCount : renames.length;
   const verb = options.dryRun ? 'would be sanitized' : 'sanitized';
-  console.log(`\nDone: ${count} file(s) ${verb}.`);
+  ui.info(`\n${count} file(s) ${verb}.`);
 }
 

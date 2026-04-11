@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { computeOrganizeMappings, OrganizeBy } from '../utils/organize.js';
 import { appendHistory } from '../utils/history.js';
+import * as ui from '../utils/ui.js';
 
 export async function organizeFiles(
   directory: string,
@@ -17,7 +18,7 @@ export async function organizeFiles(
   const mappings = await computeOrganizeMappings(directory, by, recursive);
 
   if (mappings.length === 0) {
-    console.log('Nothing to organize.');
+    ui.info('Nothing to organize.');
     return;
   }
 
@@ -25,7 +26,11 @@ export async function organizeFiles(
 
   for (const { sourcePath, destPath, reason } of mappings) {
     const destDir = path.dirname(destPath);
-    console.log(`${dryRun ? '[dry-run] ' : ''}${path.basename(sourcePath)} → ${reason}/`);
+    if (dryRun) {
+      ui.dim(`[dry-run] ${path.basename(sourcePath)} → ${reason}/`);
+    } else {
+      ui.success(`${path.basename(sourcePath)} → ${reason}/`);
+    }
     if (!dryRun) {
       await fs.mkdir(destDir, { recursive: true });
       await fs.rename(sourcePath, destPath);
@@ -44,5 +49,5 @@ export async function organizeFiles(
   }
 
   const count = dryRun ? mappings.length : moves.length;
-  console.log(`\n${dryRun ? 'Would move' : 'Moved'} ${count} file(s).`);
+  ui.info(`\n${dryRun ? 'Would move' : 'Moved'} ${count} file(s).`);
 }

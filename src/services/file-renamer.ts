@@ -15,32 +15,27 @@ export class FileRenamer {
     private config: Config
   ) {}
 
-  async renameFiles(files: FileInfo[]): Promise<RenameSessionResult> {
+  async renameFiles(
+    files: FileInfo[],
+    onProgress?: (completed: number, total: number, currentFile: string) => void
+  ): Promise<RenameSessionResult> {
     const results: RenameResult[] = new Array(files.length);
     let totalInputTokens: number | undefined = undefined;
     let totalOutputTokens: number | undefined = undefined;
     const concurrency = this.config.concurrency ?? 3;
     let completedCount = 0;
-    let lastProgressLength = 0;
-    let progressChain = Promise.resolve();
 
     let active = 0;
     const pending: Array<() => void> = [];
 
     const acquire = (): Promise<void> => {
-      if (active < concurrency) {
-        active++;
-        return Promise.resolve();
-      }
+      if (active < concurrency) { active++; return Promise.resolve(); }
       return new Promise(resolve => pending.push(resolve));
     };
 
     const release = () => {
       active--;
-      if (pending.length > 0) {
-        active++;
-        pending.shift()!();
-      }
+      if (pending.length > 0) { active++; pending.shift()!(); }
     };
 
     await Promise.all(files.map(async (file, index) => {
@@ -48,12 +43,8 @@ export class FileRenamer {
       try {
         const { result, inputTokens, outputTokens } = await this.renameFile(file);
         results[index] = result;
-        if (inputTokens !== undefined) {
-          totalInputTokens = (totalInputTokens ?? 0) + inputTokens;
-        }
-        if (outputTokens !== undefined) {
-          totalOutputTokens = (totalOutputTokens ?? 0) + outputTokens;
-        }
+        if (inputTokens !== undefined) totalInputTokens = (totalInputTokens ?? 0) + inputTokens;
+        if (outputTokens !== undefined) totalOutputTokens = (totalOutputTokens ?? 0) + outputTokens;
       } catch (error) {
         results[index] = {
           originalPath: file.path,
@@ -64,28 +55,10 @@ export class FileRenamer {
         };
       } finally {
         completedCount++;
-        const count = completedCount;
-        const truncatedName = file.name.length > 50 ? file.name.substring(0, 47) + '...' : file.name;
-        const msg = `🔄 Processing [${count}/${files.length}] ${truncatedName}`;
-        progressChain = progressChain.then(() => {
-          const clearLine = '\r' + ' '.repeat(Math.max(lastProgressLength, msg.length)) + '\r';
-          process.stdout.write(clearLine + msg);
-          lastProgressLength = msg.length;
-        });
+        onProgress?.(completedCount, files.length, file.name);
         release();
       }
     }));
-
-    await progressChain;
-
-    const clearFinal = '\r' + ' '.repeat(lastProgressLength) + '\r';
-    if (files.length > 0) {
-      const successCount = results.filter(r => r.success).length;
-      const completionMessage = `Processed ${files.length} file${files.length === 1 ? '' : 's'} (${successCount} successful)`;
-      process.stdout.write(clearFinal + completionMessage + '\n');
-    } else {
-      process.stdout.write(clearFinal);
-    }
 
     return {
       results,
@@ -129,7 +102,6 @@ export class FileRenamer {
         );
       } catch (error) {
         const msg = error instanceof Error ? error.message : 'Unknown error';
-        console.warn(`\n⚠️  Skipped ${file.name} — model does not support vision (${msg})`);
         throw new Error(`Vision not supported: ${msg}`);
       }
     } else {

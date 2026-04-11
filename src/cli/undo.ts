@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import inquirer from 'inquirer';
 import { readHistory, appendHistory, HistoryEntry } from '../utils/history.js';
+import * as ui from '../utils/ui.js';
 
 export async function undoRename(
   sessionId?: string,
@@ -11,13 +12,13 @@ export async function undoRename(
     const history = await readHistory();
     const recent = history.slice(-10).reverse();
     if (recent.length === 0) {
-      console.log('No rename history found.');
+      ui.info('No rename history found.');
       return;
     }
-    console.log('Recent rename sessions:');
+    ui.info('Recent rename sessions:');
     recent.forEach(entry => {
       const label = entry.dryRun ? ' [dry-run]' : '';
-      console.log(`  ${entry.id}${label} — ${entry.renames.length} file(s) in ${entry.directory}`);
+      ui.dim(`  ${entry.id}${label} — ${entry.renames.length} file(s) in ${entry.directory}`);
     });
     return;
   }
@@ -36,13 +37,13 @@ export async function undoRename(
   } else {
     entry = [...history].reverse().find(e => !e.dryRun);
     if (!entry) {
-      console.log('No undo-able rename sessions found.');
+      ui.info('No undo-able rename sessions found.');
       return;
     }
   }
 
   if (entry.dryRun) {
-    console.log(`Session ${entry.id} was a dry run — nothing to undo.`);
+    ui.info(`Session ${entry.id} was a dry run — nothing to undo.`);
     return;
   }
 
@@ -58,11 +59,11 @@ async function undoSession(entry: HistoryEntry): Promise<{ succeeded: number; sk
     try {
       await fs.access(rename.newPath);
       await fs.rename(rename.newPath, rename.originalPath);
-      console.log(`Restored: ${path.basename(rename.newPath)} → ${path.basename(rename.originalPath)}`);
+      ui.success(`Restored: ${path.basename(rename.newPath)} → ${path.basename(rename.originalPath)}`);
       succeeded++;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        console.warn(`Skipped: ${path.basename(rename.newPath)} not found`);
+        ui.warn(`Skipped: ${path.basename(rename.newPath)} not found`);
         skipped++;
       } else {
         throw error;
@@ -78,7 +79,7 @@ async function undoSession(entry: HistoryEntry): Promise<{ succeeded: number; sk
     renames: reversed.map(r => ({ originalPath: r.newPath, newPath: r.originalPath }))
   });
 
-  console.log(`\nUndo complete: ${succeeded} restored, ${skipped} skipped.`);
+  ui.info(`\nUndo complete: ${succeeded} restored, ${skipped} skipped.`);
   return { succeeded, skipped };
 }
 
@@ -87,7 +88,7 @@ async function undoAll(): Promise<void> {
   const sessions = [...history].reverse().filter(e => !e.dryRun);
 
   if (sessions.length === 0) {
-    console.log('No undo-able rename sessions found.');
+    ui.info('No undo-able rename sessions found.');
     return;
   }
 
@@ -99,17 +100,17 @@ async function undoAll(): Promise<void> {
       default: false
     }]);
     if (!confirm) {
-      console.log('Cancelled.');
+      ui.info('Cancelled.');
       return;
     }
   }
 
   for (const session of sessions) {
-    console.log(`\nUndoing session: ${session.id}`);
+    ui.dim(`\nUndoing session: ${session.id}`);
     try {
       await undoSession(session);
     } catch (error) {
-      console.error(`Error: Failed to undo session ${session.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      ui.error(`Failed to undo session ${session.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }

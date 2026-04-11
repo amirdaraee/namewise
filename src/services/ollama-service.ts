@@ -86,7 +86,6 @@ export class OllamaService implements AIProvider {
       }
       throw new Error('No response content from Ollama');
     } catch (error) {
-      console.error('Ollama API error:', error);
       throw new Error(`Ollama service failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

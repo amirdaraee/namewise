@@ -66,6 +66,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.61.0",
     "canvas": "3.2.3",
+    "chalk": "5.6.2",
     "chokidar": "5.0.0",
     "commander": "14.0.3",
     "exceljs": "^4.4.0",
@@ -75,6 +76,7 @@
     "inquirer": "^12.9.4",
     "mammoth": "1.12.0",
     "openai": "^5.19.1",
+    "ora": "9.3.0",
     "pdf-extraction": "^1.0.2",
     "pdf-to-png-converter": "3.14.0",
     "pdfjs-dist": "5.4.149"

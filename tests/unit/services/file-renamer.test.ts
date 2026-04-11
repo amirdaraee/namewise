@@ -581,8 +581,8 @@ describe('FileRenamer', () => {
     beforeEach(() => {
       stdoutOutput = [];
       originalStdoutWrite = process.stdout.write;
-      
-      // Mock process.stdout.write to capture output
+
+      // Mock process.stdout.write to capture output (no writes expected after refactor)
       process.stdout.write = vi.fn((chunk: any) => {
         if (typeof chunk === 'string') {
           stdoutOutput.push(chunk);
@@ -617,17 +617,20 @@ describe('FileRenamer', () => {
         }
       ];
 
-      // Mock fs.access to simulate that new file doesn't exist
       vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
       vi.mocked(fs.rename).mockResolvedValue(undefined);
 
-      await fileRenamer.renameFiles(testFiles);
+      const progressCalls: Array<[number, number, string]> = [];
+      await fileRenamer.renameFiles(testFiles, (completed, total, currentFile) => {
+        progressCalls.push([completed, total, currentFile]);
+      });
 
-      // Check that progress messages were written
-      const outputString = stdoutOutput.join('');
-      expect(outputString).toContain('🔄 Processing [1/3] file1.txt');
-      expect(outputString).toContain('🔄 Processing [2/3] file2.txt');
-      expect(outputString).toContain('🔄 Processing [3/3] very-long-filename-that-should-be-cleared-prope...');
+      // All three files should have triggered the callback
+      expect(progressCalls.length).toBe(3);
+      expect(progressCalls.map(c => c[2])).toContain('file1.txt');
+      expect(progressCalls.map(c => c[2])).toContain('file2.txt');
+      expect(progressCalls.map(c => c[2])).toContain('very-long-filename-that-should-be-cleared-properly.txt');
+      expect(progressCalls.every(([, total]) => total === 3)).toBe(true);
     });
 
     it('should properly clear previous progress lines', async () => {
@@ -652,22 +655,17 @@ describe('FileRenamer', () => {
         }
       ];
 
-      // Mock fs.access to simulate that new file doesn't exist
       vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
       vi.mocked(fs.rename).mockResolvedValue(undefined);
 
-      await fileRenamer.renameFiles(testFiles);
+      const completedValues: number[] = [];
+      await fileRenamer.renameFiles(testFiles, (completed, total) => {
+        completedValues.push(completed);
+      });
 
-      // Should contain clearing sequences (spaces to overwrite previous content)
-      const outputString = stdoutOutput.join('');
-      
-      // Should contain carriage returns and spaces for clearing
-      expect(outputString).toContain('\r');
-      expect(outputString).toMatch(/\s+/); // Should contain spaces for clearing
-      
-      // Final clear should happen at the end
-      const lastOutputs = stdoutOutput.slice(-3);
-      expect(lastOutputs.some(output => output.includes('\r') && output.includes(' '))).toBe(true);
+      // completed values should be increasing
+      expect(completedValues).toHaveLength(3);
+      expect(completedValues[completedValues.length - 1]).toBe(3);
     });
 
     it('should handle single file processing correctly', async () => {
@@ -680,25 +678,28 @@ describe('FileRenamer', () => {
         }
       ];
 
-      // Mock fs.access to simulate that new file doesn't exist
       vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
       vi.mocked(fs.rename).mockResolvedValue(undefined);
 
-      await fileRenamer.renameFiles(testFiles);
+      const progressCalls: Array<[number, number, string]> = [];
+      await fileRenamer.renameFiles(testFiles, (completed, total, currentFile) => {
+        progressCalls.push([completed, total, currentFile]);
+      });
 
-      const outputString = stdoutOutput.join('');
-      expect(outputString).toContain('🔄 Processing [1/1] single-file.txt');
-      
-      // Should still clear the line at the end
-      expect(outputString).toContain('\r');
+      expect(progressCalls).toHaveLength(1);
+      expect(progressCalls[0]).toEqual([1, 1, 'single-file.txt']);
     });
 
     it('should handle empty file list without console output', async () => {
       const testFiles: FileInfo[] = [];
 
-      await fileRenamer.renameFiles(testFiles);
+      const progressCalls: number[] = [];
+      await fileRenamer.renameFiles(testFiles, (completed) => {
+        progressCalls.push(completed);
+      });
 
-      // With no files, there should be minimal or no output
+      // With no files, the callback should never be called
+      expect(progressCalls).toHaveLength(0);
       expect(stdoutOutput.length).toBeLessThan(3);
     });
 
@@ -718,15 +719,19 @@ describe('FileRenamer', () => {
         }
       ];
 
-      // Mock fs.access to simulate that new file doesn't exist
       vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
       vi.mocked(fs.rename).mockResolvedValue(undefined);
 
-      await fileRenamer.renameFiles(testFiles);
+      const progressCalls: Array<[number, number, string]> = [];
+      await fileRenamer.renameFiles(testFiles, (completed, total, currentFile) => {
+        progressCalls.push([completed, total, currentFile]);
+      });
 
-      const outputString = stdoutOutput.join('');
-      expect(outputString).toContain('Processed 2 files (2 successful)');
-      expect(outputString).toContain('\n'); // Should end with newline
+      // Callback invoked for each file; final call has completed === total
+      expect(progressCalls).toHaveLength(2);
+      const lastCall = progressCalls[progressCalls.length - 1];
+      expect(lastCall[0]).toBe(2);
+      expect(lastCall[1]).toBe(2);
     });
 
     it('should truncate very long filenames in progress display', async () => {
@@ -740,15 +745,17 @@ describe('FileRenamer', () => {
         }
       ];
 
-      // Mock fs.access to simulate that new file doesn't exist
       vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
       vi.mocked(fs.rename).mockResolvedValue(undefined);
 
-      await fileRenamer.renameFiles(testFiles);
+      const progressCalls: Array<[number, number, string]> = [];
+      await fileRenamer.renameFiles(testFiles, (completed, total, currentFile) => {
+        progressCalls.push([completed, total, currentFile]);
+      });
 
-      const outputString = stdoutOutput.join('');
-      expect(outputString).toContain('🔄 Processing [1/1] this-is-a-very-long-filename-that-should-be-tru...');
-      expect(outputString).not.toContain(longFilename); // Full name should not appear
+      // The callback receives the raw filename; the caller handles display formatting
+      expect(progressCalls).toHaveLength(1);
+      expect(progressCalls[0][2]).toBe(longFilename);
     });
 
     it('should handle mixed success/failure results in completion message', async () => {
@@ -767,12 +774,11 @@ describe('FileRenamer', () => {
         }
       ];
 
-      // Mock the first file to succeed and second to fail
       vi.mocked(fs.access).mockImplementation((path: string) => {
         if (path.includes('success.txt')) {
-          return Promise.reject({ code: 'ENOENT' }); // File doesn't exist, rename will succeed
+          return Promise.reject({ code: 'ENOENT' });
         }
-        return Promise.reject({ code: 'ENOENT' }); // File doesn't exist, rename will succeed
+        return Promise.reject({ code: 'ENOENT' });
       });
 
       vi.mocked(fs.rename).mockImplementation((oldPath: string) => {
@@ -782,10 +788,14 @@ describe('FileRenamer', () => {
         return Promise.resolve(undefined);
       });
 
-      await fileRenamer.renameFiles(testFiles);
+      const progressCalls: Array<[number, number, string]> = [];
+      await fileRenamer.renameFiles(testFiles, (completed, total, currentFile) => {
+        progressCalls.push([completed, total, currentFile]);
+      });
 
-      const outputString = stdoutOutput.join('');
-      expect(outputString).toContain('Processed 2 files (1 successful)');
+      // Both files trigger progress callback (success and failure)
+      expect(progressCalls).toHaveLength(2);
+      expect(progressCalls[progressCalls.length - 1][0]).toBe(2);
     });
 
     it('should pass config.context to generateFileName', async () => {

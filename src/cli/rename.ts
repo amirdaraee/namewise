@@ -18,6 +18,7 @@ import {
   applyStrip,
   applyTruncate
 } from '../utils/batch-rename.js';
+import * as ui from '../utils/ui.js';
 
 export async function renameFiles(directory: string, options: any): Promise<void> {
   try {
@@ -113,14 +114,13 @@ export async function renameFiles(directory: string, options: any): Promise<void
       config.recursive,
       config.depth ?? Infinity
     );
-    
+
     if (files.length === 0) {
-      console.log('No supported files found in the directory.');
+      ui.info('No supported files found in the directory.');
       return;
     }
 
-    console.log(`Found ${files.length} files to process:`);
-    files.forEach(file => console.log(`  - ${file.name}`));
+    ui.dim(`Scanning ${path.resolve(directory)}  →  ${files.length} file${files.length === 1 ? '' : 's'} found`);
 
     if (config.patterns && config.patterns.length > 0) {
       await runPatternRenames(files, config);
@@ -133,24 +133,42 @@ export async function renameFiles(directory: string, options: any): Promise<void
         {
           type: 'confirm',
           name: 'proceed',
-          message: 'Do you want to proceed with renaming these files?',
+          message: 'Proceed with renaming these files?',
           default: false
         }
       ]);
-
       if (!confirm.proceed) {
-        console.log('Operation cancelled.');
+        ui.info('Cancelled.');
         return;
       }
     }
 
-    // Process files
-    console.log('\nProcessing files...');
+    // Process files — use \r-overwrite for progress (ora animation is unreliable
+    // when pdfjs/canvas blocks the event loop between files).
     const startTime = Date.now();
-    const { results, tokenUsage } = await fileRenamer.renameFiles(files);
+    let lastProgressLen = 0;
 
-    // Display results
-    displayResults(results, config.dryRun, startTime, files, tokenUsage);
+    const { results, tokenUsage } = await fileRenamer.renameFiles(
+      files,
+      (completed, total) => {
+        const line = `  Processing  [${completed}/${total}]`;
+        const pad  = ' '.repeat(Math.max(0, lastProgressLen - line.length));
+        process.stdout.write('\r' + line + pad);
+        lastProgressLen = line.length;
+      }
+    );
+
+    // Clear the progress line
+    process.stdout.write('\r' + ' '.repeat(lastProgressLen) + '\r');
+
+    const elapsed = Date.now() - startTime;
+    const successCount = results.filter(r => r.success).length;
+    const failCount    = results.filter(r => !r.success).length;
+    const elapsedStr   = elapsed < 1000 ? elapsed + 'ms' : (elapsed / 1000).toFixed(1) + 's';
+
+    ui.success(`${files.length} file${files.length === 1 ? '' : 's'} processed in ${elapsedStr}`);
+
+    displayResults(results, config.dryRun, files, tokenUsage, successCount, failCount, elapsed);
 
     // Save session to history (~/.namewise/history.json)
     const successfulRenames = results
@@ -181,14 +199,14 @@ export async function renameFiles(directory: string, options: any): Promise<void
       };
       try {
         await fs.writeFile(config.outputPath, JSON.stringify(report, null, 2), 'utf-8');
-        console.log(`Report saved to: ${config.outputPath}`);
+        ui.success(`Report saved to: ${config.outputPath}`);
       } catch (err) {
-        console.warn(`Warning: Failed to write report: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        ui.warn(`Failed to write report: ${err instanceof Error ? err.message : 'Unknown error'}`);
       }
     }
 
   } catch (error) {
-    console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
+    ui.error(error instanceof Error ? error.message : 'Unknown error');
     process.exit(1);
   }
 }
@@ -255,7 +273,11 @@ async function runPatternRenames(files: FileInfo[], config: Config): Promise<voi
     if (newName === file.name) continue;
 
     const newPath = path.join(path.dirname(file.path), newName);
-    console.log(`${config.dryRun ? '[dry-run] ' : ''}${file.name} → ${newName}`);
+    if (config.dryRun) {
+      ui.dim(`[dry-run] ${file.name} → ${newName}`);
+    } else {
+      ui.success(`${file.name} → ${newName}`);
+    }
 
     if (!config.dryRun) {
       await fs.rename(file.path, newPath);
@@ -276,61 +298,26 @@ async function runPatternRenames(files: FileInfo[], config: Config): Promise<voi
   }
 
   const count = config.dryRun ? previewCount : renames.length;
-  console.log(`\n${config.dryRun ? 'Would rename' : 'Renamed'} ${count} file(s) using pattern(s).`);
+  ui.info(`\n${config.dryRun ? 'Would rename' : 'Renamed'} ${count} file(s) using pattern(s).`);
 }
 
 function displayResults(
   results: RenameResult[],
   dryRun: boolean,
-  startTime: number,
   files: FileInfo[],
-  tokenUsage: { inputTokens?: number; outputTokens?: number }
+  tokenUsage: { inputTokens?: number; outputTokens?: number },
+  successCount: number,
+  failCount: number,
+  elapsed: number
 ): void {
-  const successful = results.filter(r => r.success);
-  const failed = results.filter(r => !r.success);
+  const label = dryRun ? 'Preview' : 'Results';
+  ui.section(label);
 
-  console.log(`\n${dryRun ? 'Preview' : 'Results'}:`);
-  console.log(`${successful.length} files ${dryRun ? 'would be' : 'successfully'} renamed`);
-
-  if (failed.length > 0) {
-    console.log(`${failed.length} files failed`);
+  for (const result of results) {
+    ui.fileRow(result);
   }
 
-  console.log('\nDetails:');
-  results.forEach(result => {
-    const status = result.success ? 'OK' : 'FAIL';
-    const originalName = path.basename(result.originalPath);
-    const newName = path.basename(result.newPath);
-
-    if (result.success) {
-      console.log(`[${status}] ${originalName} → ${newName}`);
-    } else {
-      console.log(`[${status}] ${originalName} (failed)`);
-      if (result.error) {
-        console.log(`   Error: ${result.error}`);
-      }
-    }
-  });
-
-  // Stats
-  const elapsed = Date.now() - startTime;
-  const elapsedStr = elapsed < 1000 ? `${elapsed}ms` : `${(elapsed / 1000).toFixed(1)}s`;
-  const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
-  const totalMB = (totalBytes / 1024 / 1024).toFixed(2);
-  const extCounts: Record<string, number> = {};
-  for (const f of files) {
-    extCounts[f.extension] = (extCounts[f.extension] ?? 0) + 1;
-  }
-  const extSummary = Object.entries(extCounts)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([ext, count]) => `${count} ${ext.slice(1).toUpperCase()}`)
-    .join(', ');
-  const statsLine = `Stats: ${elapsedStr} elapsed | ${totalMB} MB processed | ${extSummary}`;
-  const tokenLine = (tokenUsage.inputTokens !== undefined && tokenUsage.outputTokens !== undefined)
-    ? `Tokens: ${tokenUsage.inputTokens.toLocaleString()} input / ${tokenUsage.outputTokens.toLocaleString()} output`
-    : 'Tokens: N/A (local provider)';
-  console.log(`\n${statsLine}`);
-  console.log(tokenLine);
+  ui.renameStats({ elapsed, files, successCount, failCount, tokenUsage, dryRun });
 }
 
 export interface BatchRenameFlags {
@@ -352,7 +339,7 @@ export async function runBatchRenames(
 ): Promise<void> {
   const filePaths = await collectFiles(directory, { recursive });
   if (filePaths.length === 0) {
-    console.log('No files found.');
+    ui.info('No files found.');
     return;
   }
 
@@ -382,7 +369,11 @@ export async function runBatchRenames(
     if (newName === path.basename(filePath)) continue;
 
     const newPath = path.join(path.dirname(filePath), newName);
-    console.log(`${dryRun ? '[dry-run] ' : ''}${path.basename(filePath)} → ${newName}`);
+    if (dryRun) {
+      ui.dim(`[dry-run] ${path.basename(filePath)} → ${newName}`);
+    } else {
+      ui.success(`${path.basename(filePath)} → ${newName}`);
+    }
 
     if (!dryRun) {
       await fs.rename(filePath, newPath);
@@ -403,5 +394,5 @@ export async function runBatchRenames(
   }
 
   const count = dryRun ? previewCount : renames.length;
-  console.log(`\n${dryRun ? 'Would rename' : 'Renamed'} ${count} file(s).`);
+  ui.info(`\n${dryRun ? 'Would rename' : 'Renamed'} ${count} file(s).`);
 }

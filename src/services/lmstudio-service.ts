@@ -115,7 +115,6 @@ export class LMStudioService implements AIProvider {
       }
       throw new Error('No response content from LMStudio');
     } catch (error) {
-      console.error('LMStudio API error:', error);
       throw new Error(`LMStudio service failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

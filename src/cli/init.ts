@@ -3,6 +3,7 @@ import path from 'path';
 import os from 'os';
 import inquirer from 'inquirer';
 import type { NamiwiseFileConfig } from '../utils/config-loader.js';
+import * as ui from '../utils/ui.js';
 
 const PROVIDER_DEFAULT_MODELS: Record<string, string> = {
   claude: 'claude-sonnet-4-5-20250929',
@@ -17,7 +18,7 @@ const PROVIDER_DEFAULT_URLS: Record<string, string> = {
 };
 
 export async function initCommand(): Promise<void> {
-  console.log('\nWelcome to Namewise! Let\'s set up your configuration.\n');
+  ui.info('\nWelcome to Namewise! Let\'s set up your configuration.\n');
 
   const { scope } = await inquirer.prompt([{
     type: 'list',
@@ -45,7 +46,7 @@ export async function initCommand(): Promise<void> {
       default: false
     }]);
     if (!overwrite) {
-      console.log('Init cancelled.');
+      ui.info('Init cancelled.');
       return;
     }
   } catch {
@@ -148,12 +149,12 @@ export async function initCommand(): Promise<void> {
   await fs.mkdir(path.dirname(configPath), { recursive: true });
   await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
 
-  console.log(`\nConfig saved to ${configPath}`);
-  console.log('\nYou\'re all set! Try:');
+  ui.success(`Config saved to ${configPath}`);
+  ui.info('\nYou\'re all set! Try:');
   if (config.dryRun) {
-    console.log('  namewise rename ./documents');
+    ui.dim('  namewise rename ./documents');
   } else {
-    console.log('  namewise rename ./documents --dry-run');
+    ui.dim('  namewise rename ./documents --dry-run');
   }
-  console.log('  namewise --help');
+  ui.dim('  namewise --help');
 }

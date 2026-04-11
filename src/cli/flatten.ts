@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { appendHistory } from '../utils/history.js';
+import * as ui from '../utils/ui.js';
 
 export async function flattenDirectory(
   directory: string,
@@ -13,7 +14,7 @@ export async function flattenDirectory(
   const nestedFiles = await findNestedFiles(directory);
 
   if (nestedFiles.length === 0) {
-    console.log('No nested files found.');
+    ui.info('No nested files found.');
     return;
   }
 
@@ -22,7 +23,11 @@ export async function flattenDirectory(
   for (const filePath of nestedFiles) {
     const destPath = await resolveConflict(directory, path.basename(filePath));
     const rel = path.relative(directory, filePath);
-    console.log(`${dryRun ? '[dry-run] ' : ''}${rel} → ${path.basename(destPath)}`);
+    if (dryRun) {
+      ui.dim(`[dry-run] ${rel} → ${path.basename(destPath)}`);
+    } else {
+      ui.success(`${rel} → ${path.basename(destPath)}`);
+    }
     if (!dryRun) {
       await fs.rename(filePath, destPath);
       moves.push({ originalPath: filePath, newPath: destPath });
@@ -40,7 +45,7 @@ export async function flattenDirectory(
   }
 
   const count = dryRun ? nestedFiles.length : moves.length;
-  console.log(`\n${dryRun ? 'Would move' : 'Moved'} ${count} file(s).`);
+  ui.info(`\n${dryRun ? 'Would move' : 'Moved'} ${count} file(s).`);
 }
 
 async function findNestedFiles(dir: string): Promise<string[]> {

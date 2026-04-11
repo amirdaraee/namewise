@@ -86,7 +86,6 @@ export class OpenAIService implements AIProvider {
         outputTokens: response.usage?.completion_tokens
       };
     } catch (error) {
-      console.error('OpenAI API error:', error);
       throw new Error(`Failed to generate filename with OpenAI: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

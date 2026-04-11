@@ -2,6 +2,7 @@ import { promises as fs, createReadStream } from 'fs';
 import { createHash } from 'crypto';
 import path from 'path';
 import { formatBytes } from '../utils/fs-collect.js';
+import * as ui from '../utils/ui.js';
 
 export async function infoCommand(targetPath: string): Promise<void> {
   const stat = await fs.stat(targetPath);
@@ -18,7 +19,7 @@ async function showFileInfo(
 ): Promise<void> {
   const hash = await hashFile(filePath);
   const ext = path.extname(filePath).toLowerCase();
-  console.log(`\nFile: ${path.resolve(filePath)}`);
+  ui.info(`\nFile: ${path.resolve(filePath)}`);
   console.log(`  Size:     ${formatBytes(Number(stat.size))} (${stat.size} bytes)`);
   console.log(`  Created:  ${stat.birthtime.toISOString().replace('T', ' ').slice(0, 19)}`);
   console.log(`  Modified: ${stat.mtime.toISOString().replace('T', ' ').slice(0, 19)}`);
@@ -35,7 +36,7 @@ async function showDirInfo(dirPath: string): Promise<void> {
     if (isDir) dirCount++;
     else { fileCount++; totalBytes += size; }
   });
-  console.log(`\nDirectory: ${path.resolve(dirPath)}`);
+  ui.info(`\nDirectory: ${path.resolve(dirPath)}`);
   console.log(`  Files:       ${fileCount}`);
   console.log(`  Directories: ${dirCount}`);
   console.log(`  Total size:  ${formatBytes(totalBytes)}`);

@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
 import { NamiwiseFileConfig } from '../utils/config-loader.js';
+import * as ui from '../utils/ui.js';
 
 const CONFIG_PATH = path.join(os.homedir(), '.namewise.json');
 const VALID_KEYS = new Set<keyof NamiwiseFileConfig>([
@@ -36,10 +37,10 @@ export async function configCommand(subcommand: string, key?: string, value?: st
     const config = await readConfig();
     const entries = Object.entries(config);
     if (entries.length === 0) {
-      console.log('No config found in ~/.namewise.json');
+      ui.info('No config found in ~/.namewise.json');
       return;
     }
-    console.log('~/.namewise.json:');
+    ui.info('~/.namewise.json:');
     for (const [k, v] of entries) {
       console.log(`  ${k}: ${JSON.stringify(v)}`);
     }
@@ -53,7 +54,7 @@ export async function configCommand(subcommand: string, key?: string, value?: st
     }
     const config = await readConfig();
     const val = config[key as keyof NamiwiseFileConfig];
-    console.log(val !== undefined ? String(val) : '(not set)');
+    ui.info(val !== undefined ? String(val) : '(not set)');
     return;
   }
 
@@ -65,7 +66,7 @@ export async function configCommand(subcommand: string, key?: string, value?: st
     const config = await readConfig();
     (config as any)[key] = coerceValue(value);
     await writeConfig(config);
-    console.log(`Set ${key} = ${JSON.stringify((config as any)[key])}`);
+    ui.success(`Set ${key} = ${JSON.stringify((config as any)[key])}`);
     return;
   }
 

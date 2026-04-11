@@ -93,7 +93,6 @@ export class ClaudeService implements AIProvider {
         outputTokens: response.usage?.output_tokens
       };
     } catch (error) {
-      console.error('Claude API error:', error);
       throw new Error(`Failed to generate filename with Claude: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

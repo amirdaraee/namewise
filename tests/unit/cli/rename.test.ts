@@ -136,7 +136,7 @@ describe('renameFiles()', () => {
 
       await renameFiles('/nonexistent/path', defaultOptions);
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', expect.stringContaining('ENOENT'));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('ENOENT'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -153,7 +153,7 @@ describe('renameFiles()', () => {
 
       await renameFiles('/some/file.txt', defaultOptions);
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', expect.stringContaining('is not a directory'));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('is not a directory'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -169,7 +169,7 @@ describe('renameFiles()', () => {
 
       await renameFiles('/test/dir', defaultOptions);
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown error'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -207,7 +207,7 @@ describe('renameFiles()', () => {
 
       await renameFiles('/test/dir', { ...defaultOptions, dryRun: true });
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('2 files to process'));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('2 files found'));
       consoleSpy.mockRestore();
     });
   });
@@ -307,7 +307,7 @@ describe('renameFiles()', () => {
 
       await renameFiles('/test/dir', { ...defaultOptions, dryRun: false });
 
-      expect(consoleSpy).toHaveBeenCalledWith('Operation cancelled.');
+      expect(consoleSpy).toHaveBeenCalledWith('Cancelled.');
       expect(mockRenameFilesMethod).not.toHaveBeenCalled();
 
       consoleSpy.mockRestore();
@@ -476,7 +476,7 @@ describe('renameFiles()', () => {
       await renameFiles('/test/dir', { ...defaultOptions, dryRun: true });
 
       const allLogs = consoleSpy.mock.calls.map(c => c.join(' ')).join('\n');
-      expect(allLogs).toContain('failed');
+      expect(allLogs).toMatch(/[Ff]ailed/);
       expect(allLogs).toContain('Permission denied');
 
       consoleSpy.mockRestore();
@@ -506,7 +506,7 @@ describe('renameFiles()', () => {
       await renameFiles('/test/dir', { ...defaultOptions, dryRun: true });
 
       const allLogs = consoleSpy.mock.calls.map(c => c.join(' ')).join('\n');
-      expect(allLogs).toMatch(/1 files? failed/);
+      expect(allLogs).toMatch(/Failed.*1|1.*Failed/);
 
       consoleSpy.mockRestore();
     });
@@ -657,7 +657,6 @@ describe('renameFiles()', () => {
       await renameFiles('/test/dir', defaultOptions);
 
       const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
-      expect(allOutput).toMatch(/Stats:/);
       expect(allOutput).toMatch(/PDF/);
       expect(allOutput).toMatch(/TXT/);
 
@@ -685,10 +684,8 @@ describe('renameFiles()', () => {
       await renameFiles('/test/dir', defaultOptions);
 
       const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
-      expect(allOutput).toMatch(/Stats:/);
-      expect(allOutput).toMatch(/elapsed/);
       expect(allOutput).toMatch(/MB/);
-      expect(allOutput).toMatch(/1\.50 MB/);
+      expect(allOutput).toMatch(/1\.5 MB/);
       expect(allOutput).toMatch(/TXT/);
 
       logSpy.mockRestore();
@@ -719,7 +716,8 @@ describe('renameFiles()', () => {
       await renameFiles('/test/dir', defaultOptions);
 
       const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
-      expect(allOutput).toContain('Tokens: 1,240 input / 87 output');
+      expect(allOutput).toContain('1,240 in');
+      expect(allOutput).toContain('87 out');
 
       logSpy.mockRestore();
     });
@@ -734,7 +732,7 @@ describe('renameFiles()', () => {
       await renameFiles('/test/dir', defaultOptions);
 
       const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
-      expect(allOutput).toContain('Tokens: N/A (local provider)');
+      expect(allOutput).toContain('N/A (local provider)');
 
       logSpy.mockRestore();
     });
@@ -868,7 +866,7 @@ describe('renameFiles()', () => {
       await renameFiles('/test/dir', defaultOptions);
 
       const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
-      expect(allOutput).toMatch(/1\.5s elapsed/);
+      expect(allOutput).toMatch(/1\.5s/);
 
       dateSpy.mockRestore();
       logSpy.mockRestore();

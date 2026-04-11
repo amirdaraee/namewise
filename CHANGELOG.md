@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.1] - 2026-04-11
+
+### Changed
+- Polished CLI output across all commands using `chalk` (colour) and `ora` (spinner)
+- `rename` command: spinner replaces the interleaved `\r` progress; file list no longer dumped before processing; results displayed with colour-coded ✓/✗ rows and a cleaner stats block
+- Scanned-PDF diagnostic messages (`Detected scanned PDF`, `PDF converted to image successfully`) suppressed — internal implementation details, not user-facing
+- pdfjs `TT: undefined function` stderr noise suppressed via inline stderr intercept during PDF text extraction
+- AI service `console.error` calls removed (redundant — errors are rethrown immediately)
+- Success lines green (✓), warnings yellow (!), errors red (✗); neutral info lines unchanged
+- Stats block: renamed/failed counts, data size, and token usage on clearly labelled lines
+- All commands (`undo`, `init`, `sanitize`, `apply`, `dedup`, `watch`, `organize`, `flatten`, `clean-empty`, `find`, `diff`, `stats`, `tree`, `info`, `config`) use the new shared `src/utils/ui` module
+
 ## [0.8.0] - 2026-04-09
 
 ### Added

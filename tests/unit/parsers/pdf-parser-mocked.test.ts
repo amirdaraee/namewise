@@ -61,36 +61,22 @@ describe('PDFParser (mocked)', () => {
       mockIsScannedPDF.mockReturnValue(true);
       mockConvertFirstPageToBase64.mockResolvedValue('data:image/jpeg;base64,imagedata');
 
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
       const result = await parser.parse('/path/to/scanned.pdf');
 
       expect(result.content).toBe('[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,imagedata');
       expect(mockConvertFirstPageToBase64).toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
     });
 
     it('should continue with empty content when scanned PDF conversion fails with non-Error', async () => {
-      // Exercises the `conversionError instanceof Error` false branch (line 36 of pdf-parser.ts)
+      // Exercises the `conversionError instanceof Error` false branch
       mockPdfExtract.mockResolvedValue({ text: '', meta: {}, numpages: 1 });
       mockIsScannedPDF.mockReturnValue(true);
       mockConvertFirstPageToBase64.mockRejectedValue('plain string error');
-
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       const result = await parser.parse('/path/to/scanned.pdf');
 
       expect(result).toBeDefined();
       expect(result.content).toBe('');
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('PDF to image conversion failed'),
-        'Unknown error'
-      );
-
-      warnSpy.mockRestore();
-      logSpy.mockRestore();
     });
 
     it('should continue with empty content when scanned PDF conversion fails', async () => {
@@ -102,21 +88,11 @@ describe('PDFParser (mocked)', () => {
       mockIsScannedPDF.mockReturnValue(true);
       mockConvertFirstPageToBase64.mockRejectedValue(new Error('Conversion failed'));
 
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
       const result = await parser.parse('/path/to/scanned.pdf');
 
       // Should continue with empty content (no throw)
       expect(result).toBeDefined();
       expect(result.content).toBe('');
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('PDF to image conversion failed'),
-        'Conversion failed'
-      );
-
-      warnSpy.mockRestore();
-      logSpy.mockRestore();
     });
   });
 

@@ -1,6 +1,7 @@
 import path from 'path';
 import { promises as fs } from 'fs';
 import chokidar from 'chokidar';
+import * as ui from '../utils/ui.js';
 import { Config, FileInfo, FileCategory, DateFormat } from '../types/index.js';
 import { DocumentParserFactory } from '../parsers/factory.js';
 import { AIServiceFactory } from '../services/ai-factory.js';
@@ -79,12 +80,12 @@ export async function watchDirectory(directory: string, options: any): Promise<v
     }
   });
 
-  console.log(`Watching ${absDir} for new files...`);
+  ui.info(`Watching ${absDir} for new files…`);
 
   // Handle new file events
   watcher.on('add', async (filePath: string) => {
     const fileName = path.basename(filePath);
-    console.log(`Detected new file: ${fileName}`);
+    ui.dim(`Detected: ${fileName}`);
 
     try {
       const fileStat = await fs.stat(filePath);
@@ -111,7 +112,7 @@ export async function watchDirectory(directory: string, options: any): Promise<v
       const result = results[0];
       if (result?.success && result.newPath !== result.originalPath) {
         const newName = path.basename(result.newPath);
-        console.log(`Renamed: ${fileName} → ${newName}`);
+        ui.success(`${fileName}  →  ${newName}`);
         await appendHistory({
           id: new Date().toISOString(),
           timestamp: new Date().toISOString(),
@@ -120,17 +121,17 @@ export async function watchDirectory(directory: string, options: any): Promise<v
           renames: [{ originalPath: result.originalPath, newPath: result.newPath }]
         });
       } else if (result?.success) {
-        console.log(`No rename needed for: ${fileName}`);
+        ui.dim(`No rename needed for: ${fileName}`);
       }
     } catch (error) {
-      console.error(`Error processing ${fileName}:`, error instanceof Error ? error.message : 'Unknown error');
+      ui.error(`Error processing ${fileName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   });
 
   // Keep the process alive until shutdown signal
   await new Promise<void>((resolve) => {
     const shutdown = async () => {
-      console.log('\nStopping watcher...');
+      ui.dim('\nStopping watcher…');
       await watcher.close();
       resolve();
     };

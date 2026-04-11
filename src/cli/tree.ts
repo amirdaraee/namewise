@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { formatBytes } from '../utils/fs-collect.js';
+import * as ui from '../utils/ui.js';
 
 export async function treeCommand(
   directory: string,
@@ -10,7 +11,7 @@ export async function treeCommand(
   if (!stat.isDirectory()) throw new Error(`${directory} is not a directory`);
 
   const maxDepth = options.depth ?? Infinity;
-  console.log(`\n${path.resolve(directory)}`);
+  ui.info(`\n${path.resolve(directory)}`);
   await printTree(directory, '', 0, maxDepth);
 }
 

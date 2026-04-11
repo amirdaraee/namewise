@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import inquirer from 'inquirer';
 import { findDuplicates } from '../utils/dedup.js';
+import * as ui from '../utils/ui.js';
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
@@ -18,11 +19,11 @@ export async function dedupFiles(
     throw new Error(`${directory} is not a directory`);
   }
 
-  console.log('Scanning for duplicates...');
+  ui.dim('Scanning for duplicates…');
   const duplicates = await findDuplicates(directory, options.recursive ?? false);
 
   if (duplicates.size === 0) {
-    console.log('No duplicate files found.');
+    ui.info('No duplicate files found.');
     return;
   }
 
@@ -32,7 +33,7 @@ export async function dedupFiles(
 
   let totalDuplicates = 0;
   for (const { hash, sortedPaths } of sortedGroups) {
-    console.log(`\nDuplicate group (${hash.slice(0, 8)}):`);
+    ui.info(`\nDuplicate group (${hash.slice(0, 8)}):`);
     for (let i = 0; i < sortedPaths.length; i++) {
       const p = sortedPaths[i];
       const fileStat = await fs.stat(p);
@@ -42,7 +43,7 @@ export async function dedupFiles(
     totalDuplicates += sortedPaths.length - 1;
   }
 
-  console.log(`\nFound ${duplicates.size} group(s) with ${totalDuplicates} duplicate(s).`);
+  ui.info(`\nFound ${duplicates.size} group(s) with ${totalDuplicates} duplicate(s).`);
 
   if (!options.delete) return;
 
@@ -54,7 +55,7 @@ export async function dedupFiles(
   }]);
 
   if (!confirm) {
-    console.log('Cancelled.');
+    ui.info('Cancelled.');
     return;
   }
 
@@ -62,9 +63,9 @@ export async function dedupFiles(
   for (const { sortedPaths } of sortedGroups) {
     for (const filePath of sortedPaths.slice(1)) {
       await fs.unlink(filePath);
-      console.log(`Deleted: ${path.basename(filePath)}`);
+      ui.success(`Deleted: ${path.basename(filePath)}`);
       deleted++;
     }
   }
-  console.log(`\nDeleted ${deleted} file(s).`);
+  ui.info(`\nDeleted ${deleted} file(s).`);
 }

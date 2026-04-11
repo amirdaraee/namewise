@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { appendHistory } from '../utils/history.js';
+import * as ui from '../utils/ui.js';
 
 interface PlanResult {
   originalPath: string;
@@ -28,7 +29,7 @@ export async function applyPlan(planPath: string, options: { dryRun?: boolean } 
   const pending = plan.results.filter(r => r.success && r.originalPath !== r.newPath);
 
   if (pending.length === 0) {
-    console.log('No renames to apply.');
+    ui.info('No renames to apply.');
     return;
   }
 
@@ -55,7 +56,11 @@ export async function applyPlan(planPath: string, options: { dryRun?: boolean } 
   let previewCount = 0;
 
   for (const r of pending) {
-    console.log(`${options.dryRun ? '[dry-run] ' : ''}${path.basename(r.originalPath)} → ${path.basename(r.newPath)}`);
+    if (options.dryRun) {
+      ui.dim(`[dry-run] ${path.basename(r.originalPath)} → ${path.basename(r.newPath)}`);
+    } else {
+      ui.success(`${path.basename(r.originalPath)} → ${path.basename(r.newPath)}`);
+    }
     if (!options.dryRun) {
       await fs.rename(r.originalPath, r.newPath);
       renames.push({ originalPath: r.originalPath, newPath: r.newPath });
@@ -75,5 +80,5 @@ export async function applyPlan(planPath: string, options: { dryRun?: boolean } 
   }
 
   const count = options.dryRun ? previewCount : renames.length;
-  console.log(`\nApplied${options.dryRun ? ' (dry-run)' : ''}: ${count} rename(s).`);
+  ui.info(`\n${options.dryRun ? 'Would apply' : 'Applied'}: ${count} rename(s).`);
 }

@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { collectFiles } from '../utils/fs-collect.js';
 import { hashFile } from '../utils/dedup.js';
+import * as ui from '../utils/ui.js';
 
 export interface DiffOptions {
   by?: 'name' | 'hash';
@@ -79,23 +80,23 @@ function printDiff(
   moved: Array<{ from: string; to: string }>
 ): void {
   if (onlyIn1.length === 0 && onlyIn2.length === 0 && moved.length === 0) {
-    console.log('Directories are identical.');
+    ui.info('Directories are identical.');
     return;
   }
 
   if (onlyIn1.length > 0) {
-    console.log(`\nOnly in ${dir1}:`);
-    for (const f of onlyIn1) console.log(`  - ${f}`);
+    ui.info(`\nOnly in ${dir1}:`);
+    for (const f of onlyIn1) ui.dim(`  - ${f}`);
   }
   if (onlyIn2.length > 0) {
-    console.log(`\nOnly in ${dir2}:`);
-    for (const f of onlyIn2) console.log(`  + ${f}`);
+    ui.info(`\nOnly in ${dir2}:`);
+    for (const f of onlyIn2) ui.dim(`  + ${f}`);
   }
   if (moved.length > 0) {
-    console.log('\nMoved/renamed (same content):');
-    for (const { from, to } of moved) console.log(`  ${from} → ${to}`);
+    ui.info('\nMoved/renamed (same content):');
+    for (const { from, to } of moved) ui.dim(`  ${from} → ${to}`);
   }
 
   const total = onlyIn1.length + onlyIn2.length + moved.length;
-  console.log(`\n${total} difference(s) found.`);
+  ui.info(`\n${total} difference(s) found.`);
 }

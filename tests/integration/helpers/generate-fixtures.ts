@@ -5,6 +5,7 @@
 import { existsSync, writeFileSync } from 'fs';
 import path from 'path';
 import Excel from 'exceljs';
+import PDFDocument from 'pdfkit';
 
 const DATA_DIR = path.join(process.cwd(), 'tests', 'data');
 
@@ -140,6 +141,40 @@ function createDocxBuffer(title: string, bodyText: string): Buffer {
 }
 
 // ---------------------------------------------------------------------------
+// Scanned PDF fixture
+// ---------------------------------------------------------------------------
+// A single-page PDF with a white-filled rectangle but no text content.
+// pdf-extraction returns '' for this file (no selectable text), which
+// triggers PDFToImageConverter.isScannedPDF() → exercises the canvas path.
+// Uses pdfkit to produce a valid PDF with correct XRef offsets.
+// ---------------------------------------------------------------------------
+
+async function createScannedPdfBuffer(): Promise<Buffer> {
+  return new Promise<Buffer>((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', autoFirstPage: true });
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+    doc.on('end', () => {
+      const pdfBuf = Buffer.concat(chunks);
+      // pdfjs v1.x reads buffer.buffer (the ArrayBuffer) instead of the Buffer
+      // slice when byteOffset > 0 (small pooled buffers). Anything > 4096 bytes
+      // forces a dedicated allocation with byteOffset === 0.
+      if (pdfBuf.length > 4096) {
+        resolve(pdfBuf);
+      } else {
+        // Pad to exceed the pool boundary (rare — pdfkit output is typically > 4096 bytes)
+        const pad = Buffer.alloc(4097 - pdfBuf.length, 0x20);
+        resolve(Buffer.concat([pdfBuf, Buffer.from('\n%padded\n'), pad]));
+      }
+    });
+    doc.on('error', reject);
+    // Draw a white rectangle over the whole page — no text at all
+    doc.rect(0, 0, doc.page.width, doc.page.height).fill('white');
+    doc.end();
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Main generator — called by Vitest globalSetup
 // ---------------------------------------------------------------------------
 
@@ -168,5 +203,11 @@ export async function setup(): Promise<void> {
     sheet.addRow(['Total', 125000, 70000, 55000]);
 
     await workbook.xlsx.writeFile(xlsxPath);
+  }
+
+  // --- scanned-sample.pdf ---
+  const scannedPdfPath = path.join(DATA_DIR, 'scanned-sample.pdf');
+  if (!existsSync(scannedPdfPath)) {
+    writeFileSync(scannedPdfPath, await createScannedPdfBuffer());
   }
 }

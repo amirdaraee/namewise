@@ -57,8 +57,10 @@
     "@types/heic-convert": "2.1.0",
     "@types/inquirer": "^9.0.9",
     "@types/node": "^24.3.1",
+    "@types/pdfkit": "0.17.5",
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
+    "pdfkit": "0.8.3",
     "tsx": "4.21.0",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"

@@ -165,3 +165,42 @@ export function makeFileInfo(filePath: string, overrides: Partial<FileInfo> = {}
     ...overrides
   };
 }
+
+// ---------------------------------------------------------------------------
+// Noise capture — intercepts process.stderr.write and console.warn
+// ---------------------------------------------------------------------------
+
+export interface NoiseCaptureResult<T> {
+  result: T;
+  stderrWrites: string[];
+  warnCalls: string[];
+}
+
+/**
+ * Run `fn` while capturing everything written to process.stderr and
+ * console.warn. Restores originals in finally (safe on throw).
+ *
+ * NOTE: Do not nest captureNoise calls — inner calls will capture the outer
+ * patch as origWrite, causing the outer capture to stop working mid-flight.
+ */
+export async function captureNoise<T>(fn: () => Promise<T>): Promise<NoiseCaptureResult<T>> {
+  const stderrWrites: string[] = [];
+  const warnCalls: string[] = [];
+  const stderr = process.stderr as NodeJS.WriteStream & { write: Function };
+  const origWrite = stderr.write.bind(process.stderr);
+  const origWarn = console.warn;
+  stderr.write = (chunk: any, encodingOrCb?: any, cb?: any) => {
+    stderrWrites.push(String(chunk));
+    const callback = typeof encodingOrCb === 'function' ? encodingOrCb : cb;
+    if (typeof callback === 'function') callback();
+    return true;
+  };
+  console.warn = (...args: any[]) => warnCalls.push(args.join(' '));
+  try {
+    const result = await fn();
+    return { result, stderrWrites, warnCalls };
+  } finally {
+    stderr.write = origWrite;
+    console.warn = origWarn;
+  }
+}

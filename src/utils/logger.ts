@@ -15,16 +15,19 @@ interface LogEntry {
 
 export class Logger {
   readonly currentLogPath: string;
+  readonly enabled: boolean;
   private initialized = false;
   private writeQueue: Promise<void> = Promise.resolve();
 
-  constructor(command: string) {
+  constructor(command: string, enabled: boolean) {
+    this.enabled = enabled;
     // ISO string with colons replaced for safe filenames: 2026-04-12T10-30-00
     const ts = new Date().toISOString().replace(/:/g, '-').slice(0, 19);
     this.currentLogPath = path.join(LOG_DIR, `${ts}-${command}.log`);
   }
 
   private write(entry: LogEntry): void {
+    if (!this.enabled) return;
     const line = JSON.stringify(entry) + '\n';
     this.writeQueue = this.writeQueue.then(async () => {
       try {
@@ -106,9 +109,9 @@ async function pruneOldLogs(): Promise<void> {
 }
 
 // Module-level singleton. createLogger() replaces it at the start of each CLI command.
-export let logger: Logger = new Logger('namewise');
+export let logger: Logger = new Logger('namewise', false);
 
-export function createLogger(command: string): Logger {
-  logger = new Logger(command);
+export function createLogger(command: string, enabled = false): Logger {
+  logger = new Logger(command, enabled);
   return logger;
 }

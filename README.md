@@ -47,7 +47,7 @@ Automatically rename files based on their content using AI providers (Claude, Op
 - **EXIF Fallback**: `--no-ai` mode extracts EXIF metadata (description, date) from image files when available
 - **Dry Run Mode**: Preview changes before renaming files
 - **Size Limits**: Configurable maximum file size limits
-- **Session Logs**: Every run writes a structured JSON log to `~/.namewise/logs/` — always on, no flag needed
+- **Session Logs**: Structured JSON logs written to `~/.namewise/logs/` when enabled with `--log` or `"log": true` in config
 
 ## Quick Start
 
@@ -568,7 +568,17 @@ Tokens: N/A (local provider)
 
 ## Session Logs
 
-Every CLI run automatically writes a structured log to `~/.namewise/logs/` — no flag required.
+Session logging is **off by default**. Enable it with `--log` on any command, or set it permanently in your config file.
+
+```bash
+# Enable for a single run
+namewise rename ./docs --dry-run --log
+
+# Enable permanently
+namewise config set log true
+```
+
+When enabled, a structured log is written to `~/.namewise/logs/` for every run.
 
 **Log file naming:** `YYYY-MM-DDTHH-MM-SS-<command>.log`  
 Example: `2026-04-12T10-30-00-rename.log`
@@ -604,11 +614,16 @@ cat ~/.namewise/logs/2026-04-12T10-30-00-rename.log | jq 'select(.level == "erro
    → Check your API key — ensure ANTHROPIC_API_KEY or OPENAI_API_KEY is set, or run: namewise config set apiKey YOUR_KEY
 ```
 
-For unexpected errors, the terminal points you to the log:
+For unexpected errors, the terminal either points to the log (if `--log` was used) or prompts you to enable it:
 
 ```
+# With --log enabled:
 ✗  An unexpected error occurred.
    → See log: ~/.namewise/logs/2026-04-12T10-30-00-rename.log
+
+# Without --log:
+✗  An unexpected error occurred.
+   → Run with --log for detailed error information.
 ```
 
 ## Safety Features
@@ -656,7 +671,11 @@ npm run test:integration # Integration tests only
 <details>
 <summary>Common Issues</summary>
 
-**Check the session log first** — every run writes a detailed log to `~/.namewise/logs/`. When an unexpected error occurs, the terminal prints the exact path:
+**Enable session logging for details** — run with `--log` to capture a full structured log in `~/.namewise/logs/`:
+```bash
+namewise rename ./docs --log
+```
+When an unexpected error occurs with `--log` enabled, the terminal prints the exact log path:
 ```
 ✗  An unexpected error occurred.
    → See log: ~/.namewise/logs/2026-04-12T10-30-00-rename.log

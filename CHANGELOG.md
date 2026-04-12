@@ -9,12 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Typed error hierarchy** (`src/errors.ts`): eight subclasses of `NamewiseError` — `AuthError`, `NetworkError`, `RateLimitError`, `ParseError`, `FileSizeError`, `UnsupportedTypeError`, `ConfigError`, `VisionError` — each with a default user-facing `.hint`; replaces all raw `throw new Error(string)` calls throughout parsers, AI services, and CLI commands
-- **Session logger** (`src/utils/logger.ts`): every CLI run writes a structured JSON-lines log to `~/.namewise/logs/YYYY-MM-DDTHH-MM-SS-<command>.log`; always on, no flag required; records session start, per-file errors, and session summary (total, succeeded, failed, token usage, elapsed); auto-prunes to the 20 most recent files
+- **Session logger** (`src/utils/logger.ts`): opt-in structured JSON-lines logging to `~/.namewise/logs/YYYY-MM-DDTHH-MM-SS-<command>.log`; enable with `--log` on any command or `"log": true` in config; records session start, per-file errors, and session summary (total, succeeded, failed, token usage, elapsed); auto-prunes to the 20 most recent files
 - `ui.hint()` helper: dim indented suggestion line (`   → …`) shown below errors in the terminal
 
 ### Changed
 - **Known errors** surface `message` + `hint` in the terminal (e.g. `✗  API key required  →  Set it with: namewise config set apiKey YOUR_KEY`); no stack traces to stdout/stderr
-- **Unknown errors** show `✗  An unexpected error occurred.  →  See log: ~/.namewise/logs/…` so users always know where to look
+- **Unknown errors** show `✗  An unexpected error occurred.` with either the log path (if `--log` is active) or `→  Run with --log for detailed error information.`
 - HTTP status mapping in AI services: 401/403 → `AuthError`, 429 → `RateLimitError`, 5xx → `NetworkError`
 - Progress display replaced with an ASCII bar: `[████████████░░░░░░░░░░░░░░░░]  43%  24/55` — renders correctly even when the event loop is blocked by PDF/canvas processing
 - pdfjs `TT: undefined function` warning fully suppressed: `console.log`, `console.warn`, and `process.stdout.write` are all filtered for the known noise pattern during the rename session

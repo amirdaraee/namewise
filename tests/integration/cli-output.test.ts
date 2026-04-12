@@ -41,9 +41,9 @@ describe.skipIf(!cliExists)('CLI output — rename', () => {
 
   afterEach(async () => { await cleanup(); });
 
-  it('stdout contains a [X/N] progress pattern', async () => {
+  it('stdout contains a progress bar', async () => {
     const { stdout } = await runCli(['rename', tempDir, '--dry-run', '--no-ai', '--api-key', 'dummy']);
-    expect(stdout).toMatch(/\[\d+\/\d+\]/);
+    expect(stdout).toMatch(/\d+\/\d+/);
   });
 
   it('stdout contains ✓ success lines', async () => {

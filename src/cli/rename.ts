@@ -23,7 +23,10 @@ import { NamewiseError } from '../errors.js';
 import { createLogger, logger } from '../utils/logger.js';
 
 export async function renameFiles(directory: string, options: any): Promise<void> {
-  const log = createLogger('rename');
+  // Load config early so the logger can respect the `log` setting from config file.
+  // Errors here (e.g. invalid JSON) are caught by the outer catch below.
+  const fileConfig = await loadConfig(directory);
+  const log = createLogger('rename', options.log ?? fileConfig.log ?? false);
   log.session({ command: 'rename', directory, provider: options.provider, dryRun: options.dryRun ?? false });
   try {
     // Validate directory exists
@@ -49,9 +52,6 @@ export async function renameFiles(directory: string, options: any): Promise<void
       }, options.dryRun ?? false, options.recursive ?? false);
       return;
     }
-
-    // Load cascading config file (project overrides user-home)
-    const fileConfig = await loadConfig(directory);
 
     // Resolve provider (CLI flag > config file > default)
     const provider = (options.provider ?? fileConfig.provider ?? 'claude') as Config['aiProvider'];
@@ -249,7 +249,11 @@ export async function renameFiles(directory: string, options: any): Promise<void
       if (error.hint) ui.hint(error.hint);
     } else {
       ui.error('An unexpected error occurred.');
-      ui.hint(`See log: ${log.currentLogPath}`);
+      if (log.enabled) {
+        ui.hint(`See log: ${log.currentLogPath}`);
+      } else {
+        ui.hint('Run with --log for detailed error information.');
+      }
     }
     process.exit(1);
   }

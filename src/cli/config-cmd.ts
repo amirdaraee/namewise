@@ -7,7 +7,7 @@ import * as ui from '../utils/ui.js';
 const CONFIG_PATH = path.join(os.homedir(), '.namewise.json');
 const VALID_KEYS = new Set<keyof NamiwiseFileConfig>([
   'provider', 'apiKey', 'case', 'template', 'name', 'date',
-  'maxSize', 'model', 'baseUrl', 'concurrency', 'recursive', 'depth', 'output', 'dryRun', 'language'
+  'maxSize', 'model', 'baseUrl', 'concurrency', 'recursive', 'depth', 'output', 'dryRun', 'language', 'log'
 ]);
 
 async function readConfig(): Promise<NamiwiseFileConfig> {

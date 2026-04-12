@@ -33,7 +33,7 @@ describe('createLogger', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('returns a Logger with currentLogPath set', () => {
-    const log = createLogger('rename');
+    const log = createLogger('rename', true);
     expect(log.currentLogPath).toMatch(/rename\.log$/);
     expect(log.currentLogPath).toMatch(/\.namewise[/\\]logs[/\\]/);
   });
@@ -49,7 +49,7 @@ describe('Logger.info', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('writes a JSON line with level info and ts', async () => {
-    const log = createLogger('test');
+    const log = createLogger('test', true);
     log.info('hello', { file: 'a.pdf' });
     await flushWrites(log);
     const entry = lastWritten();
@@ -64,7 +64,7 @@ describe('Logger.warn', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('writes a JSON line with level warn', async () => {
-    const log = createLogger('test');
+    const log = createLogger('test', true);
     log.warn('something odd', { reason: 'x' });
     await flushWrites(log);
     const entry = lastWritten();
@@ -78,7 +78,7 @@ describe('Logger.error', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('logs NamewiseError with name, message, hint, stack', async () => {
-    const log = createLogger('test');
+    const log = createLogger('test', true);
     const err = new AuthError('bad key');
     log.error(err);
     await flushWrites(log);
@@ -91,7 +91,7 @@ describe('Logger.error', () => {
   });
 
   it('logs plain Error with name, message, stack', async () => {
-    const log = createLogger('test');
+    const log = createLogger('test', true);
     log.error(new Error('oops'));
     await flushWrites(log);
     const entry = lastWritten();
@@ -101,7 +101,7 @@ describe('Logger.error', () => {
   });
 
   it('logs non-Error values as string', async () => {
-    const log = createLogger('test');
+    const log = createLogger('test', true);
     log.error('just a string');
     await flushWrites(log);
     const entry = lastWritten();
@@ -110,7 +110,7 @@ describe('Logger.error', () => {
   });
 
   it('merges extra context', async () => {
-    const log = createLogger('test');
+    const log = createLogger('test', true);
     log.error(new Error('e'), { file: 'doc.pdf' });
     await flushWrites(log);
     const entry = lastWritten();
@@ -122,7 +122,7 @@ describe('Logger.session', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('writes session_start entry', async () => {
-    const log = createLogger('rename');
+    const log = createLogger('rename', true);
     log.session({ command: 'rename', directory: '/tmp/docs', provider: 'claude', dryRun: true });
     await flushWrites(log);
     const entry = lastWritten();
@@ -136,7 +136,7 @@ describe('Logger.summary', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('writes session_end entry with totals', async () => {
-    const log = createLogger('rename');
+    const log = createLogger('rename', true);
     log.summary({ total: 5, succeeded: 4, failed: 1, tokenUsage: { inputTokens: 100, outputTokens: 50 }, elapsedMs: 2000 });
     await flushWrites(log);
     const entry = lastWritten();
@@ -158,7 +158,7 @@ describe('auto-prune', () => {
     );
     (fs.readdir as ReturnType<typeof vi.fn>).mockResolvedValue(logFiles);
 
-    const log = createLogger('test');
+    const log = createLogger('test', true);
     // Trigger first write to cause init (mkdir + prune)
     log.info('trigger');
     await flushWrites(log);
@@ -174,7 +174,7 @@ describe('auto-prune', () => {
     (fs.readdir as ReturnType<typeof vi.fn>).mockResolvedValue(
       Array.from({ length: 10 }, (_, i) => `2026-01-${i + 1}-rename.log`)
     );
-    const log = createLogger('test');
+    const log = createLogger('test', true);
     log.info('trigger');
     await flushWrites(log);
     expect(fs.unlink).not.toHaveBeenCalled();

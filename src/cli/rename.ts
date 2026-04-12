@@ -145,9 +145,15 @@ export async function renameFiles(directory: string, options: any): Promise<void
 
     // Process files — use \r-overwrite for progress (ora animation is unreliable
     // when pdfjs/canvas blocks the event loop between files).
+    // Session-level noise suppression covers the entire rename session so that
+    // concurrent PDF parsers (concurrency: 3) cannot race their per-call
+    // save/restore and let the pdfjs "TT: undefined function" warning escape.
     const startTime = Date.now();
     let lastProgressLen = 0;
 
+    const origConsoleWarn = console.warn;
+    console.warn = () => {};
+    ui.suppressStderr();
     const { results, tokenUsage } = await fileRenamer.renameFiles(
       files,
       (completed, total) => {
@@ -156,7 +162,10 @@ export async function renameFiles(directory: string, options: any): Promise<void
         process.stdout.write('\r' + line + pad);
         lastProgressLen = line.length;
       }
-    );
+    ).finally(() => {
+      ui.restoreStderr();
+      console.warn = origConsoleWarn;
+    });
 
     // Clear the progress line
     process.stdout.write('\r' + ' '.repeat(lastProgressLen) + '\r');

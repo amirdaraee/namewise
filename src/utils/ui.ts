@@ -69,32 +69,36 @@ export function spinner(text: string): Ora {
 
 // ── Rename result rows ───────────────────────────────────────────────────────
 
-const MAX_ORIG = 38; // fits 80-col terminal alongside the ✓/✗ prefix
-const MAX_NEW  = 50; // fits 80-col terminal with the → indent
+// ✓  <original>  →  <new-name>   — all on one line, 80-col budget:
+//   prefix(3) + orig(30) + sep(5) + new(40) = 78
+const MAX_ORIG = 30;
+const MAX_NEW  = 40;
 
 function truncate(s: string, max: number): string {
   return s.length > max ? s.slice(0, max - 1) + '…' : s;
 }
 
-/** Print one file's rename result as a compact two-line entry. */
+/** Print one file's rename result as a single-line entry. */
 export function fileRow(result: RenameResult): void {
   const original = path.basename(result.originalPath);
   const newName  = path.basename(result.newPath);
-  const origFmt  = chalk.dim(truncate(original, MAX_ORIG));
 
   if (!result.success) {
-    console.log(chalk.red('✗') + '  ' + origFmt);
+    console.log(chalk.red('✗') + '  ' + chalk.dim(truncate(original, MAX_ORIG)));
     if (result.error) {
       console.log('   ' + chalk.dim('! ') + chalk.yellow(result.error));
     }
     return;
   }
 
-  console.log(chalk.green('✓') + '  ' + origFmt);
-  if (newName !== original) {
-    // Only print the arrow line when the name actually changed
-    console.log('   ' + chalk.dim('→ ') + truncate(newName, MAX_NEW));
+  const origFmt = chalk.dim(truncate(original, MAX_ORIG));
+  if (newName === original) {
+    console.log(chalk.green('✓') + '  ' + origFmt);
+    return;
   }
+
+  // Renamed — show original → new on one line
+  console.log(chalk.green('✓') + '  ' + origFmt + '  ' + chalk.dim('→') + '  ' + truncate(newName, MAX_NEW));
 }
 
 // ── Stats block ──────────────────────────────────────────────────────────────

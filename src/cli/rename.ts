@@ -156,19 +156,34 @@ export async function renameFiles(directory: string, options: any): Promise<void
     let lastProgressLen = 0;
 
     const origConsoleWarn = console.warn;
+    const origConsoleLog  = console.log;
+    const origStdoutWrite = process.stdout.write.bind(process.stdout);
     console.warn = () => {};
+    console.log  = () => {};
+    // Filter stdout writes that match known library noise patterns
+    (process.stdout as any).write = (chunk: any, ...args: any[]): boolean => {
+      if (typeof chunk === 'string' && /Warning: TT:/.test(chunk)) return true;
+      return origStdoutWrite(chunk, ...args);
+    };
     ui.suppressStderr();
     const { results, tokenUsage } = await fileRenamer.renameFiles(
       files,
       (completed, total) => {
-        const line = `  Processing  [${completed}/${total}]`;
-        const pad  = ' '.repeat(Math.max(0, lastProgressLen - line.length));
-        process.stdout.write('\r' + line + pad);
+        const BAR_WIDTH = 28;
+        const filled = Math.round((completed / total) * BAR_WIDTH);
+        const empty  = BAR_WIDTH - filled;
+        const bar    = '█'.repeat(filled) + '░'.repeat(empty);
+        const pct    = String(Math.round((completed / total) * 100)).padStart(3);
+        const line   = `  [${bar}] ${pct}%  ${completed}/${total}`;
+        const pad    = ' '.repeat(Math.max(0, lastProgressLen - line.length));
+        origStdoutWrite('\r' + line + pad);
         lastProgressLen = line.length;
       }
     ).finally(() => {
       ui.restoreStderr();
       console.warn = origConsoleWarn;
+      console.log  = origConsoleLog;
+      (process.stdout as any).write = origStdoutWrite;
     });
 
     // Clear the progress line

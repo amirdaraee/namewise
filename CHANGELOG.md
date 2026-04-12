@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-04-12
+
+### Added
+- **Typed error hierarchy** (`src/errors.ts`): eight subclasses of `NamewiseError` — `AuthError`, `NetworkError`, `RateLimitError`, `ParseError`, `FileSizeError`, `UnsupportedTypeError`, `ConfigError`, `VisionError` — each with a default user-facing `.hint`; replaces all raw `throw new Error(string)` calls throughout parsers, AI services, and CLI commands
+- **Session logger** (`src/utils/logger.ts`): every CLI run writes a structured JSON-lines log to `~/.namewise/logs/YYYY-MM-DDTHH-MM-SS-<command>.log`; always on, no flag required; records session start, per-file errors, and session summary (total, succeeded, failed, token usage, elapsed); auto-prunes to the 20 most recent files
+- `ui.hint()` helper: dim indented suggestion line (`   → …`) shown below errors in the terminal
+
+### Changed
+- **Known errors** surface `message` + `hint` in the terminal (e.g. `✗  API key required  →  Set it with: namewise config set apiKey YOUR_KEY`); no stack traces to stdout/stderr
+- **Unknown errors** show `✗  An unexpected error occurred.  →  See log: ~/.namewise/logs/…` so users always know where to look
+- HTTP status mapping in AI services: 401/403 → `AuthError`, 429 → `RateLimitError`, 5xx → `NetworkError`
+- Progress display replaced with an ASCII bar: `[████████████░░░░░░░░░░░░░░░░]  43%  24/55` — renders correctly even when the event loop is blocked by PDF/canvas processing
+- pdfjs `TT: undefined function` warning fully suppressed: `console.log`, `console.warn`, and `process.stdout.write` are all filtered for the known noise pattern during the rename session
+
 ## [0.8.1] - 2026-04-11
 
 ### Changed

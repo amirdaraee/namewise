@@ -47,6 +47,7 @@ Automatically rename files based on their content using AI providers (Claude, Op
 - **EXIF Fallback**: `--no-ai` mode extracts EXIF metadata (description, date) from image files when available
 - **Dry Run Mode**: Preview changes before renaming files
 - **Size Limits**: Configurable maximum file size limits
+- **Session Logs**: Every run writes a structured JSON log to `~/.namewise/logs/` — always on, no flag needed
 
 ## Quick Start
 
@@ -565,6 +566,51 @@ For local providers (Ollama, LMStudio), token counts are not available:
 Tokens: N/A (local provider)
 ```
 
+## Session Logs
+
+Every CLI run automatically writes a structured log to `~/.namewise/logs/` — no flag required.
+
+**Log file naming:** `YYYY-MM-DDTHH-MM-SS-<command>.log`  
+Example: `2026-04-12T10-30-00-rename.log`
+
+**Format:** Newline-delimited JSON (one object per line):
+
+```json
+{"ts":"2026-04-12T10:30:00.000Z","level":"info","msg":"session_start","command":"rename","directory":"/Users/amir/docs","provider":"claude","dryRun":false}
+{"ts":"2026-04-12T10:30:02.456Z","level":"warn","msg":"vision_skipped","file":"photo.jpg","reason":"provider does not support vision"}
+{"ts":"2026-04-12T10:30:03.789Z","level":"error","msg":"ParseError","hint":"The file may be corrupt or in an unsupported format","stack":"ParseError: ..."}
+{"ts":"2026-04-12T10:30:04.000Z","level":"info","msg":"session_end","total":55,"succeeded":54,"failed":1,"elapsedMs":4123}
+```
+
+**Auto-pruned** to the 20 most recent files — older logs are deleted automatically at the start of each run.
+
+**Reading logs:**
+
+```bash
+# View the latest log
+cat ~/.namewise/logs/$(ls -t ~/.namewise/logs/ | head -1)
+
+# Pretty-print with jq
+cat ~/.namewise/logs/2026-04-12T10-30-00-rename.log | jq .
+
+# Show only errors
+cat ~/.namewise/logs/2026-04-12T10-30-00-rename.log | jq 'select(.level == "error")'
+```
+
+**Error output:** When a known error occurs, Namewise shows the message and a hint directly in the terminal:
+
+```
+✗  API key required for Claude
+   → Check your API key — ensure ANTHROPIC_API_KEY or OPENAI_API_KEY is set, or run: namewise config set apiKey YOUR_KEY
+```
+
+For unexpected errors, the terminal points you to the log:
+
+```
+✗  An unexpected error occurred.
+   → See log: ~/.namewise/logs/2026-04-12T10-30-00-rename.log
+```
+
 ## Safety Features
 
 - **Dry Run Mode**: Always preview changes first with `--dry-run`
@@ -610,15 +656,21 @@ npm run test:integration # Integration tests only
 <details>
 <summary>Common Issues</summary>
 
+**Check the session log first** — every run writes a detailed log to `~/.namewise/logs/`. When an unexpected error occurs, the terminal prints the exact path:
+```
+✗  An unexpected error occurred.
+   → See log: ~/.namewise/logs/2026-04-12T10-30-00-rename.log
+```
+
 **PDF parsing errors:**
 - Ensure the PDF is not password protected
 - Check the file is not corrupted
 - Try reducing the `--max-size` limit
 
 **API errors (cloud providers):**
-- Verify the API key is valid
+- Verify the API key is valid and has sufficient credits
 - Check your internet connection
-- Ensure sufficient API credits
+- Run again to confirm the error is not transient (rate limits auto-hint wait time)
 
 **Local LLM connection errors:**
 - Ensure Ollama server is running (`ollama serve`)

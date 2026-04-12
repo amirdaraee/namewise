@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { DocumentParser, ParseResult, DocumentMetadata } from '../types/index.js';
 import { PDFToImageConverter } from '../utils/pdf-to-image.js';
+import { ParseError } from '../errors.js';
 
 export class PDFParser implements DocumentParser {
   constructor() {
@@ -66,7 +67,9 @@ export class PDFParser implements DocumentParser {
 
       return { content, metadata };
     } catch (error) {
-      throw new Error(`Failed to parse PDF file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Re-throw if already typed — prevents double-wrapping by future nested calls
+      if (error instanceof ParseError) throw error;
+      throw new ParseError(`Failed to parse PDF: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
     }
   }
 

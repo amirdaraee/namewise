@@ -209,7 +209,7 @@ describe('LMStudioService', () => {
 
       await expect(
         lmstudioService.generateFileName('content', 'file.txt')
-      ).rejects.toThrow('LMStudio service failed');
+      ).rejects.toThrow('LMStudio API request failed: 500 Internal Server Error');
     });
 
     it('should handle network errors', async () => {
@@ -247,7 +247,7 @@ describe('LMStudioService', () => {
 
       await expect(
         lmstudioService.generateFileName('content', 'file.txt')
-      ).rejects.toThrow('LMStudio service failed');
+      ).rejects.toThrow('No response content from LMStudio');
     });
 
     it('should handle missing choices in response', async () => {
@@ -262,7 +262,7 @@ describe('LMStudioService', () => {
 
       await expect(
         lmstudioService.generateFileName('content', 'file.txt')
-      ).rejects.toThrow('LMStudio service failed');
+      ).rejects.toThrow('No response content from LMStudio');
     });
 
     it('should use custom base URL and model', async () => {
@@ -428,13 +428,13 @@ describe('LMStudioService', () => {
 
       await expect(
         lmstudioService.generateFileName('', 'photo.jpg', 'kebab-case', 'photo', undefined, undefined, undefined, 'data:image/jpeg;base64,/9j/fake')
-      ).rejects.toThrow('LMStudio service failed');
+      ).rejects.toThrow('LMStudio API request failed: 400 Bad Request');
     });
 
     it('should throw when imageData has invalid format', async () => {
       await expect(
         lmstudioService.generateFileName('', 'photo.jpg', 'kebab-case', 'photo', undefined, undefined, undefined, 'notadataurl')
-      ).rejects.toThrow('LMStudio service failed');
+      ).rejects.toThrow('Invalid image data format');
     });
   });
 

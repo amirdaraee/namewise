@@ -1,13 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ClaudeService } from '../../../src/services/claude-service.js';
+import { AuthError, NetworkError, RateLimitError } from '../../../src/errors.js';
+import MockAnthropic from '@anthropic-ai/sdk';
 
 // Mock the Anthropic SDK
 vi.mock('@anthropic-ai/sdk', () => {
+  class MockAPIError extends Error {
+    status: number;
+    constructor(message: string, status = 500) {
+      super(message);
+      this.name = 'APIError';
+      this.status = status;
+    }
+  }
   const MockAnthropic = vi.fn().mockImplementation(() => ({
     messages: {
       create: vi.fn()
     }
   }));
+  (MockAnthropic as any).APIError = MockAPIError;
   return {
     default: MockAnthropic
   };
@@ -424,6 +435,35 @@ describe('ClaudeService', () => {
       const callArg = mockClient.messages.create.mock.calls[0][0];
       expect(callArg.messages[0].content).toContain('User-provided context:');
       expect(callArg.messages[0].content).toContain('These are tax documents');
+    });
+  });
+
+  describe('SDK error dispatch', () => {
+    const minimalArgs: Parameters<ClaudeService['generateFileName']> = [
+      'content', 'file.pdf', 'kebab-case', 'general', undefined, undefined, undefined, undefined
+    ];
+
+    it('throws AuthError for 401', async () => {
+      const err = new (MockAnthropic as any).APIError('Unauthorized', 401);
+      mockClient.messages.create.mockRejectedValueOnce(err);
+      await expect(service.generateFileName(...minimalArgs)).rejects.toBeInstanceOf(AuthError);
+      mockClient.messages.create.mockRejectedValueOnce(new (MockAnthropic as any).APIError('Unauthorized', 401));
+      await expect(service.generateFileName(...minimalArgs)).rejects.toThrow(/authentication failed/i);
+    });
+
+    it('throws AuthError for 403', async () => {
+      mockClient.messages.create.mockRejectedValueOnce(new (MockAnthropic as any).APIError('Forbidden', 403));
+      await expect(service.generateFileName(...minimalArgs)).rejects.toBeInstanceOf(AuthError);
+    });
+
+    it('throws RateLimitError for 429', async () => {
+      mockClient.messages.create.mockRejectedValueOnce(new (MockAnthropic as any).APIError('Rate limited', 429));
+      await expect(service.generateFileName(...minimalArgs)).rejects.toBeInstanceOf(RateLimitError);
+    });
+
+    it('throws NetworkError for 500', async () => {
+      mockClient.messages.create.mockRejectedValueOnce(new (MockAnthropic as any).APIError('Server error', 500));
+      await expect(service.generateFileName(...minimalArgs)).rejects.toBeInstanceOf(NetworkError);
     });
   });
 });

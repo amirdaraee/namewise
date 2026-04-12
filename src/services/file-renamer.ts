@@ -3,6 +3,8 @@ import path from 'path';
 import { FileInfo, Config, RenameResult, AIProvider, AINameResult, RenameSessionResult } from '../types/index.js';
 import { DocumentParserFactory } from '../parsers/factory.js';
 import { categorizeFile, applyTemplate } from '../utils/file-templates.js';
+import { FileSizeError, UnsupportedTypeError, ParseError, VisionError, NetworkError } from '../errors.js';
+import { logger } from '../utils/logger.js';
 
 const IMAGE_EXTENSIONS = new Set([
   '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.heic', '.webp'
@@ -46,12 +48,13 @@ export class FileRenamer {
         if (inputTokens !== undefined) totalInputTokens = (totalInputTokens ?? 0) + inputTokens;
         if (outputTokens !== undefined) totalOutputTokens = (totalOutputTokens ?? 0) + outputTokens;
       } catch (error) {
+        logger.error(error, { file: file.path });
         results[index] = {
           originalPath: file.path,
           newPath: file.path,
           suggestedName: file.name,
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unexpected error — see log for details'
         };
       } finally {
         completedCount++;
@@ -68,12 +71,12 @@ export class FileRenamer {
 
   private async renameFile(file: FileInfo): Promise<{ result: RenameResult; inputTokens?: number; outputTokens?: number }> {
     if (file.size > this.config.maxFileSize) {
-      throw new Error(`File size (${Math.round(file.size / 1024 / 1024)}MB) exceeds maximum allowed size (${Math.round(this.config.maxFileSize / 1024 / 1024)}MB)`);
+      throw new FileSizeError(`File size (${Math.round(file.size / 1024 / 1024)}MB) exceeds maximum allowed size (${Math.round(this.config.maxFileSize / 1024 / 1024)}MB)`);
     }
 
     const parser = this.parserFactory.getParser(file.path);
     if (!parser) {
-      throw new Error(`No parser available for file type: ${file.extension}`);
+      throw new UnsupportedTypeError(`No parser available for file type: ${file.extension}`);
     }
 
     const parseResult = await parser.parse(file.path);
@@ -81,7 +84,7 @@ export class FileRenamer {
 
     // Require content unless this is an image file (imageData replaces content)
     if (!imageData && (!content || content.trim().length === 0)) {
-      throw new Error('No content could be extracted from the file');
+      throw new ParseError('No content could be extracted from the file');
     }
 
     file.documentMetadata = parseResult.metadata;
@@ -102,7 +105,7 @@ export class FileRenamer {
         );
       } catch (error) {
         const msg = error instanceof Error ? error.message : 'Unknown error';
-        throw new Error(`Vision not supported: ${msg}`);
+        throw new VisionError(`Vision not supported: ${msg}`);
       }
     } else {
       aiResult = await this.aiService.generateFileName(
@@ -112,7 +115,7 @@ export class FileRenamer {
     }
 
     if (!aiResult.name || aiResult.name.trim().length === 0) {
-      throw new Error('Failed to generate a filename');
+      throw new NetworkError('Failed to generate a filename');
     }
 
     const coreFileName = aiResult.name;

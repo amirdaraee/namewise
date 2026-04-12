@@ -218,7 +218,7 @@ describe('CLI Commands', () => {
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'config', 'list'], { from: 'node' });
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'config error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -235,7 +235,7 @@ describe('CLI Commands', () => {
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'config', 'list'], { from: 'node' });
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -264,7 +264,7 @@ describe('CLI Commands', () => {
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'sanitize'], { from: 'node' });
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'sanitize error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -281,7 +281,7 @@ describe('CLI Commands', () => {
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'sanitize'], { from: 'node' });
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -310,7 +310,7 @@ describe('CLI Commands', () => {
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'apply', './plan.json'], { from: 'node' });
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'apply error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -327,7 +327,7 @@ describe('CLI Commands', () => {
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'apply', './plan.json'], { from: 'node' });
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -356,7 +356,7 @@ describe('CLI Commands', () => {
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'dedup'], { from: 'node' });
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'dedup error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -373,7 +373,7 @@ describe('CLI Commands', () => {
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'dedup'], { from: 'node' });
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -412,7 +412,7 @@ describe('CLI Commands', () => {
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'watch'], { from: 'node' });
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'watch error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -429,7 +429,7 @@ describe('CLI Commands', () => {
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'watch'], { from: 'node' });
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -468,7 +468,7 @@ describe('CLI Commands', () => {
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'undo'], { from: 'node' });
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'undo error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -485,7 +485,7 @@ describe('CLI Commands', () => {
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'undo'], { from: 'node' });
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -509,7 +509,7 @@ describe('CLI Commands', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'init'], { from: 'node' });
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'init error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
       exitSpy.mockRestore(); consoleSpy.mockRestore();
     });
@@ -521,7 +521,7 @@ describe('CLI Commands', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'init'], { from: 'node' });
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
       exitSpy.mockRestore(); consoleSpy.mockRestore();
     });
@@ -543,7 +543,7 @@ describe('CLI Commands', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'stats'], { from: 'node' });
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'stats error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
       exitSpy.mockRestore();
       consoleSpy.mockRestore();
@@ -703,7 +703,7 @@ describe('CLI Commands', () => {
       const { exitSpy, consoleSpy } = exitAndConsole();
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'stats'], { from: 'node' });
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       exitSpy.mockRestore(); consoleSpy.mockRestore();
     });
 
@@ -713,7 +713,7 @@ describe('CLI Commands', () => {
       const { exitSpy, consoleSpy } = exitAndConsole();
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'tree'], { from: 'node' });
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       exitSpy.mockRestore(); consoleSpy.mockRestore();
     });
 
@@ -723,7 +723,7 @@ describe('CLI Commands', () => {
       const { exitSpy, consoleSpy } = exitAndConsole();
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'info', '/f'], { from: 'node' });
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       exitSpy.mockRestore(); consoleSpy.mockRestore();
     });
 
@@ -733,7 +733,7 @@ describe('CLI Commands', () => {
       const { exitSpy, consoleSpy } = exitAndConsole();
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'organize'], { from: 'node' });
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       exitSpy.mockRestore(); consoleSpy.mockRestore();
     });
 
@@ -743,7 +743,7 @@ describe('CLI Commands', () => {
       const { exitSpy, consoleSpy } = exitAndConsole();
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'flatten'], { from: 'node' });
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       exitSpy.mockRestore(); consoleSpy.mockRestore();
     });
 
@@ -753,7 +753,7 @@ describe('CLI Commands', () => {
       const { exitSpy, consoleSpy } = exitAndConsole();
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'clean-empty'], { from: 'node' });
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       exitSpy.mockRestore(); consoleSpy.mockRestore();
     });
 
@@ -763,7 +763,7 @@ describe('CLI Commands', () => {
       const { exitSpy, consoleSpy } = exitAndConsole();
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'find'], { from: 'node' });
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       exitSpy.mockRestore(); consoleSpy.mockRestore();
     });
 
@@ -773,7 +773,7 @@ describe('CLI Commands', () => {
       const { exitSpy, consoleSpy } = exitAndConsole();
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'diff', '/a', '/b'], { from: 'node' });
-      expect(consoleSpy).toHaveBeenCalledWith('Error:', 'Unknown error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       exitSpy.mockRestore(); consoleSpy.mockRestore();
     });
   });

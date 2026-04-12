@@ -240,7 +240,7 @@ describe('PDFParser (mocked)', () => {
       mockPdfExtract.mockRejectedValue(new Error('Invalid PDF'));
 
       await expect(parser.parse('/path/to/invalid.pdf')).rejects.toThrow(
-        'Failed to parse PDF file: Invalid PDF'
+        'Failed to parse PDF: Invalid PDF'
       );
     });
 
@@ -248,7 +248,7 @@ describe('PDFParser (mocked)', () => {
       mockPdfExtract.mockRejectedValue('string error');
 
       await expect(parser.parse('/path/to/file.pdf')).rejects.toThrow(
-        'Failed to parse PDF file: Unknown error'
+        'Failed to parse PDF: Unknown error'
       );
     });
   });

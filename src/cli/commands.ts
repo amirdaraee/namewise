@@ -15,6 +15,9 @@ import { cleanEmptyDirs } from './clean-empty.js';
 import { findFiles } from './find.js';
 import { diffDirectories } from './diff.js';
 import { initCommand } from './init.js';
+import { NamewiseError } from '../errors.js';
+import { createLogger } from '../utils/logger.js';
+import * as ui from '../utils/ui.js';
 
 export function setupCommands(program: Command): void {
   program
@@ -39,8 +42,9 @@ Example:
   namewise rename ./documents
 `)
     .action(async () => {
+      const log = createLogger('init');
       try { await initCommand(); }
-      catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+      catch (error) { handleCliError(error, log); }
     });
 
   program
@@ -149,12 +153,9 @@ Batch Rename (no AI, no API key):
     .argument('[key]', 'Config key name')
     .argument('[value]', 'Value to set (for set subcommand)')
     .action(async (subcommand, key, value) => {
-      try {
-        await configCommand(subcommand, key, value);
-      } catch (error) {
-        console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
-        process.exit(1);
-      }
+      const log = createLogger('config');
+      try { await configCommand(subcommand, key, value); }
+      catch (error) { handleCliError(error, log); }
     });
 
   program
@@ -165,12 +166,9 @@ Batch Rename (no AI, no API key):
     .option('-r, --recursive', 'Process subdirectories', false)
     .option('-c, --case <convention>', 'Naming convention: kebab-case|snake_case|camelCase|PascalCase|lowercase|UPPERCASE', 'kebab-case')
     .action(async (directory, options) => {
-      try {
-        await sanitizeFiles(directory, { dryRun: options.dryRun, recursive: options.recursive, case: options.case });
-      } catch (error) {
-        console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
-        process.exit(1);
-      }
+      const log = createLogger('sanitize');
+      try { await sanitizeFiles(directory, { dryRun: options.dryRun, recursive: options.recursive, case: options.case }); }
+      catch (error) { handleCliError(error, log); }
     });
 
   program
@@ -179,12 +177,9 @@ Batch Rename (no AI, no API key):
     .argument('<plan>', 'Path to the plan JSON file')
     .option('--dry-run', 'Validate plan without executing renames', false)
     .action(async (planPath, options) => {
-      try {
-        await applyPlan(planPath, { dryRun: options.dryRun });
-      } catch (error) {
-        console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
-        process.exit(1);
-      }
+      const log = createLogger('apply');
+      try { await applyPlan(planPath, { dryRun: options.dryRun }); }
+      catch (error) { handleCliError(error, log); }
     });
 
   program
@@ -194,12 +189,9 @@ Batch Rename (no AI, no API key):
     .option('-r, --recursive', 'Scan subdirectories', false)
     .option('--delete', 'Delete duplicates after confirmation', false)
     .action(async (directory, options) => {
-      try {
-        await dedupFiles(directory, { recursive: options.recursive, delete: options.delete });
-      } catch (error) {
-        console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
-        process.exit(1);
-      }
+      const log = createLogger('dedup');
+      try { await dedupFiles(directory, { recursive: options.recursive, delete: options.delete }); }
+      catch (error) { handleCliError(error, log); }
     });
 
   program
@@ -228,12 +220,9 @@ Batch Rename (no AI, no API key):
     )
     .option('--no-ai', 'Use file metadata instead of AI (no API call required)')
     .action(async (directory, options) => {
-      try {
-        await watchDirectory(directory, options);
-      } catch (error) {
-        console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
-        process.exit(1);
-      }
+      const log = createLogger('watch');
+      try { await watchDirectory(directory, options); }
+      catch (error) { handleCliError(error, log); }
     });
 
   program
@@ -243,12 +232,9 @@ Batch Rename (no AI, no API key):
     .option('--list', 'List recent rename sessions with their IDs')
     .option('--all', 'Undo all rename sessions')
     .action(async (sessionId, options) => {
-      try {
-        await undoRename(sessionId, { list: options.list, all: options.all });
-      } catch (error) {
-        console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
-        process.exit(1);
-      }
+      const log = createLogger('undo');
+      try { await undoRename(sessionId, { list: options.list, all: options.all }); }
+      catch (error) { handleCliError(error, log); }
     });
 
   program
@@ -257,8 +243,9 @@ Batch Rename (no AI, no API key):
     .argument('[directory]', 'Directory to analyse (default: current directory)', '.')
     .option('-r, --recursive', 'Include subdirectories', false)
     .action(async (directory, options) => {
+      const log = createLogger('stats');
       try { await statsCommand(directory, { recursive: options.recursive }); }
-      catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+      catch (error) { handleCliError(error, log); }
     });
 
   program
@@ -267,8 +254,9 @@ Batch Rename (no AI, no API key):
     .argument('[directory]', 'Directory to display (default: current directory)', '.')
     .option('--depth <n>', 'Maximum depth to display')
     .action(async (directory, options) => {
+      const log = createLogger('tree');
       try { await treeCommand(directory, { depth: options.depth ? parseInt(options.depth) : undefined }); }
-      catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+      catch (error) { handleCliError(error, log); }
     });
 
   program
@@ -276,8 +264,9 @@ Batch Rename (no AI, no API key):
     .description('Show metadata for a file or directory')
     .argument('<path>', 'File or directory path')
     .action(async (targetPath) => {
+      const log = createLogger('info');
       try { await infoCommand(targetPath); }
-      catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+      catch (error) { handleCliError(error, log); }
     });
 
   program
@@ -288,8 +277,9 @@ Batch Rename (no AI, no API key):
     .option('-r, --recursive', 'Include subdirectories', false)
     .option('--dry-run', 'Preview without moving files', false)
     .action(async (directory, options) => {
+      const log = createLogger('organize');
       try { await organizeFiles(directory, { by: options.by, recursive: options.recursive, dryRun: options.dryRun }); }
-      catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+      catch (error) { handleCliError(error, log); }
     });
 
   program
@@ -298,8 +288,9 @@ Batch Rename (no AI, no API key):
     .argument('[directory]', 'Directory to flatten (default: current directory)', '.')
     .option('--dry-run', 'Preview without moving files', false)
     .action(async (directory, options) => {
+      const log = createLogger('flatten');
       try { await flattenDirectory(directory, { dryRun: options.dryRun }); }
-      catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+      catch (error) { handleCliError(error, log); }
     });
 
   program
@@ -308,8 +299,9 @@ Batch Rename (no AI, no API key):
     .argument('[directory]', 'Directory to scan (default: current directory)', '.')
     .option('--dry-run', 'Preview without deleting', false)
     .action(async (directory, options) => {
+      const log = createLogger('clean-empty');
       try { await cleanEmptyDirs(directory, { dryRun: options.dryRun }); }
-      catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+      catch (error) { handleCliError(error, log); }
     });
 
   program
@@ -324,6 +316,7 @@ Batch Rename (no AI, no API key):
     .option('--older-than <date>', 'Modified before date (YYYY-MM-DD)')
     .option('-r, --recursive', 'Search subdirectories', true)
     .action(async (directory, options) => {
+      const log = createLogger('find');
       try {
         await findFiles(directory, {
           ext: options.ext,
@@ -334,7 +327,7 @@ Batch Rename (no AI, no API key):
           olderThan: options.olderThan,
           recursive: options.recursive
         });
-      } catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+      } catch (error) { handleCliError(error, log); }
     });
 
   program
@@ -345,7 +338,20 @@ Batch Rename (no AI, no API key):
     .option('--by <mode>', 'Compare by: name|hash (default: name)', 'name')
     .option('-r, --recursive', 'Compare subdirectories', true)
     .action(async (dir1, dir2, options) => {
+      const log = createLogger('diff');
       try { await diffDirectories(dir1, dir2, { by: options.by, recursive: options.recursive }); }
-      catch (error) { console.error('Error:', error instanceof Error ? error.message : 'Unknown error'); process.exit(1); }
+      catch (error) { handleCliError(error, log); }
     });
+}
+
+function handleCliError(error: unknown, log: ReturnType<typeof createLogger>): never {
+  log.error(error);
+  if (error instanceof NamewiseError) {
+    ui.error(error.message);
+    if (error.hint) ui.hint(error.hint);
+  } else {
+    ui.error('An unexpected error occurred.');
+    ui.hint(`See log: ${log.currentLogPath}`);
+  }
+  process.exit(1);
 }

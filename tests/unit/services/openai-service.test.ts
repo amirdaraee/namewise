@@ -1,8 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { OpenAIService } from '../../../src/services/openai-service.js';
+import { AuthError, NetworkError, RateLimitError } from '../../../src/errors.js';
+import MockOpenAI from 'openai';
 
 // Mock the OpenAI SDK
 vi.mock('openai', () => {
+  class MockAPIError extends Error {
+    status: number;
+    constructor(message: string, status = 500) {
+      super(message);
+      this.name = 'APIError';
+      this.status = status;
+    }
+  }
   const MockOpenAI = vi.fn().mockImplementation(() => ({
     chat: {
       completions: {
@@ -10,6 +20,7 @@ vi.mock('openai', () => {
       }
     }
   }));
+  (MockOpenAI as any).APIError = MockAPIError;
   return {
     default: MockOpenAI
   };
@@ -420,6 +431,35 @@ describe('OpenAIService', () => {
       const callArg = mockClient.chat.completions.create.mock.calls[0][0];
       expect(callArg.messages[0].content).toContain('User-provided context:');
       expect(callArg.messages[0].content).toContain('These are tax documents');
+    });
+  });
+
+  describe('SDK error dispatch', () => {
+    const minimalArgs: Parameters<OpenAIService['generateFileName']> = [
+      'content', 'file.pdf', 'kebab-case', 'general', undefined, undefined, undefined, undefined
+    ];
+
+    it('throws AuthError for 401', async () => {
+      const err = new (MockOpenAI as any).APIError('Unauthorized', 401);
+      mockClient.chat.completions.create.mockRejectedValueOnce(err);
+      await expect(service.generateFileName(...minimalArgs)).rejects.toBeInstanceOf(AuthError);
+      mockClient.chat.completions.create.mockRejectedValueOnce(new (MockOpenAI as any).APIError('Unauthorized', 401));
+      await expect(service.generateFileName(...minimalArgs)).rejects.toThrow(/authentication failed/i);
+    });
+
+    it('throws AuthError for 403', async () => {
+      mockClient.chat.completions.create.mockRejectedValueOnce(new (MockOpenAI as any).APIError('Forbidden', 403));
+      await expect(service.generateFileName(...minimalArgs)).rejects.toBeInstanceOf(AuthError);
+    });
+
+    it('throws RateLimitError for 429', async () => {
+      mockClient.chat.completions.create.mockRejectedValueOnce(new (MockOpenAI as any).APIError('Rate limited', 429));
+      await expect(service.generateFileName(...minimalArgs)).rejects.toBeInstanceOf(RateLimitError);
+    });
+
+    it('throws NetworkError for 500', async () => {
+      mockClient.chat.completions.create.mockRejectedValueOnce(new (MockOpenAI as any).APIError('Server error', 500));
+      await expect(service.generateFileName(...minimalArgs)).rejects.toBeInstanceOf(NetworkError);
     });
   });
 });

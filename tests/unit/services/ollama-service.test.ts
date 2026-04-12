@@ -167,7 +167,7 @@ describe('OllamaService', () => {
 
       await expect(
         ollamaService.generateFileName('content', 'file.txt')
-      ).rejects.toThrow('Ollama service failed');
+      ).rejects.toThrow('Ollama API request failed: 500 Internal Server Error');
     });
 
     it('should handle network errors', async () => {
@@ -203,7 +203,7 @@ describe('OllamaService', () => {
 
       await expect(
         ollamaService.generateFileName('content', 'file.txt')
-      ).rejects.toThrow('Ollama service failed');
+      ).rejects.toThrow('No response content from Ollama');
     });
 
     it('should use custom base URL and model', async () => {
@@ -350,7 +350,7 @@ describe('OllamaService', () => {
     it('should throw when imageData has invalid format', async () => {
       await expect(
         ollamaService.generateFileName('', 'photo.jpg', 'kebab-case', 'photo', undefined, undefined, undefined, 'notadataurl')
-      ).rejects.toThrow('Ollama service failed');
+      ).rejects.toThrow('Invalid image data format');
     });
   });
 

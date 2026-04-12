@@ -407,7 +407,7 @@ describe('FileRenamer', () => {
 
       expect(results).toHaveLength(1);
       expect(results[0].success).toBe(false);
-      expect(results[0].error).toBe('Unknown error');
+      expect(results[0].error).toBe('Unexpected error — see log for details');
     });
 
     it('should pass naming convention to AI service', async () => {

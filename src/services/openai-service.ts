@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { AuthError, NetworkError, RateLimitError } from '../errors.js';
 import { AIProvider, FileInfo, AINameResult } from '../types/index.js';
 import { applyNamingConvention, stripWindowsIllegalChars, NamingConvention } from '../utils/naming-conventions.js';
 import { FileCategory } from '../utils/file-templates.js';
@@ -32,7 +33,7 @@ export class OpenAIService implements AIProvider {
 
       if (imageData) {
         if (!imageData.startsWith('data:image/') || !imageData.includes(',')) {
-          throw new Error('Invalid image data format');
+          throw new NetworkError('Invalid image data format');
         }
 
         const prompt = buildFileNamePrompt({
@@ -86,7 +87,17 @@ export class OpenAIService implements AIProvider {
         outputTokens: response.usage?.completion_tokens
       };
     } catch (error) {
-      throw new Error(`Failed to generate filename with OpenAI: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      if (error instanceof AuthError || error instanceof NetworkError || error instanceof RateLimitError) throw error;
+      if (error instanceof OpenAI.APIError) {
+        if (error.status === 401 || error.status === 403) {
+          throw new AuthError(`OpenAI authentication failed: ${error.message}`, { details: { status: error.status } });
+        }
+        if (error.status === 429) {
+          throw new RateLimitError(`OpenAI rate limit exceeded: ${error.message}`, { details: { status: error.status } });
+        }
+        throw new NetworkError(`OpenAI API error (${error.status}): ${error.message}`, { details: { status: error.status } });
+      }
+      throw new NetworkError(`Failed to generate filename with OpenAI: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
     }
   }
 

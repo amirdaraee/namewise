@@ -2,6 +2,7 @@ import { AIProvider, FileInfo, AINameResult } from '../types/index.js';
 import { buildFileNamePrompt, AI_SYSTEM_PROMPT } from '../utils/ai-prompts.js';
 import { NamingConvention } from '../utils/naming-conventions.js';
 import { FileCategory } from '../utils/file-templates.js';
+import { AuthError, NetworkError, RateLimitError, ConfigError } from '../errors.js';
 
 interface OllamaResponse {
   model: string;
@@ -31,12 +32,12 @@ export class OllamaService implements AIProvider {
     try {
       parsed = new URL(url);
     } catch {
-      throw new Error(`Invalid Ollama base URL: ${url}`);
+      throw new ConfigError(`Invalid Ollama base URL: ${url}`);
     }
     const hostname = parsed.hostname.toLowerCase();
     const allowed = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]';
     if (!allowed) {
-      throw new Error(`Ollama base URL must point to localhost (got: ${hostname})`);
+      throw new ConfigError(`Ollama base URL must point to localhost (got: ${hostname})`);
     }
     return url;
   }
@@ -53,7 +54,7 @@ export class OllamaService implements AIProvider {
   ): Promise<AINameResult> {
     try {
       if (imageData && (!imageData.startsWith('data:image/') || !imageData.includes(','))) {
-        throw new Error('Invalid image data format');
+        throw new NetworkError('Invalid image data format');
       }
 
       const prompt = buildFileNamePrompt({
@@ -84,9 +85,10 @@ export class OllamaService implements AIProvider {
       if (response.message?.content) {
         return { name: this.sanitizeFilename(response.message.content), inputTokens: undefined, outputTokens: undefined };
       }
-      throw new Error('No response content from Ollama');
+      throw new NetworkError('No response content from Ollama');
     } catch (error) {
-      throw new Error(`Ollama service failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      if (error instanceof AuthError || error instanceof NetworkError || error instanceof RateLimitError || error instanceof ConfigError) throw error;
+      throw new NetworkError(`Ollama service failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
     }
   }
 
@@ -110,7 +112,13 @@ export class OllamaService implements AIProvider {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Ollama API request failed: ${response.status} ${response.statusText} - ${errorText}`);
+      if (response.status === 401 || response.status === 403) {
+        throw new AuthError(`Ollama authentication failed`, { details: { status: response.status, body: errorText } });
+      }
+      if (response.status === 429) {
+        throw new RateLimitError(`Ollama rate limit exceeded`, { details: { status: response.status } });
+      }
+      throw new NetworkError(`Ollama API request failed: ${response.status} ${response.statusText}`, { details: { status: response.status, body: errorText } });
     }
 
     return response.json() as Promise<OllamaResponse>;

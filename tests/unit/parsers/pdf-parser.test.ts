@@ -42,14 +42,14 @@ describe('PDFParser', () => {
 
     it('should throw error for non-existent files', async () => {
       const filePath = path.join(testDataDir, 'non-existent.pdf');
-      
-      await expect(parser.parse(filePath)).rejects.toThrow('Failed to parse PDF file');
+
+      await expect(parser.parse(filePath)).rejects.toThrow('Failed to parse PDF:');
     });
 
     it('should throw error for invalid PDF files', async () => {
       const filePath = path.join(testDataDir, 'sample-text.txt'); // Not a PDF
-      
-      await expect(parser.parse(filePath)).rejects.toThrow('Failed to parse PDF file');
+
+      await expect(parser.parse(filePath)).rejects.toThrow('Failed to parse PDF:');
     });
 
     it('should trim whitespace from extracted content', async () => {

@@ -3,6 +3,7 @@ import { ClaudeService } from './claude-service.js';
 import { OpenAIService } from './openai-service.js';
 import { OllamaService } from './ollama-service.js';
 import { LMStudioService } from './lmstudio-service.js';
+import { AuthError, ConfigError } from '../errors.js';
 
 interface LocalLLMConfig {
   baseUrl?: string;
@@ -17,10 +18,10 @@ export class AIServiceFactory {
   ): AIProvider {
     switch (provider) {
       case 'claude':
-        if (!apiKey) throw new Error('API key is required for Claude provider');
+        if (!apiKey) throw new AuthError('API key is required for Claude provider');
         return new ClaudeService(apiKey, localLLMConfig?.model);
       case 'openai':
-        if (!apiKey) throw new Error('API key is required for OpenAI provider');
+        if (!apiKey) throw new AuthError('API key is required for OpenAI provider');
         return new OpenAIService(apiKey, localLLMConfig?.model);
       case 'ollama':
         return new OllamaService(
@@ -33,7 +34,7 @@ export class AIServiceFactory {
           localLLMConfig?.model || 'local-model'
         );
       default:
-        throw new Error(`Unsupported AI provider: ${provider}`);
+        throw new ConfigError(`Unsupported AI provider: ${provider}`);
     }
   }
 }

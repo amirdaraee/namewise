@@ -1,6 +1,7 @@
 import path from 'path';
 import Excel from 'exceljs';
 import { DocumentParser, ParseResult, DocumentMetadata } from '../types/index.js';
+import { ParseError } from '../errors.js';
 
 export class ExcelParser implements DocumentParser {
   supports(filePath: string): boolean {
@@ -60,7 +61,9 @@ export class ExcelParser implements DocumentParser {
 
       return { content, metadata };
     } catch (error) {
-      throw new Error(`Failed to parse Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Re-throw if already typed — prevents double-wrapping by future nested calls
+      if (error instanceof ParseError) throw error;
+      throw new ParseError(`Failed to parse Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
     }
   }
 }

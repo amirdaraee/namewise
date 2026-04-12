@@ -2,6 +2,7 @@ import { AIProvider, FileInfo, AINameResult } from '../types/index.js';
 import { buildFileNamePrompt, AI_SYSTEM_PROMPT } from '../utils/ai-prompts.js';
 import { NamingConvention } from '../utils/naming-conventions.js';
 import { FileCategory } from '../utils/file-templates.js';
+import { AuthError, NetworkError, RateLimitError, ConfigError } from '../errors.js';
 
 interface OpenAICompatibleResponse {
   choices: Array<{
@@ -48,12 +49,12 @@ export class LMStudioService implements AIProvider {
     try {
       parsed = new URL(url);
     } catch {
-      throw new Error(`Invalid LMStudio base URL: ${url}`);
+      throw new ConfigError(`Invalid LMStudio base URL: ${url}`);
     }
     const hostname = parsed.hostname.toLowerCase();
     const allowed = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]';
     if (!allowed) {
-      throw new Error(`LMStudio base URL must point to localhost (got: ${hostname})`);
+      throw new ConfigError(`LMStudio base URL must point to localhost (got: ${hostname})`);
     }
     return url;
   }
@@ -70,7 +71,7 @@ export class LMStudioService implements AIProvider {
   ): Promise<AINameResult> {
     try {
       if (imageData && (!imageData.startsWith('data:image/') || !imageData.includes(','))) {
-        throw new Error('Invalid image data format');
+        throw new NetworkError('Invalid image data format');
       }
 
       const prompt = buildFileNamePrompt({
@@ -113,9 +114,10 @@ export class LMStudioService implements AIProvider {
           outputTokens: undefined
         };
       }
-      throw new Error('No response content from LMStudio');
+      throw new NetworkError('No response content from LMStudio');
     } catch (error) {
-      throw new Error(`LMStudio service failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      if (error instanceof AuthError || error instanceof NetworkError || error instanceof RateLimitError || error instanceof ConfigError) throw error;
+      throw new NetworkError(`LMStudio service failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
     }
   }
 
@@ -142,7 +144,13 @@ export class LMStudioService implements AIProvider {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`LMStudio API request failed: ${response.status} ${response.statusText} - ${errorText}`);
+      if (response.status === 401 || response.status === 403) {
+        throw new AuthError(`LMStudio authentication failed`, { details: { status: response.status, body: errorText } });
+      }
+      if (response.status === 429) {
+        throw new RateLimitError(`LMStudio rate limit exceeded`, { details: { status: response.status } });
+      }
+      throw new NetworkError(`LMStudio API request failed: ${response.status} ${response.statusText}`, { details: { status: response.status, body: errorText } });
     }
 
     const data = await response.json();

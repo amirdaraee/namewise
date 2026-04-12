@@ -136,7 +136,7 @@ describe('renameFiles()', () => {
 
       await renameFiles('/nonexistent/path', defaultOptions);
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('ENOENT'));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -153,7 +153,7 @@ describe('renameFiles()', () => {
 
       await renameFiles('/some/file.txt', defaultOptions);
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('is not a directory'));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();
@@ -169,7 +169,7 @@ describe('renameFiles()', () => {
 
       await renameFiles('/test/dir', defaultOptions);
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown error'));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
       expect(exitSpy).toHaveBeenCalledWith(1);
 
       exitSpy.mockRestore();

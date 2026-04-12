@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import mammoth from 'mammoth';
 import { DocumentParser, ParseResult, DocumentMetadata } from '../types/index.js';
+import { ParseError } from '../errors.js';
 
 export class WordParser implements DocumentParser {
   supports(filePath: string): boolean {
@@ -44,7 +45,9 @@ export class WordParser implements DocumentParser {
       
       return { content, metadata };
     } catch (error) {
-      throw new Error(`Failed to parse Word document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Re-throw if already typed — prevents double-wrapping by future nested calls
+      if (error instanceof ParseError) throw error;
+      throw new ParseError(`Failed to parse Word document: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
     }
   }
 }

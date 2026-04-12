@@ -19,8 +19,12 @@ import {
   applyTruncate
 } from '../utils/batch-rename.js';
 import * as ui from '../utils/ui.js';
+import { NamewiseError } from '../errors.js';
+import { createLogger, logger } from '../utils/logger.js';
 
 export async function renameFiles(directory: string, options: any): Promise<void> {
+  const log = createLogger('rename');
+  log.session({ command: 'rename', directory, provider: options.provider, dryRun: options.dryRun ?? false });
   try {
     // Validate directory exists
     const stats = await fs.stat(directory);
@@ -179,6 +183,14 @@ export async function renameFiles(directory: string, options: any): Promise<void
 
     displayResults(results, config.dryRun, files, tokenUsage, successCount, failCount, elapsed);
 
+    logger.summary({
+      total: files.length,
+      succeeded: successCount,
+      failed: failCount,
+      tokenUsage,
+      elapsedMs: elapsed
+    });
+
     // Save session to history (~/.namewise/history.json)
     const successfulRenames = results
       .filter(r => r.success && r.originalPath !== r.newPath)
@@ -210,12 +222,20 @@ export async function renameFiles(directory: string, options: any): Promise<void
         await fs.writeFile(config.outputPath, JSON.stringify(report, null, 2), 'utf-8');
         ui.success(`Report saved to: ${config.outputPath}`);
       } catch (err) {
+        logger.warn('Failed to write report', { path: config.outputPath, error: err instanceof Error ? err.message : String(err) });
         ui.warn(`Failed to write report: ${err instanceof Error ? err.message : 'Unknown error'}`);
       }
     }
 
   } catch (error) {
-    ui.error(error instanceof Error ? error.message : 'Unknown error');
+    log.error(error);
+    if (error instanceof NamewiseError) {
+      ui.error(error.message);
+      if (error.hint) ui.hint(error.hint);
+    } else {
+      ui.error('An unexpected error occurred.');
+      ui.hint(`See log: ${log.currentLogPath}`);
+    }
     process.exit(1);
   }
 }

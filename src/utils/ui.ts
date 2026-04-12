@@ -47,6 +47,11 @@ export function error(msg: string): void {
   console.error(chalk.red('✗') + '  ' + msg);
 }
 
+/** → dim indented suggestion — shown below an error or warning line */
+export function hint(msg: string): void {
+  console.log(chalk.dim('   → ') + chalk.dim(msg));
+}
+
 // ── Structural ───────────────────────────────────────────────────────────────
 
 /** Print a labelled section header with a horizontal rule below it. */

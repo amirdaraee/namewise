@@ -198,6 +198,36 @@ export async function renameFiles(directory: string, options: any): Promise<void
 
     displayResults(results, config.dryRun, files, tokenUsage, successCount, failCount, elapsed);
 
+    // When dry run is set as a config default (not an explicit --dry-run flag), offer
+    // to apply the already-computed renames so the user doesn't need a second invocation.
+    const dryRunFromCli = options.dryRun === true;
+    if (config.dryRun && !dryRunFromCli) {
+      const applicableRenames = results.filter(r => r.success && r.originalPath !== r.newPath);
+      if (applicableRenames.length > 0) {
+        const { apply } = await inquirer.prompt([{
+          type: 'confirm',
+          name: 'apply',
+          message: `Apply ${applicableRenames.length} rename${applicableRenames.length === 1 ? '' : 's'}?`,
+          default: false
+        }]);
+        if (apply) {
+          for (const result of applicableRenames) {
+            await fs.rename(result.originalPath, result.newPath);
+          }
+          ui.success(`Applied ${applicableRenames.length} rename${applicableRenames.length === 1 ? '' : 's'}.`);
+          await appendHistory({
+            id: new Date().toISOString(),
+            timestamp: new Date().toISOString(),
+            directory: path.resolve(directory),
+            dryRun: false,
+            renames: applicableRenames.map(r => ({ originalPath: r.originalPath, newPath: r.newPath })),
+            tokenUsage
+          });
+          return;
+        }
+      }
+    }
+
     logger.summary({
       total: files.length,
       succeeded: successCount,

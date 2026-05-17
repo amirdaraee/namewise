@@ -18,9 +18,10 @@ export interface PromptContext {
  */
 export function buildFileNamePrompt(context: PromptContext): string {
   const { content, originalName, namingConvention, category, fileInfo, language, context: userContext } = context;
-  
+
   const namingInstructions = getNamingInstructions(namingConvention);
   const templateInstructions = getTemplateInstructions(category);
+  const currentStem = originalName.replace(/\.[^.]+$/, '');
   
   // Build comprehensive context from all metadata
   let metadataContext = '';
@@ -64,6 +65,7 @@ Document Properties:`;
 - Ignore irrelevant folder names that don't describe the document content
 - Only use letters, numbers, and appropriate separators for the naming convention
 - Focus on the document's actual content and purpose, not just metadata
+- Current filename stem (without extension): "${currentStem}" — if the name you would generate is very similar or equivalent to this (same words, minor formatting differences), return this exact stem unchanged
 
 ${metadataContext}
 ${contextSection}

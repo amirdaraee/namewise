@@ -241,6 +241,29 @@ describe('AI Prompts', () => {
       expect(prompt).not.toContain('- Author:');
       expect(prompt).not.toContain('- Creator:');
     });
+
+    it('should include current stem instruction stripped of extension', () => {
+      const prompt = buildFileNamePrompt({
+        content: 'A TV series about cooking.',
+        originalName: 'breaking-bad-s01e01.mkv',
+        namingConvention: 'kebab-case',
+        category: 'series'
+      });
+
+      expect(prompt).toContain('"breaking-bad-s01e01"');
+      expect(prompt).toContain('return this exact stem unchanged');
+    });
+
+    it('should strip extension correctly for files with no extension', () => {
+      const prompt = buildFileNamePrompt({
+        content: 'A plain text document.',
+        originalName: 'README',
+        namingConvention: 'kebab-case',
+        category: 'general'
+      });
+
+      expect(prompt).toContain('"README"');
+    });
   });
 
   describe('AI_SYSTEM_PROMPT', () => {

@@ -159,6 +159,9 @@ secrets.json
 # Internal planning docs (committed docs are user-facing only)
 docs/superpowers/
 
+# Generated smoke-test corpus (npm run smoke:generate)
+smoke-corpus/
+
 # OS generated files
 Thumbs.db
 ehthumbs.db

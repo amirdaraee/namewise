@@ -1,6 +1,7 @@
 # Namewise
 
-[![Tests](https://img.shields.io/badge/tests-867%20passing-brightgreen.svg)](#testing--development)
+[![Tests](https://github.com/amirdaraee/namewise/actions/workflows/test.yml/badge.svg)](https://github.com/amirdaraee/namewise/actions/workflows/test.yml)
+[![npm](https://img.shields.io/npm/v/@amirdaraee/namewise.svg)](https://www.npmjs.com/package/@amirdaraee/namewise)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#testing--development)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
@@ -633,7 +634,7 @@ For unexpected errors, the terminal either points to the log (if `--log` was use
 - **Conflict Auto-Numbering**: Never overwrites an existing file
 - **File Size Limits**: Skips files above `--max-size`
 - **Extension Preservation**: Original file extensions are never changed
-- **Comprehensive Testing**: 867 tests with 100% coverage
+- **Comprehensive Testing**: 900+ tests with ~100% coverage, run on Node 20/22/24 in CI
 
 ## Testing & Development
 

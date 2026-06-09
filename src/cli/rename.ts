@@ -135,6 +135,19 @@ export async function renameFiles(directory: string, options: any): Promise<void
       return;
     }
 
+    // Pre-flight token estimate so cloud users see the cost before confirming
+    if (!config.noAi) {
+      const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.heic', '.webp']);
+      const VISION_IMAGE_TOKENS = 1600;       // ~1024px image via vision API
+      const PROMPT_OVERHEAD_TOKENS = 300;     // instructions + template guidance
+      const MAX_CONTENT_CHARS = 5000;         // content cap sent to the AI
+      const estTokens = files.reduce((sum, f) => {
+        if (IMAGE_EXT.has(f.extension.toLowerCase())) return sum + VISION_IMAGE_TOKENS;
+        return sum + Math.ceil(Math.min(f.size, MAX_CONTENT_CHARS) / 4) + PROMPT_OVERHEAD_TOKENS;
+      }, 0);
+      ui.dim(`Estimated AI usage: ~${estTokens.toLocaleString('en-US')} input tokens for ${files.length} file${files.length === 1 ? '' : 's'} (cloud providers bill per token)`);
+    }
+
     // Confirm before processing
     if (!config.dryRun) {
       const confirm = await inquirer.prompt([

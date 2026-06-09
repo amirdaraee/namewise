@@ -897,6 +897,61 @@ describe('renameFiles()', () => {
     });
   });
 
+  describe('pre-flight token estimate', () => {
+    beforeEach(() => {
+      mockReaddir.mockResolvedValue([
+        { name: 'doc.pdf', isDirectory: () => false, isFile: () => true } as any,
+        { name: 'photo.jpg', isDirectory: () => false, isFile: () => true } as any
+      ]);
+      mockStat.mockImplementation(async (p: any) => {
+        const s = String(p);
+        if (s.endsWith('doc.pdf') || s.endsWith('photo.jpg')) {
+          return { isDirectory: () => false, isFile: () => true, size: 8000, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+        }
+        return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+      });
+      vi.mocked(DocumentParserFactory).mockImplementation(() => ({
+        getSupportedExtensions: vi.fn().mockReturnValue(['.pdf', '.docx', '.txt', '.jpg']),
+        getParser: vi.fn()
+      }) as any);
+    });
+
+    it('prints an estimated input-token figure before processing AI renames', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await renameFiles('/test/dir', { ...defaultOptions, dryRun: true });
+
+      const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
+      // doc.pdf: min(8000, 5000)/4 + 300 = 1550; photo.jpg: 1600 → 3,150 total
+      expect(allOutput).toContain('Estimated AI usage');
+      expect(allOutput).toContain('3,150');
+
+      logSpy.mockRestore();
+    });
+
+    it('does not print an estimate in --no-ai mode', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await renameFiles('/test/dir', { ...defaultOptions, ai: false, dryRun: true });
+
+      const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(allOutput).not.toContain('Estimated AI usage');
+
+      logSpy.mockRestore();
+    });
+
+    it('does not print an estimate for --pattern renames', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await renameFiles('/test/dir', { ...defaultOptions, pattern: ['s/doc/document/'], dryRun: true });
+
+      const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(allOutput).not.toContain('Estimated AI usage');
+
+      logSpy.mockRestore();
+    });
+  });
+
   describe('library noise suppression during processing', () => {
     beforeEach(() => {
       mockReaddir.mockResolvedValue([

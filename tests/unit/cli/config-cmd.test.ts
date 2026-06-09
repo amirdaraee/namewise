@@ -87,7 +87,7 @@ describe('configCommand()', () => {
       expect(fs.writeFile).toHaveBeenCalledWith(
         CONFIG_PATH,
         expect.stringContaining('"provider": "openai"'),
-        'utf-8'
+        { encoding: 'utf-8', mode: 0o600 }
       );
       spy.mockRestore();
     });

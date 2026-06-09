@@ -147,7 +147,8 @@ export async function initCommand(): Promise<void> {
 
   // Write config
   await fs.mkdir(path.dirname(configPath), { recursive: true });
-  await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
+  // 600: the config may hold an API key — keep it out of other users' reach
+  await fs.writeFile(configPath, JSON.stringify(config, null, 2), { encoding: 'utf-8', mode: 0o600 });
 
   ui.success(`Config saved to ${configPath}`);
   ui.info('\nYou\'re all set! Try:');

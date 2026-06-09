@@ -53,7 +53,7 @@ describe('initCommand()', () => {
     expect(fs.writeFile).toHaveBeenCalledWith(
       '/home/testuser/.namewise.json',
       expect.stringContaining('"provider": "claude"'),
-      'utf-8'
+      { encoding: 'utf-8', mode: 0o600 }
     );
     const written = JSON.parse(vi.mocked(fs.writeFile).mock.calls[0][1] as string);
     expect(written).toMatchObject({ provider: 'claude', apiKey: 'sk-ant-abc', case: 'snake_case', dryRun: true, name: 'alice' });
@@ -78,7 +78,7 @@ describe('initCommand()', () => {
     expect(fs.writeFile).toHaveBeenCalledWith(
       '/current/dir/.namewise.json',
       expect.any(String),
-      'utf-8'
+      { encoding: 'utf-8', mode: 0o600 }
     );
     const written = JSON.parse(vi.mocked(fs.writeFile).mock.calls[0][1] as string);
     expect(written.model).toBe('gpt-4');

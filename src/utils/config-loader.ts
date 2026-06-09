@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
+import * as ui from './ui.js';
 
 export interface NamiwiseFileConfig {
   provider?: 'claude' | 'openai' | 'ollama' | 'lmstudio';
@@ -39,5 +40,8 @@ async function readConfigFile(filePath: string): Promise<NamiwiseFileConfig> {
 export async function loadConfig(targetDir: string): Promise<NamiwiseFileConfig> {
   const userConfig = await readConfigFile(path.join(os.homedir(), '.namewise.json'));
   const projectConfig = await readConfigFile(path.join(path.resolve(targetDir), '.namewise.json'));
+  if (projectConfig.apiKey) {
+    ui.warn('API key found in project-level .namewise.json — one `git add .` away from a leak. Prefer ~/.namewise.json or the ANTHROPIC_API_KEY/OPENAI_API_KEY env vars.');
+  }
   return { ...userConfig, ...projectConfig };
 }

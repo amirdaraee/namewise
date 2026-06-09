@@ -67,6 +67,36 @@ describe('loadConfig()', () => {
     expect(result.concurrency).toBe(2);
   });
 
+  it('warns when the project-level config contains an API key', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockReadFile.mockImplementation(async (fp: any) => {
+      if (String(fp) === path.join('/some/dir', '.namewise.json')) {
+        return JSON.stringify({ apiKey: 'sk-secret' });
+      }
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    });
+
+    await loadConfig('/some/dir');
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('API key found in project-level'));
+    warnSpy.mockRestore();
+  });
+
+  it('does not warn when only the user-level config contains an API key', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockReadFile.mockImplementation(async (fp: any) => {
+      if (String(fp) === path.join(homeDir, '.namewise.json')) {
+        return JSON.stringify({ apiKey: 'sk-secret' });
+      }
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    });
+
+    await loadConfig('/some/dir');
+
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
   it('throws a clear error on invalid JSON', async () => {
     mockReadFile.mockResolvedValueOnce('{ invalid json }');
     await expect(loadConfig('/some/dir')).rejects.toThrow('Invalid JSON');

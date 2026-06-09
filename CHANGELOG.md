@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-06-10
+
+First stable release. All 16 subcommands, their flags, and the config file
+schema are now covered by the semantic-versioning promise: breaking changes
+only in major versions.
+
+### Added
+- **Pre-flight cost estimate**: `rename` prints an estimated input-token figure for the batch before processing, so cloud users see the cost before confirming
+- **Automatic retry with backoff**: transient AI failures (rate limits, network/5xx errors) are retried up to 3 times with exponential backoff; auth and parse errors still fail fast
+- **Smoke-test corpus**: `npm run smoke` generates a folder of deliberately messy real-world files (scanner names, `Untitled-final(2).pdf`, `New Text Document.txt`, …) and dry-runs them through the full pipeline against your configured provider — the manual pre-release quality check
+- CI security scanning: npm audit gate (fails on high-severity production vulnerabilities), CodeQL analysis, Dependabot updates, and secret-scanning push protection on the repository
+
+### Changed
+- **`canvas` and `pdf-to-png-converter` are now optional dependencies**: `npm install -g @amirdaraee/namewise` succeeds on machines without a C/C++ build toolchain; scanned-PDF and image vision analysis degrade gracefully with a clear message explaining how to enable them
+- Config files written by `init` and `config set` now use file mode 600 (owner read/write only), since they may contain API keys
+- A warning is shown when an API key is found in a project-level `.namewise.json` — one `git add .` away from a leak
+
+### Fixed
+- `--no-ai` no longer requires an API key: the cloud AI service was constructed even when AI was never used
+- High-severity audit findings in transitive dependencies (`@xmldom/xmldom`, `tmp`) resolved
+
 ## [0.10.0] - 2026-06-10
 
 ### Added

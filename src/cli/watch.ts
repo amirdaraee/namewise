@@ -66,7 +66,7 @@ export async function watchDirectory(directory: string, options: any): Promise<v
 
   // Create AI service and renamer once (not per file)
   const aiService = config.noAi ? undefined : AIServiceFactory.create(config.aiProvider, apiKey, config.localLLMConfig);
-  const renamer = new FileRenamer(parserFactory, aiService as any, config);
+  const renamer = new FileRenamer(parserFactory, aiService, config);
 
   // Build and start the watcher
   const watcher = chokidar.watch(absDir, {

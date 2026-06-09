@@ -409,6 +409,29 @@ describe('renameFiles()', () => {
       consoleSpy.mockRestore();
     });
 
+    it('should not create an AI service (and not require a key) in --no-ai mode', async () => {
+      const savedClaude = process.env.CLAUDE_API_KEY;
+      const savedAnthropic = process.env.ANTHROPIC_API_KEY;
+      delete process.env.CLAUDE_API_KEY;
+      delete process.env.ANTHROPIC_API_KEY;
+      mockReaddir.mockResolvedValue([]);
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const { AIServiceFactory } = await import('../../../src/services/ai-factory.js');
+
+      try {
+        await renameFiles('/test/dir', { ...defaultOptions, apiKey: undefined, ai: false, provider: 'claude' });
+
+        expect(AIServiceFactory.create).not.toHaveBeenCalled();
+        expect(mockInquirerPrompt).not.toHaveBeenCalledWith(
+          expect.arrayContaining([expect.objectContaining({ name: 'apiKey' })])
+        );
+      } finally {
+        if (savedClaude !== undefined) process.env.CLAUDE_API_KEY = savedClaude;
+        if (savedAnthropic !== undefined) process.env.ANTHROPIC_API_KEY = savedAnthropic;
+        consoleSpy.mockRestore();
+      }
+    });
+
     it('should not prompt for API key for ollama provider', async () => {
       mockReaddir.mockResolvedValue([]);
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});

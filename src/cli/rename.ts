@@ -108,7 +108,11 @@ export async function renameFiles(directory: string, options: any): Promise<void
 
     // Initialize services
     const parserFactory = new DocumentParserFactory(config);
-    const aiService = AIServiceFactory.create(config.aiProvider, apiKey, config.localLLMConfig);
+    // --no-ai never touches an AI provider, so don't construct one (cloud
+    // providers throw without an API key, which --no-ai must not require)
+    const aiService = config.noAi
+      ? undefined
+      : AIServiceFactory.create(config.aiProvider, apiKey, config.localLLMConfig);
     const fileRenamer = new FileRenamer(parserFactory, aiService, config);
 
     // Get files to process

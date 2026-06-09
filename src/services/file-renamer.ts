@@ -13,7 +13,8 @@ const IMAGE_EXTENSIONS = new Set([
 export class FileRenamer {
   constructor(
     private parserFactory: DocumentParserFactory,
-    private aiService: AIProvider,
+    // undefined when noAi is set — the AI paths below are never reached then
+    private aiService: AIProvider | undefined,
     private config: Config
   ) {}
 
@@ -99,7 +100,7 @@ export class FileRenamer {
     } else if (imageData) {
       // Image file — attempt vision API; skip with warning on any failure
       try {
-        aiResult = await this.aiService.generateFileName(
+        aiResult = await this.aiService!.generateFileName(
           content, file.name, this.config.namingConvention, fileCategory, file,
           this.config.language, this.config.context, imageData
         );
@@ -108,7 +109,7 @@ export class FileRenamer {
         throw new VisionError(`Vision not supported: ${msg}`);
       }
     } else {
-      aiResult = await this.aiService.generateFileName(
+      aiResult = await this.aiService!.generateFileName(
         content, file.name, this.config.namingConvention, fileCategory, file,
         this.config.language, this.config.context
       );

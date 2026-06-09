@@ -19,7 +19,6 @@ vi.mock('os', async () => {
 });
 
 import { promises as fs } from 'fs';
-import os from 'os';
 import inquirer from 'inquirer';
 import { initCommand } from '../../../src/cli/init.js';
 

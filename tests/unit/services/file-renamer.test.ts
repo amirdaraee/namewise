@@ -533,7 +533,7 @@ describe('FileRenamer', () => {
 
       it('should not count tokens for failed files', async () => {
         let callCount = 0;
-        vi.spyOn(mockAIService, 'generateFileName').mockImplementation(async (...args) => {
+        vi.spyOn(mockAIService, 'generateFileName').mockImplementation(async () => {
           callCount++;
           if (callCount === 2) throw new Error('AI failed on second file');
           return { name: 'project-requirements-document', inputTokens: 100, outputTokens: 10 };
@@ -659,7 +659,7 @@ describe('FileRenamer', () => {
       vi.mocked(fs.rename).mockResolvedValue(undefined);
 
       const completedValues: number[] = [];
-      await fileRenamer.renameFiles(testFiles, (completed, total) => {
+      await fileRenamer.renameFiles(testFiles, (completed) => {
         completedValues.push(completed);
       });
 

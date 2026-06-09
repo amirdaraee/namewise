@@ -56,7 +56,7 @@ export class PDFToImageConverter {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(`PDF to image conversion failed: ${errorMessage}`);
+      throw new Error(`PDF to image conversion failed: ${errorMessage}`, { cause: error });
     }
   }
   

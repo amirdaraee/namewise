@@ -17,6 +17,7 @@
     "test:watch": "vitest --watch",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
+    "lint": "eslint .",
     "version:patch": "npm version patch",
     "version:minor": "npm version minor",
     "version:major": "npm version major",
@@ -53,6 +54,7 @@
   "license": "MIT",
   "description": "AI-powered CLI tool that intelligently renames files based on their content using Claude or OpenAI",
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@types/fs-extra": "^11.0.4",
     "@types/heic-convert": "2.1.0",
     "@types/inquirer": "^9.0.9",
@@ -60,9 +62,11 @@
     "@types/pdfkit": "0.17.5",
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
+    "eslint": "10.4.1",
     "pdfkit": "0.8.3",
     "tsx": "4.21.0",
     "typescript": "^5.9.2",
+    "typescript-eslint": "8.61.0",
     "vitest": "^3.2.4"
   },
   "dependencies": {

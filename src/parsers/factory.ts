@@ -8,7 +8,7 @@ import { ImageParser } from './image-parser.js';
 export class DocumentParserFactory {
   private parsers: DocumentParser[];
 
-  constructor(config?: Config) {
+  constructor(_config?: Config) {
     this.parsers = [
       new PDFParser(),
       new WordParser(),

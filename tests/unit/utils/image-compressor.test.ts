@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createCanvas, loadImage } from 'canvas';
 
 vi.mock('canvas', () => {
   const mockCtx = { drawImage: vi.fn() };

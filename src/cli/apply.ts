@@ -19,7 +19,7 @@ export async function applyPlan(planPath: string, options: { dryRun?: boolean } 
     const raw = await fs.readFile(planPath, 'utf-8');
     plan = JSON.parse(raw);
   } catch (error) {
-    throw new Error(`Could not read plan file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Could not read plan file: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
   }
 
   if (!Array.isArray(plan.results)) {

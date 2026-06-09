@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import path from 'path';
 
 vi.mock('fs', async () => {
   const actual = await vi.importActual('fs');

@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import path from 'path';
 import { promises as fs } from 'fs';
 import { DocumentParserFactory } from '../../src/parsers/factory.js';
 import { FileRenamer } from '../../src/services/file-renamer.js';

@@ -28,7 +28,7 @@ async function readConfigFile(filePath: string): Promise<NamiwiseFileConfig> {
     try {
       return JSON.parse(raw) as NamiwiseFileConfig;
     } catch (parseError) {
-      throw new Error(`Invalid JSON in config file ${filePath}: ${(parseError as SyntaxError).message}`);
+      throw new Error(`Invalid JSON in config file ${filePath}: ${(parseError as SyntaxError).message}`, { cause: parseError });
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};

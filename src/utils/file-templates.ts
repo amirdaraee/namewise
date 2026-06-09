@@ -95,7 +95,7 @@ export function categorizeFile(filePath: string, content?: string, fileInfo?: Fi
   const contentLower = content?.toLowerCase() || '';
 
   // Use metadata for enhanced categorization
-  let metadataHints: string[] = [];
+  const metadataHints: string[] = [];
   if (fileInfo?.documentMetadata) {
     const meta = fileInfo.documentMetadata;
     if (meta.title) metadataHints.push(meta.title.toLowerCase());

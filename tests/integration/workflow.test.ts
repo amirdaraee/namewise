@@ -11,8 +11,6 @@ import {
   makeFileInfo
 } from './helpers/harness.js';
 
-const DATA_DIR = path.join(process.cwd(), 'tests', 'data');
-
 describe('Workflow Integration Tests', () => {
   let tempDir: string;
   let cleanup: () => Promise<void>;

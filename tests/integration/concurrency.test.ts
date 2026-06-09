@@ -6,7 +6,6 @@ import { FileRenamer } from '../../src/services/file-renamer.js';
 import { AIProvider, AINameResult, FileInfo } from '../../src/types/index.js';
 import {
   createTempDir,
-  copyTestFile,
   makeConfig,
   makeFileInfo
 } from './helpers/harness.js';

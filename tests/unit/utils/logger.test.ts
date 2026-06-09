@@ -15,7 +15,7 @@ vi.mock('fs', async () => {
 });
 
 import { promises as fs } from 'fs';
-import { createLogger, logger as defaultLogger } from '../../../src/utils/logger.js';
+import { createLogger } from '../../../src/utils/logger.js';
 import { AuthError } from '../../../src/errors.js';
 
 function lastWritten(): Record<string, unknown> {
@@ -24,7 +24,7 @@ function lastWritten(): Record<string, unknown> {
   return JSON.parse(lastCall[1] as string);
 }
 
-async function flushWrites(log: ReturnType<typeof createLogger>): Promise<void> {
+async function flushWrites(_log: ReturnType<typeof createLogger>): Promise<void> {
   // Wait a tick for the async writeQueue to flush
   await new Promise(r => setTimeout(r, 0));
 }

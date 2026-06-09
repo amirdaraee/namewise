@@ -89,7 +89,7 @@ describe('CLI Commands', () => {
       const dryRunOption = options?.find(opt => opt.long === '--dry-run');
       expect(dryRunOption).toBeDefined();
       expect(dryRunOption?.description).toBe('Preview changes without renaming files (RECOMMENDED first!)');
-      expect(dryRunOption?.defaultValue).toBe(false);
+      expect(dryRunOption?.defaultValue).toBeUndefined();
 
       // Check max-size option
       const maxSizeOption = options?.find(opt => opt.long === '--max-size');
@@ -99,7 +99,7 @@ describe('CLI Commands', () => {
       // Check new flags exist
       const recursiveOption = options?.find(opt => opt.long === '--recursive');
       expect(recursiveOption).toBeDefined();
-      expect(recursiveOption?.defaultValue).toBe(false);
+      expect(recursiveOption?.defaultValue).toBeUndefined();
 
       const concurrencyOption = options?.find(opt => opt.long === '--concurrency');
       expect(concurrencyOption).toBeDefined();
@@ -154,7 +154,6 @@ describe('CLI Commands', () => {
         apiKey: 'test-key',
         dryRun: true,
         maxSize: '20',
-        recursive: false,
         pattern: []
       }));
     });
@@ -169,10 +168,10 @@ describe('CLI Commands', () => {
       const callArgs = vi.mocked(renameFiles).mock.calls[0];
       expect(callArgs[1]).toEqual(expect.objectContaining({
         ai: true,
-        dryRun: false,
-        recursive: false,
         pattern: []
       }));
+      expect(callArgs[1].dryRun).toBeUndefined();
+      expect(callArgs[1].recursive).toBeUndefined();
     });
 
     it('should handle short option aliases', async () => {
@@ -190,8 +189,6 @@ describe('CLI Commands', () => {
         ai: true,
         provider: 'openai',
         apiKey: 'test-key',
-        dryRun: false,
-        recursive: false,
         pattern: []
       }));
     });

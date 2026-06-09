@@ -154,7 +154,10 @@ temp/
 secrets.json
 
 # IDE configuration
-.claude
+.claude/settings.local.json
+
+# Internal planning docs (committed docs are user-facing only)
+docs/superpowers/
 
 # OS generated files
 Thumbs.db

@@ -72,6 +72,8 @@ namewise rename ./my-documents --provider claude --api-key your-api-key
 npm install -g @amirdaraee/namewise
 ```
 
+> **Note on optional dependencies:** `canvas` and `pdf-to-png-converter` are *optional* native packages used only for scanned-PDF and image vision analysis. If your machine lacks a C/C++ build toolchain they simply won't install — the CLI and all text-based features still work. When a scanned PDF or image is encountered without them, namewise skips it with a clear message explaining how to enable support (`npm install -g canvas pdf-to-png-converter`).
+
 ## Usage
 
 ### Command Structure

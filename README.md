@@ -46,7 +46,7 @@ Automatically rename files based on their content using AI providers (Claude, Op
 - **Multiple File Types**: Supports PDF, DOCX, DOC, XLSX, XLS, TXT, MD, RTF, JPG, JPEG, PNG, GIF, BMP, TIFF, HEIC, and WEBP files
 - **Image Renaming**: Vision-capable models analyze image content to generate descriptive filenames
 - **EXIF Fallback**: `--no-ai` mode extracts EXIF metadata (description, date) from image files when available
-- **Dry Run Mode**: Preview changes before renaming files
+- **Dry Run Mode**: Preview changes before renaming files; when `dryRun` is set in config, you're offered to apply the previewed renames right away
 - **Size Limits**: Configurable maximum file size limits
 - **Session Logs**: Structured JSON logs written to `~/.namewise/logs/` when enabled with `--log` or `"log": true` in config
 
@@ -704,6 +704,10 @@ When an unexpected error occurs with `--log` enabled, the terminal prints the ex
 - Ensure files are not open in another application
 
 </details>
+
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
 
 ## License
 

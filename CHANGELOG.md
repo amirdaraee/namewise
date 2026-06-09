@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-06-10
+
+### Added
+- When `dryRun` comes from a config file (rather than an explicit `--dry-run` flag), `rename` now offers to apply the previewed renames immediately after the preview — no second invocation needed; applied renames are recorded in history for `undo`
+- ESLint with typescript-eslint flat config and an `npm run lint` script, run automatically in CI
+
+### Changed
+- AI prompts now instruct the model to keep the filename unchanged when the current name is already similar to what it would generate, avoiding needless near-identical renames
+- Wrapped errors (plan-file read, config JSON parse, PDF-to-image conversion) now preserve the original error as `cause` for better diagnostics with `--log`
+- README badges: stale hardcoded test-count badge replaced with the live GitHub Actions CI badge; npm version badge added
+
+### Fixed
+- `--dry-run` and `--recursive` no longer default to `false` at the CLI layer, so `dryRun` and `recursive` values set in `.namewise.json` config files are respected again
+- `--version` now reads the version from `package.json` at runtime; the previous hardcoded string had drifted (reported 0.8.0 on the 0.9.0 release)
+
+### Tests
+- `src/cli/rename.ts` brought to 100% coverage across all metrics: library noise suppression, config-driven dry-run apply flow, and both error-display branches
+- Extended workflow tests for `language`, `context`, and `--no-ai` mode handling
+- `--version` is now asserted against `package.json` in both unit and e2e tests so it cannot silently drift again
+
 ## [0.9.0] - 2026-04-12
 
 ### Added

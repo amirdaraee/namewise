@@ -4,6 +4,7 @@ import { FileInfo, Config, RenameResult, AIProvider, AINameResult, RenameSession
 import { DocumentParserFactory } from '../parsers/factory.js';
 import { categorizeFile, applyTemplate } from '../utils/file-templates.js';
 import { FileSizeError, UnsupportedTypeError, ParseError, VisionError, NetworkError } from '../errors.js';
+import { withRetry, RetryOptions } from '../utils/retry.js';
 import { logger } from '../utils/logger.js';
 
 const IMAGE_EXTENSIONS = new Set([
@@ -15,7 +16,8 @@ export class FileRenamer {
     private parserFactory: DocumentParserFactory,
     // undefined when noAi is set — the AI paths below are never reached then
     private aiService: AIProvider | undefined,
-    private config: Config
+    private config: Config,
+    private retryOptions: RetryOptions = {}
   ) {}
 
   async renameFiles(
@@ -100,19 +102,19 @@ export class FileRenamer {
     } else if (imageData) {
       // Image file — attempt vision API; skip with warning on any failure
       try {
-        aiResult = await this.aiService!.generateFileName(
+        aiResult = await withRetry(() => this.aiService!.generateFileName(
           content, file.name, this.config.namingConvention, fileCategory, file,
           this.config.language, this.config.context, imageData
-        );
+        ), this.retryOptions);
       } catch (error) {
         const msg = error instanceof Error ? error.message : 'Unknown error';
         throw new VisionError(`Vision not supported: ${msg}`);
       }
     } else {
-      aiResult = await this.aiService!.generateFileName(
+      aiResult = await withRetry(() => this.aiService!.generateFileName(
         content, file.name, this.config.namingConvention, fileCategory, file,
         this.config.language, this.config.context
-      );
+      ), this.retryOptions);
     }
 
     if (!aiResult.name || aiResult.name.trim().length === 0) {

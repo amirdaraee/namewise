@@ -5,6 +5,7 @@ import { FileRenamer } from '../../../src/services/file-renamer.js';
 import { DocumentParserFactory } from '../../../src/parsers/factory.js';
 import { MockAIService } from '../../integration/helpers/harness.js';
 import { Config, FileInfo, AIProvider } from '../../../src/types/index.js';
+import { RateLimitError, NetworkError, AuthError } from '../../../src/errors.js';
 
 // Mock fs.rename to avoid actual file operations
 vi.mock('fs', async () => {
@@ -53,6 +54,56 @@ describe('FileRenamer', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('transient AI failure retry', () => {
+    const noSleep = { sleep: async () => {} };
+    const testFile: FileInfo = {
+      path: path.join(process.cwd(), 'tests/data', 'sample-text.txt'),
+      name: 'sample-text.txt',
+      extension: '.txt',
+      size: 1000
+    };
+
+    it('retries rate-limit and network errors, then succeeds', async () => {
+      const generateFileName = vi.fn()
+        .mockRejectedValueOnce(new RateLimitError('429 rate limited'))
+        .mockRejectedValueOnce(new NetworkError('503 unavailable'))
+        .mockResolvedValue({ name: 'retried-name' });
+      const flakyService = { generateFileName } as unknown as AIProvider;
+      const renamer = new FileRenamer(parserFactory, flakyService, config, noSleep);
+
+      vi.mocked(fs.access).mockRejectedValue({ code: 'ENOENT' });
+      vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+      const { results } = await renamer.renameFiles([testFile]);
+
+      expect(results[0].success).toBe(true);
+      expect(results[0].newPath).toContain('retried-name.txt');
+      expect(generateFileName).toHaveBeenCalledTimes(3);
+    });
+
+    it('fails the file after exhausting retries', async () => {
+      const generateFileName = vi.fn().mockRejectedValue(new RateLimitError('429 rate limited'));
+      const flakyService = { generateFileName } as unknown as AIProvider;
+      const renamer = new FileRenamer(parserFactory, flakyService, config, noSleep);
+
+      const { results } = await renamer.renameFiles([testFile]);
+
+      expect(results[0].success).toBe(false);
+      expect(generateFileName).toHaveBeenCalledTimes(3);
+    });
+
+    it('does not retry auth errors', async () => {
+      const generateFileName = vi.fn().mockRejectedValue(new AuthError('401 bad key'));
+      const flakyService = { generateFileName } as unknown as AIProvider;
+      const renamer = new FileRenamer(parserFactory, flakyService, config, noSleep);
+
+      const { results } = await renamer.renameFiles([testFile]);
+
+      expect(results[0].success).toBe(false);
+      expect(generateFileName).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('renameFiles()', () => {

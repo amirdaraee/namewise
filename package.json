@@ -85,7 +85,7 @@
     "openai": "^5.19.1",
     "ora": "9.3.0",
     "pdf-extraction": "^1.0.2",
-    "pdfjs-dist": "5.4.149"
+    "pdfjs-dist": "6.0.227"
   },
   "optionalDependencies": {
     "canvas": "3.2.3",

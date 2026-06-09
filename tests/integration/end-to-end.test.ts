@@ -35,9 +35,12 @@ describe.skipIf(!cliExists)('End-to-End CLI Tests', () => {
       expect(stdout).toContain('rename');
     });
 
-    it('should print a semver version string', async () => {
+    it('should print the package.json version', async () => {
+      const pkg = JSON.parse(
+        await fs.readFile(path.join(process.cwd(), 'package.json'), 'utf-8')
+      );
       const { stdout } = await execAsync(`node ${cliPath} --version`);
-      expect(stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
+      expect(stdout.trim()).toBe(pkg.version);
     });
   });
 

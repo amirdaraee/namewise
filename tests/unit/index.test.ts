@@ -15,8 +15,13 @@ vi.mock('../../src/cli/commands.js', () => ({
   setupCommands: vi.fn()
 }));
 
+import { readFileSync } from 'fs';
 import { program } from 'commander';
 import { setupCommands } from '../../src/cli/commands.js';
+
+const pkg = JSON.parse(
+  readFileSync(new URL('../../package.json', import.meta.url), 'utf-8')
+);
 
 describe('CLI entry point (index.ts)', () => {
   it('should initialize program with correct name, version and setup commands', async () => {
@@ -24,7 +29,7 @@ describe('CLI entry point (index.ts)', () => {
     await import('../../src/index.js');
 
     expect(program.name).toHaveBeenCalledWith('namewise');
-    expect(program.version).toHaveBeenCalledWith('0.8.0');
+    expect(program.version).toHaveBeenCalledWith(pkg.version);
     expect(setupCommands).toHaveBeenCalledWith(program);
     expect(program.parseAsync).toHaveBeenCalledWith(process.argv);
   });

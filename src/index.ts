@@ -1,13 +1,18 @@
 #!/usr/bin/env node
 
+import { readFileSync } from 'fs';
 import { program } from 'commander';
 import { setupCommands } from './cli/commands.js';
+
+const { version } = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf-8')
+);
 
 async function main() {
   program
     .name('namewise')
     .description('🤖 AI-powered CLI tool that intelligently renames, organises, and cleans up files')
-    .version('0.8.0')
+    .version(version)
     .addHelpText('after', `
 
 📋 Supported File Types:

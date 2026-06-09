@@ -65,6 +65,7 @@ vi.mock('../../../src/services/file-renamer.js', () => {
 import { renameFiles, getFilesToProcessForTest } from '../../../src/cli/rename.js';
 import { promises as fs } from 'fs';
 import inquirer from 'inquirer';
+import { NamewiseError } from '../../../src/errors.js';
 import { FileRenamer } from '../../../src/services/file-renamer.js';
 import { DocumentParserFactory } from '../../../src/parsers/factory.js';
 import { loadConfig } from '../../../src/utils/config-loader.js';
@@ -870,6 +871,212 @@ describe('renameFiles()', () => {
 
       dateSpy.mockRestore();
       logSpy.mockRestore();
+    });
+  });
+
+  describe('library noise suppression during processing', () => {
+    beforeEach(() => {
+      mockReaddir.mockResolvedValue([
+        { name: 'doc.pdf', isDirectory: () => false, isFile: () => true } as any
+      ]);
+      mockStat.mockImplementation(async (p: any) => {
+        if (String(p).endsWith('doc.pdf')) {
+          return { isDirectory: () => false, isFile: () => true, size: 1024, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+        }
+        return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+      });
+      mockInquirerPrompt.mockResolvedValue({ proceed: true });
+    });
+
+    it('silences console noise and filters pdfjs TT warnings while processing', async () => {
+      const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      mockRenameFilesMethod.mockImplementation(async () => {
+        // Simulate pdfjs/canvas noise emitted while files are being processed
+        console.warn('library noise');
+        console.log('library noise');
+        process.stdout.write('Warning: TT: undefined function: 32');
+        process.stdout.write(Buffer.from('binary chunk'));
+        process.stdout.write('regular library output');
+        return {
+          results: [{ success: true, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/document.pdf' }],
+          tokenUsage: { inputTokens: 100, outputTokens: 10 }
+        };
+      });
+
+      await renameFiles('/test/dir', { ...defaultOptions, dryRun: false });
+
+      const written = writeSpy.mock.calls.map(c => String(c[0])).join('');
+      expect(written).not.toContain('Warning: TT:');
+      expect(written).toContain('regular library output');
+      expect(written).toContain('binary chunk');
+      // console noise is swallowed by the no-op stubs during processing
+      expect(warnSpy).not.toHaveBeenCalledWith('library noise');
+      expect(logSpy).not.toHaveBeenCalledWith('library noise');
+
+      writeSpy.mockRestore();
+      warnSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+  });
+
+  describe('dry-run from config: offer to apply', () => {
+    const optionsWithoutDryRunFlag = { ...defaultOptions, dryRun: undefined };
+
+    beforeEach(() => {
+      mockReaddir.mockResolvedValue([
+        { name: 'doc.pdf', isDirectory: () => false, isFile: () => true } as any
+      ]);
+      mockStat.mockImplementation(async (p: any) => {
+        if (String(p).endsWith('doc.pdf')) {
+          return { isDirectory: () => false, isFile: () => true, size: 1024, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+        }
+        return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+      });
+      vi.mocked(loadConfig).mockResolvedValue({ dryRun: true });
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [{ success: true, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/document.pdf' }],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      });
+    });
+
+    it('applies the previewed renames when the user confirms', async () => {
+      mockInquirerPrompt.mockResolvedValue({ apply: true });
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await renameFiles('/test/dir', optionsWithoutDryRunFlag);
+
+      expect(vi.mocked(fs.rename)).toHaveBeenCalledWith('/test/dir/doc.pdf', '/test/dir/document.pdf');
+      expect(vi.mocked(appendHistory)).toHaveBeenCalledWith(expect.objectContaining({
+        dryRun: false,
+        renames: [{ originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/document.pdf' }]
+      }));
+      const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(allOutput).toContain('Applied 1 rename');
+
+      logSpy.mockRestore();
+    });
+
+    it('pluralizes the apply prompt and summary for multiple renames', async () => {
+      mockReaddir.mockResolvedValue([
+        { name: 'a.pdf', isDirectory: () => false, isFile: () => true } as any,
+        { name: 'b.pdf', isDirectory: () => false, isFile: () => true } as any
+      ]);
+      mockStat.mockImplementation(async (p: any) => {
+        if (String(p).endsWith('.pdf')) {
+          return { isDirectory: () => false, isFile: () => true, size: 1024, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+        }
+        return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+      });
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [
+          { success: true, originalPath: '/test/dir/a.pdf', newPath: '/test/dir/alpha.pdf' },
+          { success: true, originalPath: '/test/dir/b.pdf', newPath: '/test/dir/beta.pdf' }
+        ],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      });
+      mockInquirerPrompt.mockResolvedValue({ apply: true });
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await renameFiles('/test/dir', optionsWithoutDryRunFlag);
+
+      expect(mockInquirerPrompt).toHaveBeenCalledWith([
+        expect.objectContaining({ message: 'Apply 2 renames?' })
+      ]);
+      const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(allOutput).toContain('Applied 2 renames');
+
+      logSpy.mockRestore();
+    });
+
+    it('keeps the dry-run preview when the user declines', async () => {
+      mockInquirerPrompt.mockResolvedValue({ apply: false });
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await renameFiles('/test/dir', optionsWithoutDryRunFlag);
+
+      expect(vi.mocked(fs.rename)).not.toHaveBeenCalled();
+      expect(vi.mocked(appendHistory)).toHaveBeenCalledWith(expect.objectContaining({ dryRun: true }));
+
+      logSpy.mockRestore();
+    });
+
+    it('does not offer to apply when no rename actually changed a path', async () => {
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [{ success: true, originalPath: '/test/dir/doc.pdf', newPath: '/test/dir/doc.pdf' }],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      });
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await renameFiles('/test/dir', optionsWithoutDryRunFlag);
+
+      expect(mockInquirerPrompt).not.toHaveBeenCalled();
+      expect(vi.mocked(fs.rename)).not.toHaveBeenCalled();
+
+      logSpy.mockRestore();
+    });
+
+    it('does not offer to apply when --dry-run came from the CLI flag', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await renameFiles('/test/dir', { ...defaultOptions, dryRun: true });
+
+      expect(mockInquirerPrompt).not.toHaveBeenCalled();
+
+      logSpy.mockRestore();
+    });
+  });
+
+  describe('error display', () => {
+    beforeEach(() => {
+      mockReaddir.mockResolvedValue([
+        { name: 'doc.pdf', isDirectory: () => false, isFile: () => true } as any
+      ]);
+      mockStat.mockImplementation(async (p: any) => {
+        if (String(p).endsWith('doc.pdf')) {
+          return { isDirectory: () => false, isFile: () => true, size: 1024, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+        }
+        return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
+      });
+      mockInquirerPrompt.mockResolvedValue({ proceed: true });
+    });
+
+    it('shows a NamewiseError message and hint', async () => {
+      mockRenameFilesMethod.mockRejectedValue(new NamewiseError('Rate limited by provider', { hint: 'try again later' }));
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+      await renameFiles('/test/dir', defaultOptions);
+
+      expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('Rate limited by provider'));
+      const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(allOutput).toContain('try again later');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+
+      errSpy.mockRestore();
+      logSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
+
+    it('points to the log file when logging is enabled and an unexpected error occurs', async () => {
+      mockRenameFilesMethod.mockRejectedValue(new Error('boom'));
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+      await renameFiles('/test/dir', { ...defaultOptions, log: true });
+
+      expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('An unexpected error occurred.'));
+      const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
+      expect(allOutput).toContain('See log:');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+
+      errSpy.mockRestore();
+      logSpy.mockRestore();
+      exitSpy.mockRestore();
     });
   });
 

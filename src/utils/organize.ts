@@ -1,4 +1,4 @@
-import { promises as fs } from 'fs';
+import { promises as fs, type Stats } from 'fs';
 import path from 'path';
 import { collectFiles } from './fs-collect.js';
 
@@ -36,7 +36,7 @@ export async function computeOrganizeMappings(
 function getSubDir(
   filePath: string,
   by: OrganizeBy,
-  stat: Awaited<ReturnType<typeof fs.stat>>
+  stat: Stats
 ): string {
   switch (by) {
     case 'ext': {

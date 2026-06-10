@@ -223,7 +223,8 @@ describe('Parser Pipeline Integration Tests', () => {
       expect(parser?.supports('photo.jpg')).toBe(true);
     });
 
-    it('should parse sample-image.jpg and return imageData with empty content', async () => {
+    // 30s: canvas JPEG decode is slow on Windows CI runners (Node 24)
+    it('should parse sample-image.jpg and return imageData with empty content', { timeout: 30_000 }, async () => {
       const parser = parserFactory.getParser('photo.jpg');
       expect(parser).not.toBeNull();
 

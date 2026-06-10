@@ -1,4 +1,4 @@
-import { promises as fs, createReadStream } from 'fs';
+import { promises as fs, createReadStream, type Stats } from 'fs';
 import { createHash } from 'crypto';
 import path from 'path';
 import { formatBytes } from '../utils/fs-collect.js';
@@ -15,7 +15,7 @@ export async function infoCommand(targetPath: string): Promise<void> {
 
 async function showFileInfo(
   filePath: string,
-  stat: Awaited<ReturnType<typeof fs.stat>>
+  stat: Stats
 ): Promise<void> {
   const hash = await hashFile(filePath);
   const ext = path.extname(filePath).toLowerCase();

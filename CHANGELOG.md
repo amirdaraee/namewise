@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-06-10
+
+### Security
+- Resolved the moderate `uuid` advisory (GHSA-w5hq-g745-h8pq) pulled in through exceljs by overriding to `uuid@^11.1.1`; `npm audit` is clean. The vulnerable code path (v3/v5/v6 with a caller-provided buffer) was never reachable — exceljs only uses `v4()`
+- All open CodeQL findings triaged to zero; test code is now excluded from analysis
+
+### Changed
+- Runtime dependencies updated: `@anthropic-ai/sdk` 0.104, `openai` 6.42, `inquirer` 14, `pdfjs-dist` 6.0, `chokidar` 5, `commander` 14, `fs-extra` 11.3.5, `ora` 9.4
+- An invalid regular expression passed to `--strip` or an `s/find/replace/` pattern now produces a clear `Invalid regular expression …` error instead of a raw `SyntaxError`
+
+### Fixed
+- Unit and integration tests now pass on Windows (path-separator and filename-character assumptions); CI matrix is green across Ubuntu, macOS, and Windows on Node 20/22/24
+
 ## [1.0.0] - 2026-06-10
 
 First stable release. All 16 subcommands, their flags, and the config file

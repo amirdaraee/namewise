@@ -13,6 +13,7 @@ vi.mock('fs', async () => {
 });
 
 import { createReadStream, promises as fs } from 'fs';
+import path from 'path';
 import { EventEmitter } from 'events';
 import { hashFile, findDuplicates } from '../../../src/utils/dedup.js';
 
@@ -104,7 +105,7 @@ describe('findDuplicates()', () => {
     expect(result.size).toBe(1);
     const [paths] = [...result.values()];
     expect(paths).toHaveLength(2);
-    expect(paths).toContain('/dir/top.txt');
-    expect(paths).toContain('/dir/sub/nested.txt');
+    expect(paths).toContain(path.join('/dir', 'top.txt'));
+    expect(paths).toContain(path.join('/dir', 'sub', 'nested.txt'));
   });
 });

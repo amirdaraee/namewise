@@ -13,6 +13,7 @@ vi.mock('fs', async () => {
 });
 
 import { promises as fs } from 'fs';
+import path from 'path';
 import { collectFiles, formatBytes } from '../../../src/utils/fs-collect.js';
 
 beforeEach(() => vi.clearAllMocks());
@@ -24,7 +25,7 @@ describe('collectFiles()', () => {
       { name: 'b.pdf', isDirectory: () => false, isFile: () => true } as any
     ]);
     const result = await collectFiles('/dir');
-    expect(result).toEqual(['/dir/a.txt', '/dir/b.pdf']);
+    expect(result).toEqual([path.join('/dir', 'a.txt'), path.join('/dir', 'b.pdf')]);
   });
 
   it('does not recurse when recursive=false', async () => {
@@ -33,7 +34,7 @@ describe('collectFiles()', () => {
       { name: 'a.txt', isDirectory: () => false, isFile: () => true } as any
     ]);
     const result = await collectFiles('/dir', { recursive: false });
-    expect(result).toEqual(['/dir/a.txt']);
+    expect(result).toEqual([path.join('/dir', 'a.txt')]);
   });
 
   it('recurses into subdirectories when recursive=true', async () => {
@@ -46,7 +47,7 @@ describe('collectFiles()', () => {
         { name: 'b.txt', isDirectory: () => false, isFile: () => true } as any
       ]);
     const result = await collectFiles('/dir', { recursive: true });
-    expect(result).toEqual(['/dir/sub/b.txt', '/dir/a.txt']);
+    expect(result).toEqual([path.join('/dir', 'sub', 'b.txt'), path.join('/dir', 'a.txt')]);
   });
 
   it('respects maxDepth', async () => {
@@ -59,7 +60,7 @@ describe('collectFiles()', () => {
         { name: 'c.txt', isDirectory: () => false, isFile: () => true } as any
       ]);
     const result = await collectFiles('/dir', { recursive: true, maxDepth: 1 });
-    expect(result).toEqual(['/dir/sub/c.txt']);
+    expect(result).toEqual([path.join('/dir', 'sub', 'c.txt')]);
   });
 });
 

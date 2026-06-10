@@ -23,7 +23,10 @@ describe('sanitizeFiles() — integration', () => {
   });
 
   it('renames files with unsafe characters on disk', async () => {
-    const dirty = path.join(tempDir, 'Report<2024>Final.txt');
+    // '<' and '>' cannot exist in Windows filenames at all, so use them only
+    // where the filesystem allows creating the dirty fixture
+    const dirtyName = process.platform === 'win32' ? 'Report (2024) Final.txt' : 'Report<2024>Final.txt';
+    const dirty = path.join(tempDir, dirtyName);
     await fs.writeFile(dirty, 'content');
 
     vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -31,7 +34,7 @@ describe('sanitizeFiles() — integration', () => {
 
     const files = await fs.readdir(tempDir);
     expect(files).toContain('report-2024-final.txt');
-    expect(files).not.toContain('Report<2024>Final.txt');
+    expect(files).not.toContain(dirtyName);
   });
 
   it('does not modify files on disk in dry-run mode', async () => {

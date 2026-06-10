@@ -19,6 +19,7 @@ vi.mock('os', async () => {
 });
 
 import { promises as fs } from 'fs';
+import path from 'path';
 import inquirer from 'inquirer';
 import { initCommand } from '../../../src/cli/init.js';
 
@@ -51,7 +52,7 @@ describe('initCommand()', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await initCommand();
     expect(fs.writeFile).toHaveBeenCalledWith(
-      '/home/testuser/.namewise.json',
+      path.join('/home/testuser', '.namewise.json'),
       expect.stringContaining('"provider": "claude"'),
       { encoding: 'utf-8', mode: 0o600 }
     );
@@ -76,7 +77,7 @@ describe('initCommand()', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await initCommand();
     expect(fs.writeFile).toHaveBeenCalledWith(
-      '/current/dir/.namewise.json',
+      path.join('/current/dir', '.namewise.json'),
       expect.any(String),
       { encoding: 'utf-8', mode: 0o600 }
     );

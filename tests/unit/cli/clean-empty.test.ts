@@ -14,6 +14,7 @@ vi.mock('fs', async () => {
 });
 
 import { promises as fs } from 'fs';
+import path from 'path';
 import { cleanEmptyDirs } from '../../../src/cli/clean-empty.js';
 
 beforeEach(() => {
@@ -69,7 +70,7 @@ describe('cleanEmptyDirs()', () => {
       .mockResolvedValueOnce([]);
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await cleanEmptyDirs('/dir');
-    expect(fs.rmdir).toHaveBeenCalledWith('/dir/empty-sub');
+    expect(fs.rmdir).toHaveBeenCalledWith(path.join('/dir', 'empty-sub'));
   });
 
   it('uses plural "ies" when removing multiple empty directories', async () => {

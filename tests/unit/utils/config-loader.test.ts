@@ -45,7 +45,7 @@ describe('loadConfig()', () => {
   it('returns project config when only project config exists', async () => {
     const projectConfig: NamiwiseFileConfig = { case: 'snake_case' };
     mockReadFile.mockImplementation(async (fp: any) => {
-      if (String(fp) === path.join('/some/dir', '.namewise.json')) {
+      if (String(fp) === path.join(path.resolve('/some/dir'), '.namewise.json')) {
         return JSON.stringify(projectConfig);
       }
       throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
@@ -59,7 +59,7 @@ describe('loadConfig()', () => {
     const projectConfig: NamiwiseFileConfig = { concurrency: 2 };
     mockReadFile.mockImplementation(async (fp: any) => {
       if (String(fp) === path.join(homeDir, '.namewise.json')) return JSON.stringify(userConfig);
-      if (String(fp) === path.join('/some/dir', '.namewise.json')) return JSON.stringify(projectConfig);
+      if (String(fp) === path.join(path.resolve('/some/dir'), '.namewise.json')) return JSON.stringify(projectConfig);
       throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
     const result = await loadConfig('/some/dir');
@@ -70,7 +70,7 @@ describe('loadConfig()', () => {
   it('warns when the project-level config contains an API key', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     mockReadFile.mockImplementation(async (fp: any) => {
-      if (String(fp) === path.join('/some/dir', '.namewise.json')) {
+      if (String(fp) === path.join(path.resolve('/some/dir'), '.namewise.json')) {
         return JSON.stringify({ apiKey: 'sk-secret' });
       }
       throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });

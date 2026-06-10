@@ -16,6 +16,7 @@ vi.mock('fs', async () => {
 vi.mock('../../../src/utils/history.js', () => ({ appendHistory: vi.fn() }));
 
 import { promises as fs } from 'fs';
+import path from 'path';
 import { flattenDirectory } from '../../../src/cli/flatten.js';
 
 beforeEach(() => {
@@ -64,7 +65,7 @@ describe('flattenDirectory()', () => {
     vi.mocked(fs.access).mockRejectedValue(new Error('not found'));
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await flattenDirectory('/dir');
-    expect(fs.rename).toHaveBeenCalledWith('/dir/sub/b.txt', '/dir/b.txt');
+    expect(fs.rename).toHaveBeenCalledWith(path.join('/dir', 'sub', 'b.txt'), path.join('/dir', 'b.txt'));
   });
 
   it('collects files from deeply nested subdirectories', async () => {
@@ -82,7 +83,7 @@ describe('flattenDirectory()', () => {
     vi.mocked(fs.access).mockRejectedValue(new Error('not found'));
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await flattenDirectory('/dir');
-    expect(fs.rename).toHaveBeenCalledWith('/dir/sub/nested/deep.txt', '/dir/deep.txt');
+    expect(fs.rename).toHaveBeenCalledWith(path.join('/dir', 'sub', 'nested', 'deep.txt'), path.join('/dir', 'deep.txt'));
   });
 
   it('resolves naming conflict by appending -1', async () => {
@@ -99,6 +100,6 @@ describe('flattenDirectory()', () => {
       .mockRejectedValueOnce(new Error());    // b-1.txt free
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await flattenDirectory('/dir');
-    expect(fs.rename).toHaveBeenCalledWith('/dir/sub/b.txt', '/dir/b-1.txt');
+    expect(fs.rename).toHaveBeenCalledWith(path.join('/dir', 'sub', 'b.txt'), path.join('/dir', 'b-1.txt'));
   });
 });

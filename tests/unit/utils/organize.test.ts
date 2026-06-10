@@ -11,6 +11,7 @@ vi.mock('fs', async () => {
 
 import { collectFiles } from '../../../src/utils/fs-collect.js';
 import { promises as fs } from 'fs';
+import path from 'path';
 import { computeOrganizeMappings } from '../../../src/utils/organize.js';
 
 const refDate = new Date('2024-03-15T00:00:00Z');
@@ -37,7 +38,8 @@ describe('computeOrganizeMappings() by ext', () => {
   });
 
   it('skips files already in the correct subfolder', async () => {
-    vi.mocked(collectFiles).mockResolvedValue(['/dir/pdf/file.pdf']);
+    // Build with path.join so the dirname comparison holds on Windows too
+    vi.mocked(collectFiles).mockResolvedValue([path.join('/dir', 'pdf', 'file.pdf')]);
     const mappings = await computeOrganizeMappings('/dir', 'ext', false);
     expect(mappings).toHaveLength(0);
   });

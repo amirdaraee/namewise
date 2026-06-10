@@ -138,7 +138,8 @@ describe('Image file end-to-end (programmatic)', () => {
     await cleanup();
   });
 
-  it('should dry-run rename a .jpg image file', async () => {
+  // 30s: canvas JPEG decode is slow on Windows CI runners (Node 24)
+  it('should dry-run rename a .jpg image file', { timeout: 30_000 }, async () => {
     const filePath = await copyTestFile('sample-image.jpg', tempDir);
     const stat = await fs.stat(filePath);
     const renamer = new FileRenamer(parserFactory, mockAI, makeConfig({ dryRun: true }));

@@ -32,7 +32,15 @@ export function applyDateStamp(stem: string, date: Date, format: DateFormat): st
 }
 
 export function applyStrip(stem: string, pattern: string): string {
-  return stem.replace(new RegExp(pattern, 'g'), '');
+  let find: RegExp;
+  try {
+    // User-supplied regex is the point of --strip; it only runs against the
+    // user's own filenames in their own process.
+    find = new RegExp(pattern, 'g');
+  } catch {
+    throw new Error(`Invalid regular expression for --strip: "${pattern}"`);
+  }
+  return stem.replace(find, '');
 }
 
 export function applyTruncate(stem: string, maxLen: number): string {

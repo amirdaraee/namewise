@@ -67,6 +67,9 @@ describe('applyStrip()', () => {
   it('returns stem unchanged when pattern not found', () => {
     expect(applyStrip('report', 'xyz')).toBe('report');
   });
+  it('throws a clear error on an invalid regex', () => {
+    expect(() => applyStrip('report', '[')).toThrow('Invalid regular expression for --strip: "["');
+  });
 });
 
 describe('applyTruncate()', () => {

@@ -2,7 +2,13 @@ export function parsePattern(pattern: string): { find: RegExp; replace: string }
   const sedMatch = pattern.match(/^s\/((?:[^/\\]|\\.)*)\/((?:[^/\\]|\\.)*)\/([gimu]*)$/);
   if (sedMatch) {
     const [, find, replace, flags] = sedMatch;
-    return { find: new RegExp(find, flags || undefined), replace };
+    try {
+      // User-supplied regex is the point of the s/find/replace/ syntax; it only
+      // runs against the user's own filenames in their own process.
+      return { find: new RegExp(find, flags || undefined), replace };
+    } catch {
+      throw new Error(`Invalid regular expression in pattern: "${find}"`);
+    }
   }
 
   const colonIdx = pattern.indexOf(':');

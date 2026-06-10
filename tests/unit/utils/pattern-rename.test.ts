@@ -20,6 +20,10 @@ describe('parsePattern()', () => {
   it('throws on invalid pattern format', () => {
     expect(() => parsePattern('not-valid')).toThrow('Invalid pattern format');
   });
+
+  it('throws a clear error when the find part is an invalid regex', () => {
+    expect(() => parsePattern('s/[/x/')).toThrow('Invalid regular expression in pattern: "["');
+  });
 });
 
 describe('applyPatterns()', () => {

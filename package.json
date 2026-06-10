@@ -90,5 +90,8 @@
   "optionalDependencies": {
     "canvas": "3.2.3",
     "pdf-to-png-converter": "3.14.0"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }

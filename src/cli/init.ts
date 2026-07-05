@@ -6,8 +6,8 @@ import type { NamiwiseFileConfig } from '../utils/config-loader.js';
 import * as ui from '../utils/ui.js';
 
 const PROVIDER_DEFAULT_MODELS: Record<string, string> = {
-  claude: 'claude-sonnet-4-5-20250929',
-  openai: 'gpt-4o',
+  claude: 'claude-opus-4-8',
+  openai: 'gpt-5.5',
   ollama: 'llama3.1',
   lmstudio: 'local-model'
 };

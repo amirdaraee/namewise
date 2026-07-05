@@ -99,12 +99,12 @@ describe('AIServiceFactory', () => {
 
     it('should use provider default when localLLMConfig.model is not set for Claude', () => {
       const service = AIServiceFactory.create('claude', 'test-key');
-      expect((service as any).model).toBe('claude-sonnet-4-5-20250929');
+      expect((service as any).model).toBe('claude-opus-4-8');
     });
 
     it('should use provider default when localLLMConfig.model is not set for OpenAI', () => {
       const service = AIServiceFactory.create('openai', 'test-key');
-      expect((service as any).model).toBe('gpt-4o');
+      expect((service as any).model).toBe('gpt-5.5');
     });
   });
 });

@@ -12,7 +12,7 @@ export class OpenAIService implements AIProvider {
 
   constructor(apiKey: string, model?: string) {
     this.client = new OpenAI({ apiKey });
-    this.model = model ?? 'gpt-4o';
+    this.model = model ?? 'gpt-5.5';
   }
 
   async generateFileName(

@@ -12,7 +12,7 @@ export class ClaudeService implements AIProvider {
 
   constructor(apiKey: string, model?: string) {
     this.client = new Anthropic({ apiKey });
-    this.model = model ?? 'claude-sonnet-4-5-20250929';
+    this.model = model ?? 'claude-opus-4-8';
   }
 
   async generateFileName(

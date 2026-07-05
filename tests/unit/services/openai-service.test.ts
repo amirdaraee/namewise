@@ -69,7 +69,7 @@ describe('OpenAIService', () => {
 
       expect(mockClient.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gpt-4o',
+          model: 'gpt-5.5',
           messages: [expect.objectContaining({
             role: 'user',
             content: expect.stringContaining('Use lowercase with hyphens between words')
@@ -128,7 +128,7 @@ describe('OpenAIService', () => {
 
       expect(mockClient.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gpt-4o',
+          model: 'gpt-5.5',
           max_tokens: 100,
           temperature: 0.3
         })
@@ -319,7 +319,7 @@ describe('OpenAIService', () => {
   });
 
   describe('Custom model parameter', () => {
-    it('should use default model gpt-4o when none provided', async () => {
+    it('should use default model gpt-5.5 when none provided', async () => {
       const defaultService = new OpenAIService('test-key');
       const defaultClient = (defaultService as any).client;
       defaultClient.chat.completions.create.mockResolvedValue({
@@ -330,7 +330,7 @@ describe('OpenAIService', () => {
       await defaultService.generateFileName('sample content', 'file.txt');
 
       expect(defaultClient.chat.completions.create).toHaveBeenCalledWith(
-        expect.objectContaining({ model: 'gpt-4o' })
+        expect.objectContaining({ model: 'gpt-5.5' })
       );
     });
 

@@ -61,7 +61,7 @@ describe('ClaudeService', () => {
 
       expect(mockClient.messages.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'claude-sonnet-4-5-20250929',
+          model: 'claude-opus-4-8',
           messages: [expect.objectContaining({
             role: 'user',
             content: expect.stringContaining('Use lowercase with hyphens between words')
@@ -344,7 +344,7 @@ describe('ClaudeService', () => {
       await defaultService.generateFileName('sample content', 'file.txt');
 
       expect(defaultClient.messages.create).toHaveBeenCalledWith(
-        expect.objectContaining({ model: 'claude-sonnet-4-5-20250929' })
+        expect.objectContaining({ model: 'claude-opus-4-8' })
       );
     });
 

@@ -482,8 +482,8 @@ Supported keys: `provider`, `apiKey`, `case`, `template`, `name`, `date`, `maxSi
 
 | Provider | Vision Support | API Key Required | Default Model |
 |----------|---------------|-----------------|---------------|
-| `claude` | Yes | Yes (`ANTHROPIC_API_KEY`) | `claude-sonnet-4-5-20250929` |
-| `openai` | Yes | Yes (`OPENAI_API_KEY`) | `gpt-4o` |
+| `claude` | Yes | Yes (`ANTHROPIC_API_KEY`) | `claude-opus-4-8` |
+| `openai` | Yes | Yes (`OPENAI_API_KEY`) | `gpt-5.5` |
 | `ollama` | Model-dependent | No | `llama3.1` |
 | `lmstudio` | Model-dependent | No | `local-model` |
 
@@ -534,13 +534,13 @@ namewise rename ./photos --no-ai --dry-run
 1. Visit [Anthropic Console](https://console.anthropic.com/)
 2. Generate an API key
 3. `export ANTHROPIC_API_KEY=your-key`
-4. Default model: `claude-sonnet-4-5-20250929` (override with `--model`)
+4. Default model: `claude-opus-4-8` (override with `--model`)
 
 **OpenAI**
 1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
 2. Create an API key
 3. `export OPENAI_API_KEY=your-key`
-4. Default model: `gpt-4o` (override with `--model`)
+4. Default model: `gpt-5.5` (override with `--model`)
 
 ## How It Works
 

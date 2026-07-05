@@ -636,7 +636,7 @@ For unexpected errors, the terminal either points to the log (if `--log` was use
 - **Conflict Auto-Numbering**: Never overwrites an existing file
 - **File Size Limits**: Skips files above `--max-size`
 - **Extension Preservation**: Original file extensions are never changed
-- **Comprehensive Testing**: 900+ tests with ~100% coverage, run on Node 20/22/24 in CI
+- **Comprehensive Testing**: 1,000+ tests with 100% coverage, run on Node 20/22/24 in CI
 
 ## Testing & Development
 

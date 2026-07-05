@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-07-05
+
+### Changed
+- **Default AI models updated to current generation**: `claude` now defaults to `claude-opus-4-8` (was `claude-sonnet-4-5-20250929`), `openai` to `gpt-5.5` (was `gpt-4o`). `--model` and config-file overrides work as before. The `ollama` default stays `llama3.1` — the newer `llama3.2` tags are smaller 1B/3B models and `llama3.3` (70B) is too heavy for a default
+- Major dependency upgrades: `commander` 15, `pdf-to-png-converter` 4 (scanned-PDF conversion verified end-to-end against a real scanned sample), TypeScript 6, Vitest 4
+- Remaining dependencies bumped to latest minor/patch versions (`@anthropic-ai/sdk` 0.110, `openai` 6.45, `pdfjs-dist` 6.1, and others)
+
+### Security
+- Resolved the esbuild advisory (GHSA-g7r4-m6w7-qqqr, dev-only: arbitrary file read via the dev server on Windows) by upgrading the vitest/vite toolchain; `npm audit` is clean
+
+### Internal
+- AI provider services refactored onto shared base classes (`BaseCloudService` for Claude/OpenAI, `BaseLocalService` for Ollama/LM Studio), eliminating ~360 lines of duplicated request, error-mapping, and sanitization logic with no behavior change
+- CLI layer deduplicated: shared config assembly for `rename`/`watch`, `renameFiles()` decomposed from ~280 lines into focused helpers, typed option interfaces replace `any`, and one shared implementation each for directory validation, byte formatting, history recording, and error handling
+- `config set` now accepts the previously missing `context` key
+- The rename stats "Data" line now shows megabytes with two decimals (consistent byte formatting everywhere)
+- Test coverage raised to 100% across statements, branches, functions, and lines (1041 tests); `src/utils/ui.ts` gained its first dedicated unit-test file
+- Removed legacy OCR-era artifacts (`.ocr-cache/`, stale `dist/parsers/ocr-utils.*`)
+
 ## [1.0.1] - 2026-06-10
 
 ### Security

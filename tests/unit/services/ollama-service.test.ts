@@ -170,6 +170,32 @@ describe('OllamaService', () => {
       ).rejects.toThrow('Ollama API request failed: 500 Internal Server Error');
     });
 
+    it('should throw AuthError on 401 responses', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        text: async () => 'Unauthorized'
+      });
+
+      await expect(
+        ollamaService.generateFileName('content', 'file.txt')
+      ).rejects.toThrow('Ollama authentication failed');
+    });
+
+    it('should throw RateLimitError on 429 responses', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+        text: async () => 'Rate limited'
+      });
+
+      await expect(
+        ollamaService.generateFileName('content', 'file.txt')
+      ).rejects.toThrow('Ollama rate limit exceeded');
+    });
+
     it('should handle network errors', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 

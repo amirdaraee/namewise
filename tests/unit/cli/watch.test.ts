@@ -389,6 +389,49 @@ describe('watchDirectory()', () => {
       expect(logCalls.join('\n')).toMatch(/no rename needed/i);
     });
 
+    it('logs nothing extra when the rename result is unsuccessful', async () => {
+      vi.mocked(FileRenamer).mockImplementationOnce(function () {
+        return {
+          renameFiles: vi.fn().mockResolvedValue({
+            results: [{
+              originalPath: '/watch/dir/document.pdf',
+              newPath: '/watch/dir/document.pdf',
+              suggestedName: 'document.pdf',
+              success: false,
+              error: 'AI generation failed'
+            }],
+            tokenUsage: { inputTokens: undefined, outputTokens: undefined }
+          })
+        } as any;
+      });
+
+      const logCalls: string[] = [];
+      vi.spyOn(console, 'log').mockImplementation((...args: any[]) => {
+        logCalls.push(args.join(' '));
+      });
+
+      const { getHandler, restore } = captureSignalHandlers();
+
+      let addHandler: ((filePath: string) => Promise<void>) | undefined;
+      mockWatcherOn.mockImplementation((event: string, handler: any) => {
+        if (event === 'add') addHandler = handler;
+        return mockWatcher;
+      });
+
+      const watchPromise = watchDirectory('/watch/dir', defaultOptions);
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      if (addHandler) await addHandler('/watch/dir/document.pdf');
+
+      getHandler('SIGINT')?.();
+      await watchPromise;
+      restore();
+
+      const output = logCalls.join('\n');
+      expect(output).not.toMatch(/no rename needed/i);
+      expect(output).not.toContain('→');
+    });
+
     it('logs an error when the rename pipeline throws', async () => {
       vi.mocked(FileRenamer).mockImplementationOnce(function () {
         return {

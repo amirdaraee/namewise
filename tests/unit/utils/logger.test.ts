@@ -16,7 +16,7 @@ vi.mock('fs', async () => {
 
 import { promises as fs } from 'fs';
 import { createLogger } from '../../../src/utils/logger.js';
-import { AuthError } from '../../../src/errors.js';
+import { AuthError, NetworkError } from '../../../src/errors.js';
 
 function lastWritten(): Record<string, unknown> {
   const calls = (fs.appendFile as ReturnType<typeof vi.fn>).mock.calls;
@@ -57,6 +57,38 @@ describe('Logger.info', () => {
     expect(entry.msg).toBe('hello');
     expect(entry.file).toBe('a.pdf');
     expect(typeof entry.ts).toBe('string');
+  });
+});
+
+describe('Logger write lifecycle', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('does not write anything when disabled', async () => {
+    const log = createLogger('test', false);
+    log.info('should not be written');
+    await flushWrites(log);
+    expect(fs.mkdir).not.toHaveBeenCalled();
+    expect(fs.appendFile).not.toHaveBeenCalled();
+  });
+
+  it('initializes the log directory only once across multiple writes', async () => {
+    const log = createLogger('test', true);
+    log.info('first');
+    log.info('second');
+    await flushWrites(log);
+    expect(fs.mkdir).toHaveBeenCalledTimes(1);
+    expect(fs.appendFile).toHaveBeenCalledTimes(2);
+  });
+
+  it('never crashes the host process when appendFile fails', async () => {
+    (fs.appendFile as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('disk full'));
+    const log = createLogger('test', true);
+    expect(() => log.info('doomed write')).not.toThrow();
+    await flushWrites(log);
+    // A later write still goes through the queue without throwing
+    log.info('second write');
+    await flushWrites(log);
+    expect(fs.appendFile).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -107,6 +139,23 @@ describe('Logger.error', () => {
     const entry = lastWritten();
     expect(entry.msg).toBe('unknown_error');
     expect(entry.value).toBe('just a string');
+  });
+
+  it('falls back to "Error" when the error name is undefined', async () => {
+    const log = createLogger('test', true);
+    log.error({ name: undefined, message: 'nameless failure' });
+    await flushWrites(log);
+    const entry = lastWritten();
+    expect(entry.msg).toBe('Error');
+    expect(entry.message).toBe('nameless failure');
+  });
+
+  it('includes details when present on the error', async () => {
+    const log = createLogger('test', true);
+    log.error(new NetworkError('boom', { details: { status: 500, body: 'oops' } }));
+    await flushWrites(log);
+    const entry = lastWritten();
+    expect(entry.details).toEqual({ status: 500, body: 'oops' });
   });
 
   it('merges extra context', async () => {
@@ -168,6 +217,22 @@ describe('auto-prune', () => {
     const deletedPaths = (fs.unlink as ReturnType<typeof vi.fn>).mock.calls.map((c: any[]) => c[0] as string);
     expect(deletedPaths[0]).toMatch(/2026-01-01/);
     expect(deletedPaths[1]).toMatch(/2026-01-02/);
+  });
+
+  it('ignores unlink failures while pruning', async () => {
+    const logFiles = Array.from({ length: 21 }, (_, i) =>
+      `2026-02-${String(i + 1).padStart(2, '0')}T00-00-00-rename.log`
+    );
+    (fs.readdir as ReturnType<typeof vi.fn>).mockResolvedValue(logFiles);
+    (fs.unlink as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('EPERM'));
+
+    const log = createLogger('test', true);
+    log.info('trigger');
+    await flushWrites(log);
+
+    // Prune failure must not prevent the write itself
+    expect(fs.unlink).toHaveBeenCalledTimes(2);
+    expect(fs.appendFile).toHaveBeenCalledTimes(1);
   });
 
   it('does not prune when fewer than 20 log files exist', async () => {

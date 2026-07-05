@@ -23,6 +23,7 @@ vi.mock('../../../src/utils/pdf-to-image.js', () => ({
 import fs from 'fs';
 import { PDFParser } from '../../../src/parsers/pdf-parser.js';
 import { PDFToImageConverter } from '../../../src/utils/pdf-to-image.js';
+import { ParseError } from '../../../src/errors.js';
 
 describe('PDFParser (mocked)', () => {
   let parser: PDFParser;
@@ -141,6 +142,20 @@ describe('PDFParser (mocked)', () => {
       expect(result.metadata).toBeDefined();
     });
 
+    it('should not set pages when meta is present but numpages is missing', async () => {
+      mockPdfExtract.mockResolvedValue({
+        text: 'This is a normal text-based PDF with sufficient words to avoid scanned detection.',
+        meta: { info: { Title: 'No Pages' } }
+        // no numpages property
+      });
+      mockIsScannedPDF.mockReturnValue(false);
+
+      const result = await parser.parse('/path/to/document.pdf');
+
+      expect(result.metadata.title).toBe('No Pages');
+      expect(result.metadata.pages).toBeUndefined();
+    });
+
     it('should calculate word count from text content', async () => {
       mockPdfExtract.mockResolvedValue({
         text: 'one two three four five six seven eight nine ten',
@@ -235,7 +250,51 @@ describe('PDFParser (mocked)', () => {
     });
   });
 
+  describe('Output suppression', () => {
+    it('should swallow stderr and console.warn noise emitted during extraction', async () => {
+      const warnSpy = vi.spyOn(console, 'warn');
+      mockPdfExtract.mockImplementation(async () => {
+        // Simulate pdfjs noise while the suppressors are active — this
+        // invokes the no-op replacements installed by the parser.
+        process.stderr.write('TT: undefined function');
+        console.warn('pdfjs warning noise');
+        return {
+          text: 'Normal text content from PDF file for testing purposes.',
+          meta: {},
+          numpages: 1
+        };
+      });
+      mockIsScannedPDF.mockReturnValue(false);
+
+      const result = await parser.parse('/path/to/noisy.pdf');
+
+      expect(result.content).toContain('Normal text content');
+      // The real console.warn (spied) must never have been reached
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it('should skip stderr restore when process.stderr.write is unavailable', async () => {
+      const realWrite = process.stderr.write;
+      (process.stderr as any).write = undefined;
+      try {
+        const result = await parser.parse('/path/to/document.pdf');
+        expect(result.content).toContain('Normal text content');
+      } finally {
+        (process.stderr as any).write = realWrite;
+      }
+    });
+  });
+
   describe('Error handling', () => {
+    it('should re-throw typed ParseError without double-wrapping', async () => {
+      mockPdfExtract.mockRejectedValue(new ParseError('typed pdf error'));
+
+      const promise = parser.parse('/path/to/typed.pdf');
+      await expect(promise).rejects.toBeInstanceOf(ParseError);
+      await expect(parser.parse('/path/to/typed.pdf')).rejects.toThrow(/^typed pdf error$/);
+    });
+
     it('should throw error when pdf-extraction fails', async () => {
       mockPdfExtract.mockRejectedValue(new Error('Invalid PDF'));
 

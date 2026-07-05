@@ -114,6 +114,23 @@ describe('File Templates', () => {
       expect(categorizeFile('/path/file.mp4', '', fileInfo)).toBe('series');
     });
 
+    it('should categorize using documentMetadata that has no title', () => {
+      // Exercises the false branch of `if (meta.title)` (line 101)
+      const fileInfo = {
+        path: '/path/file.mp4',
+        name: 'file.mp4',
+        extension: '.mp4',
+        size: 1000,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        accessedAt: new Date(),
+        documentMetadata: {
+          keywords: ['season', 'episode']
+        }
+      } as FileInfo;
+      expect(categorizeFile('/path/file.mp4', '', fileInfo)).toBe('series');
+    });
+
     it('should categorize by series folder hint', () => {
       // Exercises line 153: folderSeriesHints match
       const fileInfo = {

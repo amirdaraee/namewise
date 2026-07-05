@@ -63,6 +63,25 @@ describe('infoCommand() — file', () => {
     spy.mockRestore();
   });
 
+  it('hashes streamed data chunks into the SHA-256 digest', async () => {
+    // Emit real data chunks so the hash update callback runs
+    const mockStream = {
+      on: vi.fn().mockImplementation(function (this: any, event: string, cb: Function) {
+        if (event === 'data') setTimeout(() => cb(Buffer.from('hello')), 0);
+        if (event === 'end') setTimeout(() => cb(), 5);
+        return this;
+      })
+    };
+    vi.mocked(createReadStream).mockReturnValue(mockStream as any);
+
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await infoCommand('/dir/file.pdf');
+    const output = spy.mock.calls.map(c => c[0]).join('\n');
+    // sha256("hello")
+    expect(output).toContain('2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824');
+    spy.mockRestore();
+  });
+
   it('shows "(none)" for extension-less files', async () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     await infoCommand('/dir/Makefile');

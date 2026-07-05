@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ExcelParser } from '../../../src/parsers/excel-parser.js';
+import { ParseError } from '../../../src/errors.js';
 
 // Mock exceljs
 const mockReadFile = vi.fn();
@@ -186,6 +187,43 @@ describe('ExcelParser', () => {
 
       // Empty row data should not create sheet content
       expect(result.content).toBe('');
+    });
+
+    it('should skip metadata extraction when workbook properties are missing', async () => {
+      const Excel = await import('exceljs');
+      const MockWorkbook = vi.mocked(Excel.default.Workbook as any);
+
+      MockWorkbook.mockImplementationOnce(function () {
+        return {
+          xlsx: { readFile: mockReadFile },
+          eachSheet: mockEachSheet,
+          properties: null
+        };
+      });
+
+      mockEachSheet.mockImplementation((callback: Function) => {
+        const sheet = {
+          name: 'Data',
+          eachRow: (rowCb: Function) => {
+            const row = { eachCell: (cellCb: Function) => { cellCb({ value: 'Value' }); } };
+            rowCb(row);
+          }
+        };
+        callback(sheet, 1);
+      });
+
+      const result = await parser.parse('/path/to/file.xlsx');
+
+      expect(result.content).toContain('Value');
+      expect(result.metadata.title).toBeUndefined();
+      expect(result.metadata.author).toBeUndefined();
+    });
+
+    it('should re-throw typed ParseError without double-wrapping', async () => {
+      mockReadFile.mockRejectedValue(new ParseError('typed excel error'));
+
+      await expect(parser.parse('/path/to/file.xlsx')).rejects.toBeInstanceOf(ParseError);
+      await expect(parser.parse('/path/to/file.xlsx')).rejects.toThrow(/^typed excel error$/);
     });
 
     it('should throw error when readFile fails', async () => {

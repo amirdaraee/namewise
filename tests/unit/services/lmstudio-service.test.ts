@@ -212,6 +212,32 @@ describe('LMStudioService', () => {
       ).rejects.toThrow('LMStudio API request failed: 500 Internal Server Error');
     });
 
+    it('should throw AuthError on 403 responses', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+        text: async () => 'Forbidden'
+      });
+
+      await expect(
+        lmstudioService.generateFileName('content', 'file.txt')
+      ).rejects.toThrow('LMStudio authentication failed');
+    });
+
+    it('should throw RateLimitError on 429 responses', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+        text: async () => 'Rate limited'
+      });
+
+      await expect(
+        lmstudioService.generateFileName('content', 'file.txt')
+      ).rejects.toThrow('LMStudio rate limit exceeded');
+    });
+
     it('should handle network errors', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 

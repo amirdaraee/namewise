@@ -21,6 +21,7 @@ vi.mock('../../../src/utils/image-compressor.js', () => ({
 import { pdfToPng } from 'pdf-to-png-converter';
 import { ImageCompressor } from '../../../src/utils/image-compressor.js';
 import { PDFToImageConverter } from '../../../src/utils/pdf-to-image.js';
+import { VisionError } from '../../../src/errors.js';
 
 const mockPdfToPng = vi.mocked(pdfToPng);
 const mockCompress = vi.mocked(ImageCompressor.compress);
@@ -84,6 +85,19 @@ describe('PDFToImageConverter (mocked)', () => {
       await expect(
         PDFToImageConverter.convertFirstPageToBase64(Buffer.from('fake pdf'))
       ).rejects.toThrow('PDF to image conversion failed: Unknown error');
+    });
+
+    it('should re-throw typed VisionError without wrapping', async () => {
+      const fakePngContent = Buffer.from('fake png content');
+      mockPdfToPng.mockResolvedValue([{ content: fakePngContent, name: 'page1', path: '' }]);
+      mockCompress.mockRejectedValue(new VisionError('image too large for API'));
+
+      await expect(
+        PDFToImageConverter.convertFirstPageToBase64(Buffer.from('fake pdf'))
+      ).rejects.toBeInstanceOf(VisionError);
+      await expect(
+        PDFToImageConverter.convertFirstPageToBase64(Buffer.from('fake pdf'))
+      ).rejects.toThrow(/^image too large for API$/);
     });
 
     it('should wrap ImageCompressor errors in PDF conversion error', async () => {

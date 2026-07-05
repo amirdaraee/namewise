@@ -17,6 +17,7 @@ vi.mock('fs', () => ({
 import mammoth from 'mammoth';
 import fs from 'fs';
 import { WordParser } from '../../../src/parsers/word-parser.js';
+import { ParseError } from '../../../src/errors.js';
 
 describe('WordParser', () => {
   let parser: WordParser;
@@ -131,6 +132,13 @@ describe('WordParser', () => {
 
       expect(result.content).toBe('');
       expect(result.metadata.wordCount).toBeUndefined();
+    });
+
+    it('should re-throw typed ParseError without double-wrapping', async () => {
+      mockExtractRawText.mockRejectedValue(new ParseError('typed word error'));
+
+      await expect(parser.parse('/path/to/file.docx')).rejects.toBeInstanceOf(ParseError);
+      await expect(parser.parse('/path/to/file.docx')).rejects.toThrow(/^typed word error$/);
     });
 
     it('should throw error when parsing fails', async () => {

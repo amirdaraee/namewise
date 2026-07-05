@@ -56,6 +56,12 @@ describe('withRetry', () => {
     expect(fn).toHaveBeenCalledTimes(5);
   });
 
+  it('throws lastError (undefined) without calling fn when attempts is 0', async () => {
+    const fn = vi.fn().mockResolvedValue('never');
+    await expect(withRetry(fn, { sleep: noSleep, attempts: 0 })).rejects.toBeUndefined();
+    expect(fn).not.toHaveBeenCalled();
+  });
+
   it('uses real timers by default', async () => {
     vi.useFakeTimers();
     try {

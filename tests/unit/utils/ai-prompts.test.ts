@@ -88,6 +88,34 @@ describe('AI Prompts', () => {
       expect(prompt).toContain('- Word count: 5000');
     });
 
+    it('should omit the title line when document metadata has no title', () => {
+      const mockFileInfo: FileInfo = {
+        name: 'report.pdf',
+        path: '/reports/report.pdf',
+        extension: '.pdf',
+        size: 1024 * 100,
+        createdAt: new Date('2024-01-15'),
+        modifiedAt: new Date('2024-02-01'),
+        parentFolder: 'reports',
+        folderPath: ['home', 'reports'],
+        documentMetadata: {
+          author: 'Jane Smith'
+        }
+      };
+
+      const prompt = buildFileNamePrompt({
+        content: 'This report covers the annual financial performance...',
+        originalName: 'report.pdf',
+        namingConvention: 'snake_case',
+        category: 'document',
+        fileInfo: mockFileInfo
+      });
+
+      expect(prompt).toContain('Document Properties:');
+      expect(prompt).not.toContain('- Title:');
+      expect(prompt).toContain('- Author: Jane Smith');
+    });
+
     it('should include person name detection instructions', () => {
       const prompt = buildFileNamePrompt({
         content: 'Visa application for Setareh Ahmadi to visit Canada.',

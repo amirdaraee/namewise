@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Command } from 'commander';
 import { setupCommands } from '../../../src/cli/commands.js';
+import { NamewiseError } from '../../../src/errors.js';
 
 // Mock the rename function to avoid actual execution
 vi.mock('../../../src/cli/rename.js', () => ({
@@ -174,6 +175,39 @@ describe('CLI Commands', () => {
       expect(callArgs[1].recursive).toBeUndefined();
     });
 
+    it('should accumulate repeated --pattern flags for rename', async () => {
+      const { renameFiles } = await import('../../../src/cli/rename.js');
+
+      setupCommands(program);
+
+      await program.parseAsync([
+        'node', 'test', 'rename', '/test/directory',
+        '--pattern', 's/IMG/photo/',
+        '--pattern', 'draft:final'
+      ], { from: 'node' });
+
+      expect(renameFiles).toHaveBeenCalledWith('/test/directory', expect.objectContaining({
+        pattern: ['s/IMG/photo/', 'draft:final']
+      }));
+    });
+
+    it('should accumulate repeated --pattern flags for watch', async () => {
+      const { watchDirectory } = await import('../../../src/cli/watch.js');
+      vi.mocked(watchDirectory).mockResolvedValue(undefined);
+
+      setupCommands(program);
+
+      await program.parseAsync([
+        'node', 'test', 'watch', '/test/directory',
+        '--pattern', 's/IMG/photo/',
+        '--pattern', 'draft:final'
+      ], { from: 'node' });
+
+      expect(watchDirectory).toHaveBeenCalledWith('/test/directory', expect.objectContaining({
+        pattern: ['s/IMG/photo/', 'draft:final']
+      }));
+    });
+
     it('should handle short option aliases', async () => {
       const { renameFiles } = await import('../../../src/cli/rename.js');
 
@@ -220,6 +254,27 @@ describe('CLI Commands', () => {
 
       exitSpy.mockRestore();
       consoleSpy.mockRestore();
+    });
+
+    it('should print the message without a hint when a NamewiseError has no hint', async () => {
+      const { configCommand } = await import('../../../src/cli/config-cmd.js');
+      vi.mocked(configCommand).mockRejectedValue(new NamewiseError('bare typed failure'));
+
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      setupCommands(program);
+      await program.parseAsync(['node', 'test', 'config', 'list'], { from: 'node' });
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('bare typed failure'));
+      // No hint line is printed when the error carries no hint
+      expect(logSpy.mock.calls.map(c => c[0]).join('\n')).not.toContain('→');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+
+      exitSpy.mockRestore();
+      consoleSpy.mockRestore();
+      logSpy.mockRestore();
     });
 
     it('should show "Unknown error" when configCommand throws a non-Error', async () => {

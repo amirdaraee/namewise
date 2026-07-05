@@ -25,9 +25,11 @@ vi.mock('inquirer', () => ({
 
 // Mock DocumentParserFactory
 vi.mock('../../../src/parsers/factory.js', () => ({
-  DocumentParserFactory: vi.fn().mockImplementation(() => ({
-    getSupportedExtensions: vi.fn().mockReturnValue(['.pdf', '.docx', '.txt'])
-  }))
+  DocumentParserFactory: vi.fn().mockImplementation(function () {
+    return {
+      getSupportedExtensions: vi.fn().mockReturnValue(['.pdf', '.docx', '.txt'])
+    };
+  })
 }));
 
 // Mock AIServiceFactory
@@ -52,9 +54,11 @@ vi.mock('../../../src/utils/history.js', () => ({
 // Mock FileRenamer - use a module-level variable accessible in the factory
 vi.mock('../../../src/services/file-renamer.js', () => {
   const mockRenameFilesMethod = vi.fn().mockResolvedValue({ results: [], tokenUsage: { inputTokens: 100, outputTokens: 10 } });
-  const MockFileRenamer = vi.fn().mockImplementation(() => ({
-    renameFiles: mockRenameFilesMethod
-  }));
+  const MockFileRenamer = vi.fn().mockImplementation(function () {
+    return {
+      renameFiles: mockRenameFilesMethod
+    };
+  });
   // Attach the method to the constructor for easy access in tests
   (MockFileRenamer as any).__mockRenameFiles = mockRenameFilesMethod;
   return {
@@ -112,14 +116,18 @@ describe('renameFiles()', () => {
     vi.mocked(loadConfig).mockResolvedValue({});
     vi.mocked(appendHistory).mockResolvedValue(undefined);
     // Reset FileRenamer mock implementation
-    vi.mocked(FileRenamer).mockImplementation(() => ({
-      renameFiles: mockRenameFilesMethod
-    }) as any);
+    vi.mocked(FileRenamer).mockImplementation(function () {
+      return {
+        renameFiles: mockRenameFilesMethod
+      } as any;
+    });
     // Reset DocumentParserFactory mock implementation
-    vi.mocked(DocumentParserFactory).mockImplementation(() => ({
-      getSupportedExtensions: vi.fn().mockReturnValue(['.pdf', '.docx', '.txt']),
-      getParser: vi.fn()
-    }) as any);
+    vi.mocked(DocumentParserFactory).mockImplementation(function () {
+      return {
+        getSupportedExtensions: vi.fn().mockReturnValue(['.pdf', '.docx', '.txt']),
+        getParser: vi.fn()
+      } as any;
+    });
   });
 
   afterEach(() => {
@@ -910,10 +918,12 @@ describe('renameFiles()', () => {
         }
         return { isDirectory: () => true, isFile: () => false, size: 0, birthtime: new Date(), mtime: new Date(), atime: new Date() } as any;
       });
-      vi.mocked(DocumentParserFactory).mockImplementation(() => ({
-        getSupportedExtensions: vi.fn().mockReturnValue(['.pdf', '.docx', '.txt', '.jpg']),
-        getParser: vi.fn()
-      }) as any);
+      vi.mocked(DocumentParserFactory).mockImplementation(function () {
+        return {
+          getSupportedExtensions: vi.fn().mockReturnValue(['.pdf', '.docx', '.txt', '.jpg']),
+          getParser: vi.fn()
+        } as any;
+      });
     });
 
     it('prints an estimated input-token figure before processing AI renames', async () => {

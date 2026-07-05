@@ -13,13 +13,15 @@ vi.mock('openai', () => {
       this.status = status;
     }
   }
-  const MockOpenAI = vi.fn().mockImplementation(() => ({
-    chat: {
-      completions: {
-        create: vi.fn()
+  const MockOpenAI = vi.fn().mockImplementation(function () {
+    return {
+      chat: {
+        completions: {
+          create: vi.fn()
+        }
       }
-    }
-  }));
+    };
+  });
   (MockOpenAI as any).APIError = MockAPIError;
   return {
     default: MockOpenAI

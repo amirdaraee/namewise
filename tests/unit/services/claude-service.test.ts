@@ -13,11 +13,13 @@ vi.mock('@anthropic-ai/sdk', () => {
       this.status = status;
     }
   }
-  const MockAnthropic = vi.fn().mockImplementation(() => ({
-    messages: {
-      create: vi.fn()
-    }
-  }));
+  const MockAnthropic = vi.fn().mockImplementation(function () {
+    return {
+      messages: {
+        create: vi.fn()
+      }
+    };
+  });
   (MockAnthropic as any).APIError = MockAPIError;
   return {
     default: MockAnthropic

@@ -20,14 +20,16 @@ vi.mock('exifr', () => ({
 }));
 
 vi.mock('../../../src/parsers/factory.js', () => ({
-  DocumentParserFactory: vi.fn().mockImplementation(() => ({
-    getParser: vi.fn().mockReturnValue({
-      parse: vi.fn().mockResolvedValue({
-        content: 'some document content',
-        metadata: { title: 'My Document Title', author: 'John Doe', creationDate: new Date('2024-03-15') }
+  DocumentParserFactory: vi.fn().mockImplementation(function () {
+    return {
+      getParser: vi.fn().mockReturnValue({
+        parse: vi.fn().mockResolvedValue({
+          content: 'some document content',
+          metadata: { title: 'My Document Title', author: 'John Doe', creationDate: new Date('2024-03-15') }
+        })
       })
-    })
-  }))
+    };
+  })
 }));
 
 import { DocumentParserFactory } from '../../../src/parsers/factory.js';

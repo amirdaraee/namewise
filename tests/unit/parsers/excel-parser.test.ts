@@ -7,11 +7,13 @@ const mockEachSheet = vi.fn();
 
 vi.mock('exceljs', () => ({
   default: {
-    Workbook: vi.fn().mockImplementation(() => ({
-      xlsx: { readFile: mockReadFile },
-      eachSheet: mockEachSheet,
-      properties: {}
-    }))
+    Workbook: vi.fn().mockImplementation(function () {
+      return {
+        xlsx: { readFile: mockReadFile },
+        eachSheet: mockEachSheet,
+        properties: {}
+      };
+    })
   }
 }));
 
@@ -91,18 +93,20 @@ describe('ExcelParser', () => {
       const Excel = await import('exceljs');
       const MockWorkbook = vi.mocked(Excel.default.Workbook as any);
 
-      MockWorkbook.mockImplementationOnce(() => ({
-        xlsx: { readFile: mockReadFile },
-        eachSheet: mockEachSheet,
-        properties: {
-          title: 'Financial Report',
-          creator: 'John Smith',
-          subject: 'Q4 Analysis',
-          keywords: 'finance,report',
-          created: new Date('2024-01-15'),
-          modified: new Date('2024-02-20')
-        }
-      }));
+      MockWorkbook.mockImplementationOnce(function () {
+        return {
+          xlsx: { readFile: mockReadFile },
+          eachSheet: mockEachSheet,
+          properties: {
+            title: 'Financial Report',
+            creator: 'John Smith',
+            subject: 'Q4 Analysis',
+            keywords: 'finance,report',
+            created: new Date('2024-01-15'),
+            modified: new Date('2024-02-20')
+          }
+        };
+      });
 
       mockEachSheet.mockImplementation((callback: Function) => {
         const sheet = {
@@ -205,20 +209,22 @@ describe('ExcelParser', () => {
       const Excel = await import('exceljs');
       const MockWorkbook = vi.mocked(Excel.default.Workbook as any);
 
-      MockWorkbook.mockImplementationOnce(() => ({
-        xlsx: { readFile: mockReadFile },
-        eachSheet: mockEachSheet,
-        properties: {
-          // No direct title/creator/subject etc, use core sub-object
-          core: {
-            title: 'Core Title',
-            creator: 'Core Author',
-            subject: 'Core Subject',
-            created: new Date('2024-03-01'),
-            modified: new Date('2024-03-02')
+      MockWorkbook.mockImplementationOnce(function () {
+        return {
+          xlsx: { readFile: mockReadFile },
+          eachSheet: mockEachSheet,
+          properties: {
+            // No direct title/creator/subject etc, use core sub-object
+            core: {
+              title: 'Core Title',
+              creator: 'Core Author',
+              subject: 'Core Subject',
+              created: new Date('2024-03-01'),
+              modified: new Date('2024-03-02')
+            }
           }
-        }
-      }));
+        };
+      });
 
       mockEachSheet.mockImplementation((callback: Function) => {
         const sheet = {

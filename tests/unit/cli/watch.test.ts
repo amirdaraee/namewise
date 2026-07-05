@@ -34,10 +34,12 @@ vi.mock('fs', async () => {
 
 // ─── Parser factory mock ──────────────────────────────────────────────────────
 vi.mock('../../../src/parsers/factory.js', () => ({
-  DocumentParserFactory: vi.fn().mockImplementation(() => ({
-    getSupportedExtensions: vi.fn().mockReturnValue(['.pdf', '.docx', '.txt']),
-    getParser: vi.fn()
-  }))
+  DocumentParserFactory: vi.fn().mockImplementation(function () {
+    return {
+      getSupportedExtensions: vi.fn().mockReturnValue(['.pdf', '.docx', '.txt']),
+      getParser: vi.fn()
+    };
+  })
 }));
 
 // ─── AI service factory mock ──────────────────────────────────────────────────
@@ -61,17 +63,19 @@ vi.mock('../../../src/utils/history.js', () => ({
 
 // ─── FileRenamer mock ─────────────────────────────────────────────────────────
 vi.mock('../../../src/services/file-renamer.js', () => ({
-  FileRenamer: vi.fn().mockImplementation(() => ({
-    renameFiles: vi.fn().mockResolvedValue({
-      results: [{
-        originalPath: '/watch/dir/document.pdf',
-        newPath: '/watch/dir/renamed.pdf',
-        suggestedName: 'renamed.pdf',
-        success: true
-      }],
-      tokenUsage: { inputTokens: 100, outputTokens: 10 }
-    })
-  }))
+  FileRenamer: vi.fn().mockImplementation(function () {
+    return {
+      renameFiles: vi.fn().mockResolvedValue({
+        results: [{
+          originalPath: '/watch/dir/document.pdf',
+          newPath: '/watch/dir/renamed.pdf',
+          suggestedName: 'renamed.pdf',
+          success: true
+        }],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      })
+    };
+  })
 }));
 
 // ─── Deferred import after all mocks are set up ───────────────────────────────
@@ -152,23 +156,27 @@ describe('watchDirectory()', () => {
     vi.mocked(loadConfig).mockResolvedValue({});
 
     // Re-set DocumentParserFactory mock
-    vi.mocked(DocumentParserFactory).mockImplementation(() => ({
-      getSupportedExtensions: vi.fn().mockReturnValue(['.pdf', '.docx', '.txt']),
-      getParser: vi.fn()
-    }) as any);
+    vi.mocked(DocumentParserFactory).mockImplementation(function () {
+      return {
+        getSupportedExtensions: vi.fn().mockReturnValue(['.pdf', '.docx', '.txt']),
+        getParser: vi.fn()
+      } as any;
+    });
 
     // Re-set FileRenamer mock
-    vi.mocked(FileRenamer).mockImplementation(() => ({
-      renameFiles: vi.fn().mockResolvedValue({
-        results: [{
-          originalPath: '/watch/dir/document.pdf',
-          newPath: '/watch/dir/renamed.pdf',
-          suggestedName: 'renamed.pdf',
-          success: true
-        }],
-        tokenUsage: { inputTokens: 100, outputTokens: 10 }
-      })
-    }) as any);
+    vi.mocked(FileRenamer).mockImplementation(function () {
+      return {
+        renameFiles: vi.fn().mockResolvedValue({
+          results: [{
+            originalPath: '/watch/dir/document.pdf',
+            newPath: '/watch/dir/renamed.pdf',
+            suggestedName: 'renamed.pdf',
+            success: true
+          }],
+          tokenUsage: { inputTokens: 100, outputTokens: 10 }
+        })
+      } as any;
+    });
 
     // Re-set appendHistory mock
     vi.mocked(appendHistory).mockResolvedValue(undefined);
@@ -342,17 +350,19 @@ describe('watchDirectory()', () => {
     });
 
     it('logs "no rename needed" when original and new path are the same', async () => {
-      vi.mocked(FileRenamer).mockImplementationOnce(() => ({
-        renameFiles: vi.fn().mockResolvedValue({
-          results: [{
-            originalPath: '/watch/dir/document.pdf',
-            newPath: '/watch/dir/document.pdf',
-            suggestedName: 'document.pdf',
-            success: true
-          }],
-          tokenUsage: { inputTokens: undefined, outputTokens: undefined }
-        })
-      }) as any);
+      vi.mocked(FileRenamer).mockImplementationOnce(function () {
+        return {
+          renameFiles: vi.fn().mockResolvedValue({
+            results: [{
+              originalPath: '/watch/dir/document.pdf',
+              newPath: '/watch/dir/document.pdf',
+              suggestedName: 'document.pdf',
+              success: true
+            }],
+            tokenUsage: { inputTokens: undefined, outputTokens: undefined }
+          })
+        } as any;
+      });
 
       const logCalls: string[] = [];
       vi.spyOn(console, 'log').mockImplementation((...args: any[]) => {
@@ -380,9 +390,11 @@ describe('watchDirectory()', () => {
     });
 
     it('logs an error when the rename pipeline throws', async () => {
-      vi.mocked(FileRenamer).mockImplementationOnce(() => ({
-        renameFiles: vi.fn().mockRejectedValue(new Error('AI service unavailable'))
-      }) as any);
+      vi.mocked(FileRenamer).mockImplementationOnce(function () {
+        return {
+          renameFiles: vi.fn().mockRejectedValue(new Error('AI service unavailable'))
+        } as any;
+      });
 
       const errCalls: string[] = [];
       vi.spyOn(console, 'error').mockImplementation((...args: any[]) => {
@@ -419,9 +431,11 @@ describe('watchDirectory()', () => {
     });
 
     it('logs "Unknown error" when the rename pipeline throws a non-Error value', async () => {
-      vi.mocked(FileRenamer).mockImplementationOnce(() => ({
-        renameFiles: vi.fn().mockRejectedValue('string error')
-      }) as any);
+      vi.mocked(FileRenamer).mockImplementationOnce(function () {
+        return {
+          renameFiles: vi.fn().mockRejectedValue('string error')
+        } as any;
+      });
 
       const errCalls: string[] = [];
       vi.spyOn(console, 'error').mockImplementation((...args: any[]) => {

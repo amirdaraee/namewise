@@ -1,19 +1,17 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { appendHistory } from '../utils/history.js';
+import { recordSession } from '../utils/record-session.js';
 import { sanitizeFilename } from '../utils/sanitizer.js';
 import { NamingConvention } from '../types/index.js';
 import { collectFiles } from '../utils/fs-collect.js';
+import { assertDirectory } from '../utils/assert-directory.js';
 import * as ui from '../utils/ui.js';
 
 export async function sanitizeFiles(
   directory: string,
   options: { dryRun?: boolean; recursive?: boolean; case?: NamingConvention }
 ): Promise<void> {
-  const stats = await fs.stat(directory);
-  if (!stats.isDirectory()) {
-    throw new Error(`${directory} is not a directory`);
-  }
+  await assertDirectory(directory);
 
   const filePaths = await collectFiles(directory, { recursive: options.recursive ?? false });
   if (filePaths.length === 0) {
@@ -49,13 +47,7 @@ export async function sanitizeFiles(
   }
 
   if (!options.dryRun && renames.length > 0) {
-    await appendHistory({
-      id: new Date().toISOString(),
-      timestamp: new Date().toISOString(),
-      directory: path.resolve(directory),
-      dryRun: false,
-      renames
-    });
+    await recordSession(directory, false, renames);
   }
 
   const count = options.dryRun ? previewCount : renames.length;

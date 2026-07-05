@@ -108,6 +108,19 @@ describe('configCommand()', () => {
       expect(JSON.parse(written).concurrency).toBe(5);
     });
 
+    it('accepts the context key (whitelisted)', async () => {
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({}) as any);
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      await configCommand('set', 'context', 'tax documents for Acme');
+      const written = vi.mocked(fs.writeFile).mock.calls[0][1] as string;
+      expect(JSON.parse(written).context).toBe('tax documents for Acme');
+    });
+
+    it('rejects a key that is not in the whitelist even if it looks plausible', async () => {
+      await expect(configCommand('set', 'patterns', 's/a/b/'))
+        .rejects.toThrow(/Unknown config key: patterns. Valid keys: /);
+    });
+
     it('coerces "false" string to boolean false', async () => {
       vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({}) as any);
       vi.spyOn(console, 'log').mockImplementation(() => {});

@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
 import path from 'path';
 import type { FileInfo, RenameResult } from '../types/index.js';
+import { formatBytes } from './fs-collect.js';
 
 // ── Stderr suppression ───────────────────────────────────────────────────────
 // Used to silence library noise (pdfjs "TT: undefined function" warnings).
@@ -107,12 +108,6 @@ export function fileRow(result: RenameResult): void {
 }
 
 // ── Stats block ──────────────────────────────────────────────────────────────
-
-function formatBytes(bytes: number): string {
-  if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
-  if (bytes >= 1024)         return (bytes / 1024).toFixed(1) + ' KB';
-  return bytes + ' B';
-}
 
 export function renameStats(opts: {
   elapsed: number;

@@ -1,15 +1,17 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import inquirer from 'inquirer';
-import { FileInfo, Config, RenameResult, FileCategory, DateFormat } from '../types/index.js';
+import { FileInfo, Config, RenameResult, DateFormat } from '../types/index.js';
 import { DocumentParserFactory } from '../parsers/factory.js';
 import { AIServiceFactory } from '../services/ai-factory.js';
 import { FileRenamer } from '../services/file-renamer.js';
-import { loadConfig } from '../utils/config-loader.js';
-import { appendHistory } from '../utils/history.js';
+import { loadConfig, NamiwiseFileConfig } from '../utils/config-loader.js';
+import { recordSession } from '../utils/record-session.js';
 import { applyPatterns } from '../utils/pattern-rename.js';
 import { applyNamingConvention } from '../utils/naming-conventions.js';
 import { collectFiles } from '../utils/fs-collect.js';
+import { statToFileInfo } from '../utils/file-info.js';
+import { assertDirectory } from '../utils/assert-directory.js';
 import {
   applySequence,
   applyPrefix,
@@ -19,10 +21,19 @@ import {
   applyTruncate
 } from '../utils/batch-rename.js';
 import * as ui from '../utils/ui.js';
-import { NamewiseError } from '../errors.js';
 import { createLogger, logger } from '../utils/logger.js';
+import { handleCliError } from './handle-cli-error.js';
+import {
+  RenameOptions,
+  resolveProvider,
+  resolveApiKey,
+  providerRequiresApiKey,
+  buildConfig
+} from './shared-config.js';
 
-export async function renameFiles(directory: string, options: any): Promise<void> {
+export type { RenameOptions } from './shared-config.js';
+
+export async function renameFiles(directory: string, options: RenameOptions): Promise<void> {
   // Load config early so the logger can respect the `log` setting from config file.
   // Errors here (e.g. invalid JSON) are caught by the outer catch below.
   const fileConfig = await loadConfig(directory);
@@ -30,10 +41,7 @@ export async function renameFiles(directory: string, options: any): Promise<void
   log.session({ command: 'rename', directory, provider: options.provider, dryRun: options.dryRun ?? false });
   try {
     // Validate directory exists
-    const stats = await fs.stat(directory);
-    if (!stats.isDirectory()) {
-      throw new Error(`${directory} is not a directory`);
-    }
+    await assertDirectory(directory);
 
     // Short-circuit for batch rename flags (no AI needed)
     const hasBatchFlags = options.sequence || options.prefix || options.suffix ||
@@ -46,65 +54,15 @@ export async function renameFiles(directory: string, options: any): Promise<void
         prefix: options.prefix,
         suffix: options.suffix,
         dateStamp: options.dateStamp,
-        dateFormat: options.date,
+        dateFormat: options.date as DateFormat | undefined,
         strip: options.strip,
         truncate: options.truncate ? parseInt(options.truncate) : undefined
       }, options.dryRun ?? false, options.recursive ?? false);
       return;
     }
 
-    // Resolve provider (CLI flag > config file > default)
-    const provider = (options.provider ?? fileConfig.provider ?? 'claude') as Config['aiProvider'];
-
-    // Get API key for cloud providers only
-    let apiKey = options.apiKey ?? fileConfig.apiKey;
-    const requiresApiKey = ['claude', 'openai'].includes(provider) && options.ai !== false;
-
-    if (requiresApiKey && !apiKey) {
-      // Check environment variables first
-      if (provider === 'claude' && (process.env.CLAUDE_API_KEY ?? process.env.ANTHROPIC_API_KEY)) {
-        apiKey = process.env.CLAUDE_API_KEY ?? process.env.ANTHROPIC_API_KEY;
-      } else if (provider === 'openai' && process.env.OPENAI_API_KEY) {
-        apiKey = process.env.OPENAI_API_KEY;
-      } else {
-        const keyPrompt = await inquirer.prompt([
-          {
-            type: 'password',
-            name: 'apiKey',
-            message: `Enter your ${provider} API key:`,
-            mask: '*'
-          }
-        ]);
-        apiKey = keyPrompt.apiKey;
-      }
-    }
-
-    // Create config (CLI flags override file config which overrides defaults)
-    const config: Config = {
-      aiProvider: provider,
-      apiKey,
-      maxFileSize: parseInt(options.maxSize ?? String(fileConfig.maxSize ?? '10')) * 1024 * 1024,
-      supportedExtensions: new DocumentParserFactory().getSupportedExtensions(),
-      dryRun: options.dryRun ?? fileConfig.dryRun ?? false,
-      namingConvention: (options.case ?? fileConfig.case ?? 'kebab-case') as Config['namingConvention'],
-      templateOptions: {
-        category: (options.template ?? fileConfig.template ?? 'general') as FileCategory,
-        personalName: options.name ?? fileConfig.name,
-        dateFormat: (options.date ?? fileConfig.date ?? 'none') as DateFormat
-      },
-      localLLMConfig: {
-        baseUrl: options.baseUrl ?? fileConfig.baseUrl,
-        model: options.model ?? fileConfig.model
-      },
-      recursive: options.recursive ?? fileConfig.recursive ?? false,
-      depth: options.depth !== undefined ? parseInt(options.depth) : fileConfig.depth,
-      concurrency: parseInt(options.concurrency ?? String(fileConfig.concurrency ?? '3')),
-      outputPath: options.output ?? fileConfig.output,
-      patterns: Array.isArray(options.pattern) ? options.pattern : (options.pattern ? [options.pattern] : []),
-      noAi: options.ai === false,
-      language: options.language ?? fileConfig.language,
-      context: options.context ?? fileConfig.context
-    };
+    // Resolve provider, API key (env vars + interactive prompt) and config
+    const config = await resolveRenameConfig(options, fileConfig);
 
     // Initialize services
     const parserFactory = new DocumentParserFactory(config);
@@ -112,7 +70,7 @@ export async function renameFiles(directory: string, options: any): Promise<void
     // providers throw without an API key, which --no-ai must not require)
     const aiService = config.noAi
       ? undefined
-      : AIServiceFactory.create(config.aiProvider, apiKey, config.localLLMConfig);
+      : AIServiceFactory.create(config.aiProvider, config.apiKey, config.localLLMConfig);
     const fileRenamer = new FileRenamer(parserFactory, aiService, config);
 
     // Get files to process
@@ -137,76 +95,17 @@ export async function renameFiles(directory: string, options: any): Promise<void
 
     // Pre-flight token estimate so cloud users see the cost before confirming
     if (!config.noAi) {
-      const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.heic', '.webp']);
-      const VISION_IMAGE_TOKENS = 1600;       // ~1024px image via vision API
-      const PROMPT_OVERHEAD_TOKENS = 300;     // instructions + template guidance
-      const MAX_CONTENT_CHARS = 5000;         // content cap sent to the AI
-      const estTokens = files.reduce((sum, f) => {
-        if (IMAGE_EXT.has(f.extension.toLowerCase())) return sum + VISION_IMAGE_TOKENS;
-        return sum + Math.ceil(Math.min(f.size, MAX_CONTENT_CHARS) / 4) + PROMPT_OVERHEAD_TOKENS;
-      }, 0);
-      ui.dim(`Estimated AI usage: ~${estTokens.toLocaleString('en-US')} input tokens for ${files.length} file${files.length === 1 ? '' : 's'} (cloud providers bill per token)`);
+      printTokenEstimate(files);
     }
 
     // Confirm before processing
-    if (!config.dryRun) {
-      const confirm = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'proceed',
-          message: 'Proceed with renaming these files?',
-          default: false
-        }
-      ]);
-      if (!confirm.proceed) {
-        ui.info('Cancelled.');
-        return;
-      }
+    if (!config.dryRun && !(await confirmProceed())) {
+      ui.info('Cancelled.');
+      return;
     }
 
-    // Process files — use \r-overwrite for progress (ora animation is unreliable
-    // when pdfjs/canvas blocks the event loop between files).
-    // Session-level noise suppression covers the entire rename session so that
-    // concurrent PDF parsers (concurrency: 3) cannot race their per-call
-    // save/restore and let the pdfjs "TT: undefined function" warning escape.
-    const startTime = Date.now();
-    let lastProgressLen = 0;
+    const { results, tokenUsage, elapsed } = await processFilesWithProgress(fileRenamer, files);
 
-    const origConsoleWarn = console.warn;
-    const origConsoleLog  = console.log;
-    const origStdoutWrite = process.stdout.write.bind(process.stdout);
-    console.warn = () => {};
-    console.log  = () => {};
-    // Filter stdout writes that match known library noise patterns
-    (process.stdout as any).write = (chunk: any, ...args: any[]): boolean => {
-      if (typeof chunk === 'string' && /Warning: TT:/.test(chunk)) return true;
-      return origStdoutWrite(chunk, ...args);
-    };
-    ui.suppressStderr();
-    const { results, tokenUsage } = await fileRenamer.renameFiles(
-      files,
-      (completed, total) => {
-        const BAR_WIDTH = 28;
-        const filled = Math.round((completed / total) * BAR_WIDTH);
-        const empty  = BAR_WIDTH - filled;
-        const bar    = '█'.repeat(filled) + '░'.repeat(empty);
-        const pct    = String(Math.round((completed / total) * 100)).padStart(3);
-        const line   = `  [${bar}] ${pct}%  ${completed}/${total}`;
-        const pad    = ' '.repeat(Math.max(0, lastProgressLen - line.length));
-        origStdoutWrite('\r' + line + pad);
-        lastProgressLen = line.length;
-      }
-    ).finally(() => {
-      ui.restoreStderr();
-      console.warn = origConsoleWarn;
-      console.log  = origConsoleLog;
-      (process.stdout as any).write = origStdoutWrite;
-    });
-
-    // Clear the progress line
-    process.stdout.write('\r' + ' '.repeat(lastProgressLen) + '\r');
-
-    const elapsed = Date.now() - startTime;
     const successCount = results.filter(r => r.success).length;
     const failCount    = results.filter(r => !r.success).length;
     const elapsedStr   = elapsed < 1000 ? elapsed + 'ms' : (elapsed / 1000).toFixed(1) + 's';
@@ -219,30 +118,8 @@ export async function renameFiles(directory: string, options: any): Promise<void
     // to apply the already-computed renames so the user doesn't need a second invocation.
     const dryRunFromCli = options.dryRun === true;
     if (config.dryRun && !dryRunFromCli) {
-      const applicableRenames = results.filter(r => r.success && r.originalPath !== r.newPath);
-      if (applicableRenames.length > 0) {
-        const { apply } = await inquirer.prompt([{
-          type: 'confirm',
-          name: 'apply',
-          message: `Apply ${applicableRenames.length} rename${applicableRenames.length === 1 ? '' : 's'}?`,
-          default: false
-        }]);
-        if (apply) {
-          for (const result of applicableRenames) {
-            await fs.rename(result.originalPath, result.newPath);
-          }
-          ui.success(`Applied ${applicableRenames.length} rename${applicableRenames.length === 1 ? '' : 's'}.`);
-          await appendHistory({
-            id: new Date().toISOString(),
-            timestamp: new Date().toISOString(),
-            directory: path.resolve(directory),
-            dryRun: false,
-            renames: applicableRenames.map(r => ({ originalPath: r.originalPath, newPath: r.newPath })),
-            tokenUsage
-          });
-          return;
-        }
-      }
+      const applied = await offerToApplyPreview(results, directory, tokenUsage);
+      if (applied) return;
     }
 
     logger.summary({
@@ -258,51 +135,190 @@ export async function renameFiles(directory: string, options: any): Promise<void
       .filter(r => r.success && r.originalPath !== r.newPath)
       .map(r => ({ originalPath: r.originalPath, newPath: r.newPath }));
 
-    await appendHistory({
-      id: new Date().toISOString(),
-      timestamp: new Date().toISOString(),
-      directory: path.resolve(directory),
-      dryRun: config.dryRun,
-      renames: successfulRenames,
-      tokenUsage
-    });
+    await recordSession(directory, config.dryRun, successfulRenames, tokenUsage);
 
     // Write JSON report if --output was provided
     if (config.outputPath) {
-      const report = {
-        timestamp: new Date().toISOString(),
-        directory: path.resolve(directory),
-        dryRun: config.dryRun,
-        summary: {
-          total: results.length,
-          succeeded: results.filter(r => r.success).length,
-          failed: results.filter(r => !r.success).length
-        },
-        results
-      };
-      try {
-        await fs.writeFile(config.outputPath, JSON.stringify(report, null, 2), 'utf-8');
-        ui.success(`Report saved to: ${config.outputPath}`);
-      } catch (err) {
-        logger.warn('Failed to write report', { path: config.outputPath, error: err instanceof Error ? err.message : String(err) });
-        ui.warn(`Failed to write report: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      }
+      await writeJsonReport(config.outputPath, directory, config.dryRun, results);
     }
 
   } catch (error) {
-    log.error(error);
-    if (error instanceof NamewiseError) {
-      ui.error(error.message);
-      if (error.hint) ui.hint(error.hint);
-    } else {
-      ui.error('An unexpected error occurred.');
-      if (log.enabled) {
-        ui.hint(`See log: ${log.currentLogPath}`);
-      } else {
-        ui.hint('Run with --log for detailed error information.');
+    handleCliError(error, log);
+  }
+}
+
+/**
+ * Resolve provider and API key, prompting interactively for the key when a
+ * cloud provider has none configured (env vars are checked first), then build
+ * the runtime Config. Only `rename` prompts — `watch` never does.
+ */
+async function resolveRenameConfig(
+  options: RenameOptions,
+  fileConfig: NamiwiseFileConfig
+): Promise<Config> {
+  // Resolve provider (CLI flag > config file > default)
+  const provider = resolveProvider(options, fileConfig);
+  const aiDisabled = options.ai === false;
+
+  // Get API key for cloud providers only (CLI flag > config file > env vars)
+  let apiKey = resolveApiKey(provider, options.apiKey ?? fileConfig.apiKey, aiDisabled);
+
+  if (providerRequiresApiKey(provider, aiDisabled) && !apiKey) {
+    const keyPrompt = await inquirer.prompt([
+      {
+        type: 'password',
+        name: 'apiKey',
+        message: `Enter your ${provider} API key:`,
+        mask: '*'
       }
+    ]);
+    apiKey = keyPrompt.apiKey;
+  }
+
+  // Create config (CLI flags override file config which overrides defaults)
+  return buildConfig(options, fileConfig, provider, apiKey);
+}
+
+/** Print the pre-flight input-token estimate for the files about to be sent to the AI. */
+function printTokenEstimate(files: FileInfo[]): void {
+  const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.heic', '.webp']);
+  const VISION_IMAGE_TOKENS = 1600;       // ~1024px image via vision API
+  const PROMPT_OVERHEAD_TOKENS = 300;     // instructions + template guidance
+  const MAX_CONTENT_CHARS = 5000;         // content cap sent to the AI
+  const estTokens = files.reduce((sum, f) => {
+    if (IMAGE_EXT.has(f.extension.toLowerCase())) return sum + VISION_IMAGE_TOKENS;
+    return sum + Math.ceil(Math.min(f.size, MAX_CONTENT_CHARS) / 4) + PROMPT_OVERHEAD_TOKENS;
+  }, 0);
+  ui.dim(`Estimated AI usage: ~${estTokens.toLocaleString('en-US')} input tokens for ${files.length} file${files.length === 1 ? '' : 's'} (cloud providers bill per token)`);
+}
+
+/** Ask the user to confirm before renaming files (skipped in dry-run mode). */
+async function confirmProceed(): Promise<boolean> {
+  const confirm = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'proceed',
+      message: 'Proceed with renaming these files?',
+      default: false
     }
-    process.exit(1);
+  ]);
+  return confirm.proceed;
+}
+
+/**
+ * Run the rename pipeline with a \r-overwrite progress bar while suppressing
+ * library noise (ora animation is unreliable when pdfjs/canvas blocks the
+ * event loop between files).
+ *
+ * Session-level noise suppression covers the entire rename session so that
+ * concurrent PDF parsers (concurrency: 3) cannot race their per-call
+ * save/restore and let the pdfjs "TT: undefined function" warning escape.
+ */
+async function processFilesWithProgress(
+  fileRenamer: FileRenamer,
+  files: FileInfo[]
+): Promise<{
+  results: RenameResult[];
+  tokenUsage: { inputTokens?: number; outputTokens?: number };
+  elapsed: number;
+}> {
+  const startTime = Date.now();
+  let lastProgressLen = 0;
+
+  const origConsoleWarn = console.warn;
+  const origConsoleLog  = console.log;
+  const origStdoutWrite = process.stdout.write.bind(process.stdout);
+  console.warn = () => {};
+  console.log  = () => {};
+  // Filter stdout writes that match known library noise patterns
+  (process.stdout as any).write = (chunk: any, ...args: any[]): boolean => {
+    if (typeof chunk === 'string' && /Warning: TT:/.test(chunk)) return true;
+    return origStdoutWrite(chunk, ...args);
+  };
+  ui.suppressStderr();
+  const { results, tokenUsage } = await fileRenamer.renameFiles(
+    files,
+    (completed, total) => {
+      const BAR_WIDTH = 28;
+      const filled = Math.round((completed / total) * BAR_WIDTH);
+      const empty  = BAR_WIDTH - filled;
+      const bar    = '█'.repeat(filled) + '░'.repeat(empty);
+      const pct    = String(Math.round((completed / total) * 100)).padStart(3);
+      const line   = `  [${bar}] ${pct}%  ${completed}/${total}`;
+      const pad    = ' '.repeat(Math.max(0, lastProgressLen - line.length));
+      origStdoutWrite('\r' + line + pad);
+      lastProgressLen = line.length;
+    }
+  ).finally(() => {
+    ui.restoreStderr();
+    console.warn = origConsoleWarn;
+    console.log  = origConsoleLog;
+    (process.stdout as any).write = origStdoutWrite;
+  });
+
+  // Clear the progress line
+  process.stdout.write('\r' + ' '.repeat(lastProgressLen) + '\r');
+
+  return { results, tokenUsage, elapsed: Date.now() - startTime };
+}
+
+/**
+ * Offer to apply the previewed renames when dry-run came from the config file
+ * (not the CLI flag). Returns true when the renames were applied.
+ */
+async function offerToApplyPreview(
+  results: RenameResult[],
+  directory: string,
+  tokenUsage: { inputTokens?: number; outputTokens?: number }
+): Promise<boolean> {
+  const applicableRenames = results.filter(r => r.success && r.originalPath !== r.newPath);
+  if (applicableRenames.length === 0) return false;
+
+  const { apply } = await inquirer.prompt([{
+    type: 'confirm',
+    name: 'apply',
+    message: `Apply ${applicableRenames.length} rename${applicableRenames.length === 1 ? '' : 's'}?`,
+    default: false
+  }]);
+  if (!apply) return false;
+
+  for (const result of applicableRenames) {
+    await fs.rename(result.originalPath, result.newPath);
+  }
+  ui.success(`Applied ${applicableRenames.length} rename${applicableRenames.length === 1 ? '' : 's'}.`);
+  await recordSession(
+    directory,
+    false,
+    applicableRenames.map(r => ({ originalPath: r.originalPath, newPath: r.newPath })),
+    tokenUsage
+  );
+  return true;
+}
+
+/** Write the JSON rename report requested via --output. */
+async function writeJsonReport(
+  outputPath: string,
+  directory: string,
+  dryRun: boolean,
+  results: RenameResult[]
+): Promise<void> {
+  const report = {
+    timestamp: new Date().toISOString(),
+    directory: path.resolve(directory),
+    dryRun,
+    summary: {
+      total: results.length,
+      succeeded: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length
+    },
+    results
+  };
+  try {
+    await fs.writeFile(outputPath, JSON.stringify(report, null, 2), 'utf-8');
+    ui.success(`Report saved to: ${outputPath}`);
+  } catch (err) {
+    logger.warn('Failed to write report', { path: outputPath, error: err instanceof Error ? err.message : String(err) });
+    ui.warn(`Failed to write report: ${err instanceof Error ? err.message : 'Unknown error'}`);
   }
 }
 
@@ -310,43 +326,15 @@ async function getFilesToProcess(
   directory: string,
   supportedExtensions: string[],
   recursive: boolean = false,
-  maxDepth: number = Infinity,
-  _currentDepth: number = 0
+  maxDepth: number = Infinity
 ): Promise<FileInfo[]> {
+  const filePaths = await collectFiles(directory, { recursive, maxDepth });
   const files: FileInfo[] = [];
-  const entries = await fs.readdir(directory, { withFileTypes: true });
 
-  for (const entry of entries) {
-    const entryPath = path.join(directory, entry.name);
-
-    if (entry.isDirectory() && recursive && _currentDepth < maxDepth) {
-      const subFiles = await getFilesToProcess(
-        entryPath, supportedExtensions, recursive, maxDepth, _currentDepth + 1
-      );
-      files.push(...subFiles);
-    } else if (entry.isFile()) {
-      const extension = path.extname(entry.name).toLowerCase();
-
-      if (supportedExtensions.includes(extension)) {
-        const stats = await fs.stat(entryPath);
-        const parentFolder = path.basename(directory);
-        const fullPath = path.resolve(entryPath);
-        const folderPath = path.dirname(fullPath).split(path.sep).filter(p => p);
-
-        files.push({
-          path: entryPath,
-          name: entry.name,
-          extension,
-          size: stats.size,
-          createdAt: stats.birthtime,
-          modifiedAt: stats.mtime,
-          accessedAt: stats.atime,
-          parentFolder,
-          folderPath: folderPath.slice(-3),
-          documentMetadata: undefined
-        });
-      }
-    }
+  for (const filePath of filePaths) {
+    const extension = path.extname(filePath).toLowerCase();
+    if (!supportedExtensions.includes(extension)) continue;
+    files.push(await statToFileInfo(filePath));
   }
 
   return files;
@@ -383,13 +371,7 @@ async function runPatternRenames(files: FileInfo[], config: Config): Promise<voi
   }
 
   if (!config.dryRun && renames.length > 0) {
-    await appendHistory({
-      id: new Date().toISOString(),
-      timestamp: new Date().toISOString(),
-      directory: path.resolve(path.dirname(files[0].path)),
-      dryRun: false,
-      renames
-    });
+    await recordSession(path.dirname(files[0].path), false, renames);
   }
 
   const count = config.dryRun ? previewCount : renames.length;
@@ -479,13 +461,7 @@ export async function runBatchRenames(
   }
 
   if (!dryRun && renames.length > 0) {
-    await appendHistory({
-      id: new Date().toISOString(),
-      timestamp: new Date().toISOString(),
-      directory: path.resolve(directory),
-      dryRun: false,
-      renames
-    });
+    await recordSession(directory, false, renames);
   }
 
   const count = dryRun ? previewCount : renames.length;

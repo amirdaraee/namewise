@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { collectFiles, formatBytes } from '../utils/fs-collect.js';
+import { assertDirectory } from '../utils/assert-directory.js';
 import * as ui from '../utils/ui.js';
 
 export interface FindOptions {
@@ -17,8 +18,7 @@ export async function findFiles(
   directory: string,
   options: FindOptions
 ): Promise<void> {
-  const stat = await fs.stat(directory);
-  if (!stat.isDirectory()) throw new Error(`${directory} is not a directory`);
+  await assertDirectory(directory);
 
   const files = await collectFiles(directory, { recursive: options.recursive ?? true });
   const matches: Array<{ filePath: string; size: number; mtime: Date }> = [];

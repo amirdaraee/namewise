@@ -1,122 +1,52 @@
 import OpenAI from 'openai';
-import { AuthError, NetworkError, RateLimitError } from '../errors.js';
-import { AIProvider, FileInfo, AINameResult } from '../types/index.js';
-import { applyNamingConvention, stripWindowsIllegalChars, NamingConvention } from '../utils/naming-conventions.js';
-import { FileCategory } from '../utils/file-templates.js';
-import { buildFileNamePrompt } from '../utils/ai-prompts.js';
+import { BaseCloudService, CloudApiError, TokenUsage } from './base-cloud-service.js';
 
-export class OpenAIService implements AIProvider {
-  name = 'OpenAI';
+export class OpenAIService extends BaseCloudService<OpenAI.Chat.Completions.ChatCompletion> {
   private client: OpenAI;
-  private model: string;
 
   constructor(apiKey: string, model?: string) {
+    super('OpenAI', model ?? 'gpt-5.5');
     this.client = new OpenAI({ apiKey });
-    this.model = model ?? 'gpt-5.5';
   }
 
-  async generateFileName(
-    content: string,
-    originalName: string,
-    namingConvention: string = 'kebab-case',
-    category: string = 'general',
-    fileInfo?: FileInfo,
-    language?: string,
-    context?: string,
-    imageData?: string
-  ): Promise<AINameResult> {
-    const convention = namingConvention as NamingConvention;
-    const fileCategory = category as FileCategory;
-
-    try {
-      let response;
-
-      if (imageData) {
-        if (!imageData.startsWith('data:image/') || !imageData.includes(',')) {
-          throw new NetworkError('Invalid image data format');
-        }
-
-        const prompt = buildFileNamePrompt({
-          content: 'Analyze this image and generate an appropriate filename based on what you see.',
-          originalName,
-          namingConvention: convention,
-          category: fileCategory,
-          fileInfo,
-          language,
-          context
-        });
-
-        response = await this.client.chat.completions.create({
-          model: this.model,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: prompt },
-                { type: 'image_url', image_url: { url: imageData } }
-              ]
-            }
-          ],
-          max_tokens: 100,
-          temperature: 0.3
-        });
-      } else {
-        const prompt = buildFileNamePrompt({
-          content,
-          originalName,
-          namingConvention: convention,
-          category: fileCategory,
-          fileInfo,
-          language,
-          context
-        });
-
-        response = await this.client.chat.completions.create({
-          model: this.model,
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 100,
-          temperature: 0.3
-        });
-      }
-
-      const suggestedName = response.choices[0]?.message?.content?.trim() || 'untitled-document';
-
-      return {
-        name: this.sanitizeFileName(suggestedName, convention),
-        inputTokens: response.usage?.prompt_tokens,
-        outputTokens: response.usage?.completion_tokens
-      };
-    } catch (error) {
-      if (error instanceof AuthError || error instanceof NetworkError || error instanceof RateLimitError) throw error;
-      if (error instanceof OpenAI.APIError) {
-        if (error.status === 401 || error.status === 403) {
-          throw new AuthError(`OpenAI authentication failed: ${error.message}`, { details: { status: error.status } });
-        }
-        if (error.status === 429) {
-          throw new RateLimitError(`OpenAI rate limit exceeded: ${error.message}`, { details: { status: error.status } });
-        }
-        throw new NetworkError(`OpenAI API error (${error.status}): ${error.message}`, { details: { status: error.status } });
-      }
-      throw new NetworkError(`Failed to generate filename with OpenAI: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error });
-    }
+  protected createTextCompletion(prompt: string): Promise<OpenAI.Chat.Completions.ChatCompletion> {
+    return this.client.chat.completions.create({
+      model: this.model,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 100,
+      temperature: 0.3
+    });
   }
 
-  private sanitizeFileName(name: string, convention: NamingConvention): string {
-    const nameWithoutExt = name.replace(/\.[^/.]+$/, '');
-    const safeForWindows = stripWindowsIllegalChars(nameWithoutExt);
-    let cleaned = applyNamingConvention(safeForWindows, convention);
+  protected createImageCompletion(prompt: string, imageData: string): Promise<OpenAI.Chat.Completions.ChatCompletion> {
+    return this.client.chat.completions.create({
+      model: this.model,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: imageData } }
+          ]
+        }
+      ],
+      max_tokens: 100,
+      temperature: 0.3
+    });
+  }
 
-    if (!cleaned) {
-      cleaned = applyNamingConvention('untitled document', convention);
-    } else if (cleaned.length > 100) {
-      cleaned = cleaned.substring(0, 100);
-      if (convention === 'kebab-case') {
-        cleaned = cleaned.replace(/-[^-]*$/, '');
-      } else if (convention === 'snake_case') {
-        cleaned = cleaned.replace(/_[^_]*$/, '');
-      }
-    }
+  protected extractSuggestedName(response: OpenAI.Chat.Completions.ChatCompletion): string {
+    return response.choices[0]?.message?.content?.trim() || 'untitled-document';
+  }
 
-    return cleaned;
+  protected extractTokenUsage(response: OpenAI.Chat.Completions.ChatCompletion): TokenUsage {
+    return {
+      inputTokens: response.usage?.prompt_tokens,
+      outputTokens: response.usage?.completion_tokens
+    };
+  }
+
+  protected asApiError(error: unknown): CloudApiError | undefined {
+    return error instanceof OpenAI.APIError ? error : undefined;
   }
 }

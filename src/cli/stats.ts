@@ -1,15 +1,14 @@
-import { promises as fs } from 'fs';
 import path from 'path';
 import { computeStats } from '../utils/stats.js';
 import { formatBytes } from '../utils/fs-collect.js';
+import { assertDirectory } from '../utils/assert-directory.js';
 import * as ui from '../utils/ui.js';
 
 export async function statsCommand(
   directory: string,
   options: { recursive?: boolean } = {}
 ): Promise<void> {
-  const stat = await fs.stat(directory);
-  if (!stat.isDirectory()) throw new Error(`${directory} is not a directory`);
+  await assertDirectory(directory);
 
   const stats = await computeStats(directory, options.recursive ?? false);
 

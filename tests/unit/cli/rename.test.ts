@@ -717,7 +717,7 @@ describe('renameFiles()', () => {
 
       const allOutput = logSpy.mock.calls.map(c => String(c[0])).join('\n');
       expect(allOutput).toMatch(/MB/);
-      expect(allOutput).toMatch(/1\.5 MB/);
+      expect(allOutput).toMatch(/1\.50 MB/);
       expect(allOutput).toMatch(/TXT/);
 
       logSpy.mockRestore();

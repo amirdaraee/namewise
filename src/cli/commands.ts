@@ -15,9 +15,8 @@ import { cleanEmptyDirs } from './clean-empty.js';
 import { findFiles } from './find.js';
 import { diffDirectories } from './diff.js';
 import { initCommand } from './init.js';
-import { NamewiseError } from '../errors.js';
+import { handleCliError } from './handle-cli-error.js';
 import { createLogger } from '../utils/logger.js';
-import * as ui from '../utils/ui.js';
 
 export function setupCommands(program: Command): void {
   program.option('--log', 'Write a session log to ~/.namewise/logs/');
@@ -344,20 +343,4 @@ Batch Rename (no AI, no API key):
       try { await diffDirectories(dir1, dir2, { by: options.by, recursive: options.recursive }); }
       catch (error) { handleCliError(error, log); }
     });
-}
-
-function handleCliError(error: unknown, log: ReturnType<typeof createLogger>): never {
-  log.error(error);
-  if (error instanceof NamewiseError) {
-    ui.error(error.message);
-    if (error.hint) ui.hint(error.hint);
-  } else {
-    ui.error('An unexpected error occurred.');
-    if (log.enabled) {
-      ui.hint(`See log: ${log.currentLogPath}`);
-    } else {
-      ui.hint('Run with --log for detailed error information.');
-    }
-  }
-  process.exit(1);
 }

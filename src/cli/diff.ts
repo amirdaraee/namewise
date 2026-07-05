@@ -1,7 +1,7 @@
-import { promises as fs } from 'fs';
 import path from 'path';
 import { collectFiles } from '../utils/fs-collect.js';
 import { hashFile } from '../utils/dedup.js';
+import { assertDirectory } from '../utils/assert-directory.js';
 import * as ui from '../utils/ui.js';
 
 export interface DiffOptions {
@@ -14,10 +14,8 @@ export async function diffDirectories(
   dir2: string,
   options: DiffOptions
 ): Promise<void> {
-  const s1 = await fs.stat(dir1);
-  if (!s1.isDirectory()) throw new Error(`${dir1} is not a directory`);
-  const s2 = await fs.stat(dir2);
-  if (!s2.isDirectory()) throw new Error(`${dir2} is not a directory`);
+  await assertDirectory(dir1);
+  await assertDirectory(dir2);
 
   const recursive = options.recursive ?? true;
   const byHash = options.by === 'hash';

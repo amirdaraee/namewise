@@ -1,15 +1,15 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { computeOrganizeMappings, OrganizeBy } from '../utils/organize.js';
-import { appendHistory } from '../utils/history.js';
+import { recordSession } from '../utils/record-session.js';
+import { assertDirectory } from '../utils/assert-directory.js';
 import * as ui from '../utils/ui.js';
 
 export async function organizeFiles(
   directory: string,
   options: { by?: OrganizeBy; recursive?: boolean; dryRun?: boolean } = {}
 ): Promise<void> {
-  const stat = await fs.stat(directory);
-  if (!stat.isDirectory()) throw new Error(`${directory} is not a directory`);
+  await assertDirectory(directory);
 
   const by: OrganizeBy = options.by ?? 'ext';
   const dryRun = options.dryRun ?? false;
@@ -39,13 +39,7 @@ export async function organizeFiles(
   }
 
   if (!dryRun && moves.length > 0) {
-    await appendHistory({
-      id: new Date().toISOString(),
-      timestamp: new Date().toISOString(),
-      directory: path.resolve(directory),
-      dryRun: false,
-      renames: moves
-    });
+    await recordSession(directory, false, moves);
   }
 
   const count = dryRun ? mappings.length : moves.length;

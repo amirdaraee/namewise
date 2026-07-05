@@ -1,13 +1,13 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { assertDirectory } from '../utils/assert-directory.js';
 import * as ui from '../utils/ui.js';
 
 export async function cleanEmptyDirs(
   directory: string,
   options: { dryRun?: boolean } = {}
 ): Promise<void> {
-  const stat = await fs.stat(directory);
-  if (!stat.isDirectory()) throw new Error(`${directory} is not a directory`);
+  await assertDirectory(directory);
 
   const dryRun = options.dryRun ?? false;
   const { emptyDirs } = await scan(directory);

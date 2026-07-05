@@ -2,22 +2,15 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import inquirer from 'inquirer';
 import { findDuplicates } from '../utils/dedup.js';
+import { formatBytes } from '../utils/fs-collect.js';
+import { assertDirectory } from '../utils/assert-directory.js';
 import * as ui from '../utils/ui.js';
-
-function formatBytes(bytes: number): string {
-  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
-  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${bytes} B`;
-}
 
 export async function dedupFiles(
   directory: string,
   options: { recursive?: boolean; delete?: boolean } = {}
 ): Promise<void> {
-  const stats = await fs.stat(directory);
-  if (!stats.isDirectory()) {
-    throw new Error(`${directory} is not a directory`);
-  }
+  await assertDirectory(directory);
 
   ui.dim('Scanning for duplicates…');
   const duplicates = await findDuplicates(directory, options.recursive ?? false);

@@ -1,20 +1,21 @@
 import path from 'path';
-import { promises as fs } from 'fs';
 import chokidar from 'chokidar';
 import * as ui from '../utils/ui.js';
-import { Config, FileInfo, FileCategory, DateFormat } from '../types/index.js';
+import { Config } from '../types/index.js';
 import { DocumentParserFactory } from '../parsers/factory.js';
 import { AIServiceFactory } from '../services/ai-factory.js';
 import { FileRenamer } from '../services/file-renamer.js';
 import { loadConfig } from '../utils/config-loader.js';
-import { appendHistory } from '../utils/history.js';
+import { recordSession } from '../utils/record-session.js';
+import { assertDirectory } from '../utils/assert-directory.js';
+import { statToFileInfo } from '../utils/file-info.js';
+import { WatchOptions, resolveProvider, resolveApiKey, buildConfig } from './shared-config.js';
 
-export async function watchDirectory(directory: string, options: any): Promise<void> {
+export type { WatchOptions } from './shared-config.js';
+
+export async function watchDirectory(directory: string, options: WatchOptions): Promise<void> {
   // Validate directory
-  const stats = await fs.stat(directory);
-  if (!stats.isDirectory()) {
-    throw new Error(`${directory} is not a directory`);
-  }
+  await assertDirectory(directory);
 
   const absDir = path.resolve(directory);
 
@@ -22,42 +23,20 @@ export async function watchDirectory(directory: string, options: any): Promise<v
   const fileConfig = await loadConfig(absDir);
 
   // Resolve provider
-  const provider = (options.provider ?? fileConfig.provider ?? 'claude') as Config['aiProvider'];
+  const provider = resolveProvider(options, fileConfig);
 
-  // Get API key for cloud providers
-  let apiKey = options.apiKey;
-  const requiresApiKey = ['claude', 'openai'].includes(provider) && options.ai !== false;
-  if (requiresApiKey && !apiKey) {
-    if (provider === 'claude' && (process.env.CLAUDE_API_KEY ?? process.env.ANTHROPIC_API_KEY)) {
-      apiKey = process.env.CLAUDE_API_KEY ?? process.env.ANTHROPIC_API_KEY;
-    } else if (provider === 'openai' && process.env.OPENAI_API_KEY) {
-      apiKey = process.env.OPENAI_API_KEY;
-    }
-  }
+  // Get API key for cloud providers. Unlike `rename`, watch never prompts for
+  // a missing key and does not read an apiKey from the config file.
+  const apiKey = resolveApiKey(provider, options.apiKey, options.ai === false);
 
-  // Build config (mirrors renameFiles logic)
+  // Build config (shared with renameFiles)
   const config: Config = {
-    aiProvider: provider,
-    apiKey,
-    maxFileSize: parseInt(options.maxSize ?? String(fileConfig.maxSize ?? '10')) * 1024 * 1024,
-    supportedExtensions: new DocumentParserFactory().getSupportedExtensions(),
+    ...buildConfig(options, fileConfig, provider, apiKey),
+    // watch historically ignores the config-file dryRun default and the
+    // language/context settings — preserve that behaviour.
     dryRun: options.dryRun ?? false,
-    namingConvention: (options.case ?? fileConfig.case ?? 'kebab-case') as Config['namingConvention'],
-    templateOptions: {
-      category: (options.template ?? fileConfig.template ?? 'general') as FileCategory,
-      personalName: options.name ?? fileConfig.name,
-      dateFormat: (options.date ?? fileConfig.date ?? 'none') as DateFormat
-    },
-    localLLMConfig: {
-      baseUrl: options.baseUrl ?? fileConfig.baseUrl,
-      model: options.model ?? fileConfig.model
-    },
-    recursive: options.recursive ?? fileConfig.recursive ?? false,
-    depth: options.depth !== undefined ? parseInt(options.depth) : fileConfig.depth,
-    concurrency: parseInt(options.concurrency ?? String(fileConfig.concurrency ?? '3')),
-    outputPath: options.output ?? fileConfig.output,
-    patterns: Array.isArray(options.pattern) ? options.pattern : (options.pattern ? [options.pattern] : []),
-    noAi: options.ai === false
+    language: undefined,
+    context: undefined
   };
 
   // Determine supported extensions from the parser factory
@@ -88,24 +67,7 @@ export async function watchDirectory(directory: string, options: any): Promise<v
     ui.dim(`Detected: ${fileName}`);
 
     try {
-      const fileStat = await fs.stat(filePath);
-      const extension = path.extname(fileName).toLowerCase();
-      const parentFolder = path.basename(path.dirname(filePath));
-      const fullPath = path.resolve(filePath);
-      const folderPath = path.dirname(fullPath).split(path.sep).filter(p => p);
-
-      const fileInfo: FileInfo = {
-        path: filePath,
-        name: fileName,
-        extension,
-        size: fileStat.size,
-        createdAt: fileStat.birthtime,
-        modifiedAt: fileStat.mtime,
-        accessedAt: fileStat.atime,
-        parentFolder,
-        folderPath: folderPath.slice(-3),
-        documentMetadata: undefined
-      };
+      const fileInfo = await statToFileInfo(filePath);
 
       const { results } = await renamer.renameFiles([fileInfo]);
 
@@ -113,13 +75,9 @@ export async function watchDirectory(directory: string, options: any): Promise<v
       if (result?.success && result.newPath !== result.originalPath) {
         const newName = path.basename(result.newPath);
         ui.success(`${fileName}  →  ${newName}`);
-        await appendHistory({
-          id: new Date().toISOString(),
-          timestamp: new Date().toISOString(),
-          directory: absDir,
-          dryRun: config.dryRun,
-          renames: [{ originalPath: result.originalPath, newPath: result.newPath }]
-        });
+        await recordSession(absDir, config.dryRun, [
+          { originalPath: result.originalPath, newPath: result.newPath }
+        ]);
       } else if (result?.success) {
         ui.dim(`No rename needed for: ${fileName}`);
       }

@@ -1,14 +1,14 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { formatBytes } from '../utils/fs-collect.js';
+import { assertDirectory } from '../utils/assert-directory.js';
 import * as ui from '../utils/ui.js';
 
 export async function treeCommand(
   directory: string,
   options: { depth?: number } = {}
 ): Promise<void> {
-  const stat = await fs.stat(directory);
-  if (!stat.isDirectory()) throw new Error(`${directory} is not a directory`);
+  await assertDirectory(directory);
 
   const maxDepth = options.depth ?? Infinity;
   ui.info(`\n${path.resolve(directory)}`);

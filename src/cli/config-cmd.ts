@@ -7,7 +7,7 @@ import * as ui from '../utils/ui.js';
 const CONFIG_PATH = path.join(os.homedir(), '.namewise.json');
 const VALID_KEYS = new Set<keyof NamiwiseFileConfig>([
   'provider', 'apiKey', 'case', 'template', 'name', 'date',
-  'maxSize', 'model', 'baseUrl', 'concurrency', 'recursive', 'depth', 'output', 'dryRun', 'language', 'log'
+  'maxSize', 'model', 'baseUrl', 'concurrency', 'recursive', 'depth', 'output', 'dryRun', 'language', 'context', 'log'
 ]);
 
 async function readConfig(): Promise<NamiwiseFileConfig> {
@@ -65,9 +65,10 @@ export async function configCommand(subcommand: string, key?: string, value?: st
       throw new Error(`Unknown config key: ${key}. Valid keys: ${[...VALID_KEYS].join(', ')}`);
     }
     const config = await readConfig();
-    (config as any)[key] = coerceValue(value);
+    const coerced = coerceValue(value);
+    (config as Record<string, unknown>)[key] = coerced;
     await writeConfig(config);
-    ui.success(`Set ${key} = ${JSON.stringify((config as any)[key])}`);
+    ui.success(`Set ${key} = ${JSON.stringify(coerced)}`);
     return;
   }
 

@@ -1,14 +1,14 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { appendHistory } from '../utils/history.js';
+import { recordSession } from '../utils/record-session.js';
+import { assertDirectory } from '../utils/assert-directory.js';
 import * as ui from '../utils/ui.js';
 
 export async function flattenDirectory(
   directory: string,
   options: { dryRun?: boolean } = {}
 ): Promise<void> {
-  const stat = await fs.stat(directory);
-  if (!stat.isDirectory()) throw new Error(`${directory} is not a directory`);
+  await assertDirectory(directory);
 
   const dryRun = options.dryRun ?? false;
   const nestedFiles = await findNestedFiles(directory);
@@ -35,13 +35,7 @@ export async function flattenDirectory(
   }
 
   if (!dryRun && moves.length > 0) {
-    await appendHistory({
-      id: new Date().toISOString(),
-      timestamp: new Date().toISOString(),
-      directory: path.resolve(directory),
-      dryRun: false,
-      renames: moves
-    });
+    await recordSession(directory, false, moves);
   }
 
   const count = dryRun ? nestedFiles.length : moves.length;

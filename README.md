@@ -459,7 +459,7 @@ Supported keys: `provider`, `apiKey`, `case`, `template`, `name`, `date`, `maxSi
 
 | Type | Extensions | Parser |
 |------|------------|--------|
-| PDF Documents | `.pdf` | pdf-extraction |
+| PDF Documents | `.pdf` | pdfjs-dist |
 | Microsoft Word | `.docx`, `.doc` | mammoth |
 | Microsoft Excel | `.xlsx`, `.xls` | exceljs |
 | Text Files | `.txt`, `.md`, `.rtf` | Native fs |

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-07-05
+
+### Fixed
+- PDF text extraction migrated from the unmaintained `pdf-extraction` package
+  (bundling pdf.js v1.10 from 2018) to the already-present, actively maintained
+  `pdfjs-dist`. The old bundle failed with `Illegal character` when parsing
+  certain PDFs under the test runner on Node >= 24.16, which blocked the 1.1.0
+  release pipeline; it has been removed from the dependency tree entirely
+- `pdfjs-dist` is pinned to the same version range as `pdf-to-png-converter`'s
+  internal copy (`~6.0.227`) so both share one deduped install — two copies
+  register conflicting pdf.js worker versions at runtime
+
+> Note: the `v1.1.0` tag exists but was never published to npm; `1.1.1` is the
+> first published release containing the 1.1.0 changes below.
+
 ## [1.1.0] - 2026-07-05
 
 ### Changed

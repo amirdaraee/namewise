@@ -84,8 +84,7 @@
     "mammoth": "1.12.0",
     "openai": "6.45.0",
     "ora": "9.4.1",
-    "pdf-extraction": "^1.0.2",
-    "pdfjs-dist": "6.1.200"
+    "pdfjs-dist": "6.0.227"
   },
   "optionalDependencies": {
     "canvas": "3.2.3",

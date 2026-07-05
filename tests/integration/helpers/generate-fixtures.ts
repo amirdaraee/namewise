@@ -144,7 +144,7 @@ function createDocxBuffer(title: string, bodyText: string): Buffer {
 // Scanned PDF fixture
 // ---------------------------------------------------------------------------
 // A single-page PDF with a white-filled rectangle but no text content.
-// pdf-extraction returns '' for this file (no selectable text), which
+// Text extraction returns '' for this file (no selectable text), which
 // triggers PDFToImageConverter.isScannedPDF() → exercises the canvas path.
 // Uses pdfkit to produce a valid PDF with correct XRef offsets.
 // ---------------------------------------------------------------------------

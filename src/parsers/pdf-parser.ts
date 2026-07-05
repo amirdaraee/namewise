@@ -15,29 +15,52 @@ export class PDFParser implements DocumentParser {
 
   async parse(filePath: string): Promise<ParseResult> {
     try {
-      const pdfExtraction = await import('pdf-extraction');
-      const extract = pdfExtraction.default;
+      const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
-      const dataBuffer = fs.readFileSync(filePath);
+      const raw = fs.readFileSync(filePath);
+      // pdfjs may transfer the buffer to its (fake) worker, so hand it a copy
+      // rather than the fs buffer.
+      const data = new Uint8Array(raw);
 
       // Suppress pdfjs noise (both stderr and console.warn) for the entire PDF
-      // pipeline — the "TT: undefined function" warning can come from either
-      // pdf-extraction (text path) or pdf-to-png-converter (scanned path).
+      // pipeline — warnings can come from either the text-extraction path or
+      // pdf-to-png-converter (scanned path).
       const origStderrWrite = (process.stderr as any).write?.bind(process.stderr);
       const origConsoleWarn = console.warn;
       (process.stderr as any).write = () => true;
       console.warn = () => {};
 
-      let data: any;
       let content = '';
+      let numPages = 0;
+      let info: any = {};
 
       try {
-        data = await extract(dataBuffer, {});
-        content = data.text?.trim() || '';
+        const loadingTask = getDocument({ data, verbosity: 0 });
+        const doc = await loadingTask.promise;
+        try {
+          numPages = doc.numPages;
+
+          const meta = await doc.getMetadata().catch(() => undefined);
+          info = (meta as any)?.info ?? {};
+
+          const pageTexts: string[] = [];
+          for (let i = 1; i <= numPages; i++) {
+            const page = await doc.getPage(i);
+            const textContent = await page.getTextContent();
+            pageTexts.push(
+              textContent.items
+                .map((item: any) => (typeof item.str === 'string' ? item.str : ''))
+                .join(' ')
+            );
+          }
+          content = pageTexts.join('\n\n').trim();
+        } finally {
+          await loadingTask.destroy();
+        }
 
         if (PDFToImageConverter.isScannedPDF(content)) {
           try {
-            const imageBase64 = await PDFToImageConverter.convertFirstPageToBase64(dataBuffer);
+            const imageBase64 = await PDFToImageConverter.convertFirstPageToBase64(raw);
             content = `[SCANNED_PDF_IMAGE]:${imageBase64}`;
           } catch {
             // Conversion failed; continue with empty content — AI handles gracefully
@@ -49,19 +72,14 @@ export class PDFParser implements DocumentParser {
       }
 
       const metadata: DocumentMetadata = {};
-      const pdfData = data as any;
 
-      if (pdfData.meta) {
-        if (pdfData.meta.info) {
-          metadata.title    = pdfData.meta.info.Title;
-          metadata.author   = pdfData.meta.info.Author;
-          metadata.creator  = pdfData.meta.info.Creator;
-          metadata.subject  = pdfData.meta.info.Subject;
-          if (pdfData.meta.info.CreationDate) metadata.creationDate = this.parseDate(pdfData.meta.info.CreationDate);
-          if (pdfData.meta.info.ModDate)      metadata.modificationDate = this.parseDate(pdfData.meta.info.ModDate);
-        }
-        if (pdfData.numpages) metadata.pages = pdfData.numpages;
-      }
+      metadata.title   = info.Title;
+      metadata.author  = info.Author;
+      metadata.creator = info.Creator;
+      metadata.subject = info.Subject;
+      if (info.CreationDate) metadata.creationDate = this.parseDate(info.CreationDate);
+      if (info.ModDate)      metadata.modificationDate = this.parseDate(info.ModDate);
+      if (numPages) metadata.pages = numPages;
 
       if (content) metadata.wordCount = content.split(/\s+/).filter((w: string) => w.length > 0).length;
 
@@ -84,7 +102,7 @@ export class PDFParser implements DocumentParser {
         const hour = parseInt(datepart.slice(8, 10) || '0');
         const minute = parseInt(datepart.slice(10, 12) || '0');
         const second = parseInt(datepart.slice(12, 14) || '0');
-        
+
         return new Date(year, month, day, hour, minute, second);
       }
       return new Date(dateStr);

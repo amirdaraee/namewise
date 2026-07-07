@@ -60,7 +60,7 @@
     "@types/fs-extra": "^11.0.4",
     "@types/heic-convert": "2.1.1",
     "@types/inquirer": "9.0.10",
-    "@types/node": "25.9.2",
+    "@types/node": "26.1.0",
     "@types/pdfkit": "0.17.6",
     "@vitest/coverage-v8": "4.1.9",
     "@vitest/ui": "4.1.9",

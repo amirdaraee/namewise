@@ -662,6 +662,80 @@ describe('FileRenamer', () => {
       expect(fs.rename).not.toHaveBeenCalled(); // dry-run never touches the disk
     });
 
+    it('inserts the conflict counter before a trailing personal name (report-2-john, not report-john-2)', async () => {
+      const dryConfig: Config = {
+        ...config,
+        dryRun: true,
+        concurrency: 1,
+        templateOptions: { category: 'document', personalName: 'john', dateFormat: 'none' }
+      };
+      const service = {
+        name: 'SameNameAI',
+        generateFileName: vi.fn().mockResolvedValue({ name: 'report', inputTokens: undefined, outputTokens: undefined })
+      } as unknown as AIProvider;
+      const renamer = new FileRenamer(makeTextParserFactory(), service, dryConfig);
+      vi.mocked(fs.access).mockRejectedValue(enoent());
+
+      const testFiles: FileInfo[] = [
+        { path: '/test/a.txt', name: 'a.txt', extension: '.txt', size: 100 },
+        { path: '/test/b.txt', name: 'b.txt', extension: '.txt', size: 100 }
+      ];
+
+      const { results } = await renamer.renameFiles(testFiles);
+
+      expect(results[0].newPath).toBe(path.join('/test', 'report-john.txt'));
+      expect(results[1].newPath).toBe(path.join('/test', 'report-2-john.txt'));
+    });
+
+    it('inserts the counter with no separator for conventions without one (camelCase)', async () => {
+      const dryConfig: Config = {
+        ...config,
+        dryRun: true,
+        concurrency: 1,
+        namingConvention: 'camelCase',
+        templateOptions: { category: 'document', personalName: 'john', dateFormat: 'none' }
+      };
+      const service = {
+        name: 'SameNameAI',
+        generateFileName: vi.fn().mockResolvedValue({ name: 'report', inputTokens: undefined, outputTokens: undefined })
+      } as unknown as AIProvider;
+      const renamer = new FileRenamer(makeTextParserFactory(), service, dryConfig);
+      vi.mocked(fs.access).mockRejectedValue(enoent());
+
+      const testFiles: FileInfo[] = [
+        { path: '/test/a.txt', name: 'a.txt', extension: '.txt', size: 100 },
+        { path: '/test/b.txt', name: 'b.txt', extension: '.txt', size: 100 }
+      ];
+
+      const { results } = await renamer.renameFiles(testFiles);
+
+      // camelCase leaves no [-_] separator before the name: reportJohn → report2John
+      expect(results[0].newPath).toBe(path.join('/test', 'reportJohn.txt'));
+      expect(results[1].newPath).toBe(path.join('/test', 'report2John.txt'));
+    });
+
+    it('appends the counter at the end when the name does not end with the personal name', async () => {
+      const dryConfig: Config = {
+        ...config,
+        dryRun: true,
+        concurrency: 1,
+        // general template has no {personalName}, so names never end with it
+        templateOptions: { category: 'general', personalName: 'john', dateFormat: 'none' }
+      };
+      const renamer = new FileRenamer(makeTextParserFactory(), makeSameNameService(), dryConfig);
+      vi.mocked(fs.access).mockRejectedValue(enoent());
+
+      const testFiles: FileInfo[] = [
+        { path: '/test/a.txt', name: 'a.txt', extension: '.txt', size: 100 },
+        { path: '/test/b.txt', name: 'b.txt', extension: '.txt', size: 100 }
+      ];
+
+      const { results } = await renamer.renameFiles(testFiles);
+
+      expect(results[0].newPath).toBe(path.join('/test', 'same-name.txt'));
+      expect(results[1].newPath).toBe(path.join('/test', 'same-name-2.txt'));
+    });
+
     it('gives concurrent live renames distinct targets and distinct fs.rename destinations', async () => {
       const liveConfig: Config = { ...config, dryRun: false, concurrency: 3 };
       // Yield between files so all three resolveConflict calls interleave

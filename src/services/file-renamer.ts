@@ -3,6 +3,7 @@ import path from 'path';
 import { FileInfo, Config, RenameResult, AIProvider, AINameResult, RenameSessionResult } from '../types/index.js';
 import { DocumentParserFactory } from '../parsers/factory.js';
 import { categorizeFile, applyTemplate } from '../utils/file-templates.js';
+import { applyNamingConvention } from '../utils/naming-conventions.js';
 import { FileSizeError, UnsupportedTypeError, ParseError, VisionError, NetworkError } from '../errors.js';
 import { withRetry, RetryOptions } from '../utils/retry.js';
 import { logger } from '../utils/logger.js';
@@ -185,12 +186,34 @@ export class FileRenamer {
     return path.basename(file.name, file.extension).replace(/[-_]/g, ' ');
   }
 
+  /**
+   * Build the i-th conflict candidate for a basename. When the name ends with
+   * the (convention-formatted) personal name, the counter goes before it so
+   * the personal name stays last: bill-2-john, not bill-john-2.
+   */
+  private conflictCandidate(base: string, i: number): string {
+    const personalName = this.config.templateOptions.personalName;
+    if (personalName) {
+      const formatted = applyNamingConvention(personalName, this.config.namingConvention);
+      // Case-insensitive: camelCase/PascalCase re-capitalize the name inside
+      // the full filename (reportJohn vs john) — keep the base's own casing.
+      if (base.length > formatted.length && base.toLowerCase().endsWith(formatted.toLowerCase())) {
+        const stem = base.slice(0, base.length - formatted.length);
+        const tail = base.slice(base.length - formatted.length);
+        const sep = /[-_]$/.test(stem) ? stem.slice(-1) : '';
+        return `${stem}${i}${sep}${tail}`;
+      }
+    }
+    return `${base}-${i}`;
+  }
+
   private async resolveConflict(newPath: string): Promise<string> {
     const ext = path.extname(newPath);
-    const base = path.join(path.dirname(newPath), path.basename(newPath, ext));
+    const dir = path.dirname(newPath);
+    const base = path.basename(newPath, ext);
 
     for (let i = 1; i <= 99; i++) {
-      const candidate = i === 1 ? newPath : `${base}-${i}${ext}`;
+      const candidate = i === 1 ? newPath : path.join(dir, `${this.conflictCandidate(base, i)}${ext}`);
       if (this.claimedTargets.has(candidate)) continue;
       // Claim before awaiting: concurrent resolveConflict calls run between
       // awaits, so a synchronous claim is what makes the reservation atomic.

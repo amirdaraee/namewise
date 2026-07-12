@@ -9,6 +9,15 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      # pdfjs-dist must match pdf-to-png-converter's internal copy (~6.0.227)
+      # so both dedupe to ONE install — two copies register conflicting pdf.js
+      # workers at runtime (see CHANGELOG 1.1.1). Bump it manually only when
+      # pdf-to-png-converter moves its own pdfjs-dist range.
+      - dependency-name: pdfjs-dist
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
 
   - package-ecosystem: github-actions
     directory: /

@@ -31,6 +31,7 @@ export class PDFParser implements DocumentParser {
       console.warn = () => {};
 
       let content = '';
+      let imageData: string | undefined;
       let numPages = 0;
       let info: any = {};
 
@@ -60,10 +61,11 @@ export class PDFParser implements DocumentParser {
 
         if (PDFToImageConverter.isScannedPDF(content)) {
           try {
-            const imageBase64 = await PDFToImageConverter.convertFirstPageToBase64(raw);
-            content = `[SCANNED_PDF_IMAGE]:${imageBase64}`;
+            // Return the rendered page as imageData (the vision path), keeping
+            // whatever sparse text was extracted as extra context for the AI.
+            imageData = await PDFToImageConverter.convertFirstPageToBase64(raw);
           } catch {
-            // Conversion failed; continue with empty content — AI handles gracefully
+            // Conversion failed; continue with the sparse text content
           }
         }
       } finally {
@@ -83,7 +85,7 @@ export class PDFParser implements DocumentParser {
 
       if (content) metadata.wordCount = content.split(/\s+/).filter((w: string) => w.length > 0).length;
 
-      return { content, metadata };
+      return { content, metadata, imageData };
     } catch (error) {
       // Re-throw if already typed — prevents double-wrapping by future nested calls
       if (error instanceof ParseError) throw error;

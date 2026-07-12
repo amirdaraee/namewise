@@ -81,14 +81,16 @@ describe('PDFParser (mocked)', () => {
   });
 
   describe('Scanned PDF handling', () => {
-    it('should convert scanned PDF to image and prefix content', async () => {
+    it('should convert scanned PDF and return imageData for the vision path', async () => {
       mockPdfDocument({ pages: [['short']] });
       mockIsScannedPDF.mockReturnValue(true);
       mockConvertFirstPageToBase64.mockResolvedValue('data:image/jpeg;base64,imagedata');
 
       const result = await parser.parse('/path/to/scanned.pdf');
 
-      expect(result.content).toBe('[SCANNED_PDF_IMAGE]:data:image/jpeg;base64,imagedata');
+      // imageData drives the vision path; content stays whatever sparse text was found
+      expect(result.imageData).toBe('data:image/jpeg;base64,imagedata');
+      expect(result.content).toBe('short'); // sparse extracted text is kept as extra context
       expect(mockConvertFirstPageToBase64).toHaveBeenCalled();
     });
 

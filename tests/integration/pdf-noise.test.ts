@@ -42,7 +42,7 @@ describe('PDF library noise suppression', () => {
 
     expect(stderrWrites).toEqual([]);
     expect(warnCalls).toEqual([]);
-    expect(result.content).toMatch(/^\[SCANNED_PDF_IMAGE\]:/); // confirms image conversion path ran
+    expect(result.imageData).toMatch(/^data:image\/jpeg;base64,/); // confirms image conversion path ran
   });
 });
 

@@ -21,8 +21,10 @@ async function readConfig(): Promise<NamiwiseFileConfig> {
 
 async function writeConfig(config: NamiwiseFileConfig): Promise<void> {
   await fs.mkdir(path.dirname(CONFIG_PATH), { recursive: true });
-  // 600: the config may hold an API key — keep it out of other users' reach
+  // 600: the config may hold an API key — keep it out of other users' reach.
+  // writeFile's mode only applies on creation, so chmod covers overwrites too.
   await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2), { encoding: 'utf-8', mode: 0o600 });
+  await fs.chmod(CONFIG_PATH, 0o600);
 }
 
 function coerceValue(value: string): unknown {

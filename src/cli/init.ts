@@ -21,7 +21,7 @@ export async function initCommand(): Promise<void> {
   ui.info('\nWelcome to Namewise! Let\'s set up your configuration.\n');
 
   const { scope } = await inquirer.prompt([{
-    type: 'list',
+    type: 'select',
     name: 'scope',
     message: 'Where should we save this config?',
     choices: [
@@ -54,7 +54,7 @@ export async function initCommand(): Promise<void> {
   }
 
   const { provider } = await inquirer.prompt([{
-    type: 'list',
+    type: 'select',
     name: 'provider',
     message: 'Which AI provider would you like to use by default?',
     choices: ['claude', 'openai', 'ollama', 'lmstudio'],
@@ -99,7 +99,7 @@ export async function initCommand(): Promise<void> {
 
   // Naming convention
   const { namingConvention } = await inquirer.prompt([{
-    type: 'list',
+    type: 'select',
     name: 'namingConvention',
     message: 'Default naming convention for renamed files:',
     choices: ['kebab-case', 'snake_case', 'camelCase', 'PascalCase', 'lowercase', 'UPPERCASE'],
@@ -147,8 +147,10 @@ export async function initCommand(): Promise<void> {
 
   // Write config
   await fs.mkdir(path.dirname(configPath), { recursive: true });
-  // 600: the config may hold an API key — keep it out of other users' reach
+  // 600: the config may hold an API key — keep it out of other users' reach.
+  // writeFile's mode only applies on creation, so chmod covers overwrites too.
   await fs.writeFile(configPath, JSON.stringify(config, null, 2), { encoding: 'utf-8', mode: 0o600 });
+  await fs.chmod(configPath, 0o600);
 
   ui.success(`Config saved to ${configPath}`);
   ui.info('\nYou\'re all set! Try:');

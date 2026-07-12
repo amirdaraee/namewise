@@ -625,6 +625,98 @@ describe('FileRenamer', () => {
     });
   });
 
+  describe('Duplicate target resolution within a batch (claimedTargets)', () => {
+    // Parser factory that always yields text content — keeps these tests off the disk
+    const makeTextParserFactory = () => ({
+      getParser: vi.fn().mockReturnValue({
+        parse: vi.fn().mockResolvedValue({ content: 'some text content' })
+      })
+    }) as unknown as DocumentParserFactory;
+
+    // AI service that returns the same name for every file in the batch
+    const makeSameNameService = (): AIProvider => ({
+      name: 'SameNameAI',
+      generateFileName: vi.fn().mockResolvedValue({ name: 'same-name', inputTokens: undefined, outputTokens: undefined })
+    } as unknown as AIProvider);
+
+    const enoent = () => Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+
+    it('gives two files with the same AI name distinct targets in dry-run (nothing on disk)', async () => {
+      const dryConfig: Config = { ...config, dryRun: true, concurrency: 1 };
+      const renamer = new FileRenamer(makeTextParserFactory(), makeSameNameService(), dryConfig);
+
+      // Nothing exists on disk — fs.access alone would let both files claim the base name
+      vi.mocked(fs.access).mockRejectedValue(enoent());
+
+      const testFiles: FileInfo[] = [
+        { path: '/test/a.txt', name: 'a.txt', extension: '.txt', size: 100 },
+        { path: '/test/b.txt', name: 'b.txt', extension: '.txt', size: 100 }
+      ];
+
+      const { results } = await renamer.renameFiles(testFiles);
+
+      expect(results.every(r => r.success)).toBe(true);
+      expect(results[0].newPath).toBe(path.join('/test', 'same-name.txt'));
+      expect(results[1].newPath).toBe(path.join('/test', 'same-name-2.txt'));
+      expect(results[0].newPath).not.toBe(results[1].newPath);
+      expect(fs.rename).not.toHaveBeenCalled(); // dry-run never touches the disk
+    });
+
+    it('gives concurrent live renames distinct targets and distinct fs.rename destinations', async () => {
+      const liveConfig: Config = { ...config, dryRun: false, concurrency: 3 };
+      // Yield between files so all three resolveConflict calls interleave
+      const generateFileName = vi.fn().mockImplementation(async () => {
+        await new Promise(resolve => setImmediate(resolve));
+        return { name: 'same-name', inputTokens: undefined, outputTokens: undefined };
+      });
+      const service = { name: 'SameNameAI', generateFileName } as unknown as AIProvider;
+      const renamer = new FileRenamer(makeTextParserFactory(), service, liveConfig);
+
+      vi.mocked(fs.access).mockRejectedValue(enoent());
+      vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+      const testFiles: FileInfo[] = [
+        { path: '/test/a.txt', name: 'a.txt', extension: '.txt', size: 100 },
+        { path: '/test/b.txt', name: 'b.txt', extension: '.txt', size: 100 },
+        { path: '/test/c.txt', name: 'c.txt', extension: '.txt', size: 100 }
+      ];
+
+      const { results } = await renamer.renameFiles(testFiles);
+
+      expect(results.every(r => r.success)).toBe(true);
+      const targets = results.map(r => r.newPath);
+      expect(new Set(targets).size).toBe(3);
+      expect(targets.slice().sort()).toEqual([
+        path.join('/test', 'same-name-2.txt'),
+        path.join('/test', 'same-name-3.txt'),
+        path.join('/test', 'same-name.txt')
+      ]);
+
+      expect(fs.rename).toHaveBeenCalledTimes(3);
+      const renameDestinations = vi.mocked(fs.rename).mock.calls.map(c => String(c[1]));
+      expect(new Set(renameDestinations).size).toBe(3);
+    });
+
+    it('clears claimed targets between renameFiles() calls on the same instance', async () => {
+      const dryConfig: Config = { ...config, dryRun: true, concurrency: 1 };
+      const renamer = new FileRenamer(makeTextParserFactory(), makeSameNameService(), dryConfig);
+
+      vi.mocked(fs.access).mockRejectedValue(enoent());
+
+      const first = await renamer.renameFiles([
+        { path: '/test/a.txt', name: 'a.txt', extension: '.txt', size: 100 }
+      ]);
+      expect(first.results[0].newPath).toBe(path.join('/test', 'same-name.txt'));
+
+      // Second batch: the claim from the first batch must not linger —
+      // fs.access says ENOENT, so the base name is available again
+      const second = await renamer.renameFiles([
+        { path: '/test/b.txt', name: 'b.txt', extension: '.txt', size: 100 }
+      ]);
+      expect(second.results[0].newPath).toBe(path.join('/test', 'same-name.txt'));
+    });
+  });
+
   describe('Console Output', () => {
     let originalStdoutWrite: typeof process.stdout.write;
     let stdoutOutput: string[];

@@ -217,8 +217,15 @@ export function applyTemplate(
   const template = FILE_TEMPLATES[category as Exclude<FileCategory, 'auto'>];
   let result = template.pattern;
 
+  // The AI often echoes the person's name inside the generated content (it
+  // appears in the document text); strip it so {personalName} doesn't duplicate.
+  let content = aiGeneratedName;
+  if (templateOptions.personalName && template.pattern.includes('{personalName}')) {
+    content = stripNameFromContent(content, templateOptions.personalName);
+  }
+
   // Replace template variables
-  result = result.replace('{content}', aiGeneratedName);
+  result = result.replace('{content}', content);
 
   if (templateOptions.personalName) {
     result = result.replace('{personalName}', templateOptions.personalName);
@@ -238,6 +245,31 @@ export function applyTemplate(
 
   // Apply naming convention
   return applyNamingConvention(result, namingConvention);
+}
+
+/**
+ * Remove every occurrence of the personal name's token sequence from the
+ * AI-generated content (case- and separator-insensitive). Returns the
+ * original content when stripping would leave nothing.
+ */
+function stripNameFromContent(content: string, personalName: string): string {
+  const nameTokens = personalName.toLowerCase().split(/[^a-z0-9]+/i).filter(Boolean);
+  if (nameTokens.length === 0) return content;
+
+  const contentTokens = content.split(/[\s_-]+/).filter(Boolean);
+  const kept: string[] = [];
+  for (let i = 0; i < contentTokens.length; i++) {
+    const window = contentTokens.slice(i, i + nameTokens.length);
+    const matches = window.length === nameTokens.length &&
+      window.every((t, j) => t.toLowerCase() === nameTokens[j]);
+    if (matches) {
+      i += nameTokens.length - 1; // skip the whole name occurrence
+    } else {
+      kept.push(contentTokens[i]);
+    }
+  }
+
+  return kept.length > 0 ? kept.join('-') : content;
 }
 
 function formatDate(date: Date, format: 'YYYY-MM-DD' | 'YYYY' | 'YYYYMMDD'): string {

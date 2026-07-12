@@ -45,7 +45,7 @@ Example:
     .action(async () => {
       const log = createLogger('init', program.opts().log ?? false);
       try { await initCommand(); }
-      catch (error) { handleCliError(error, log); }
+      catch (error) { await handleCliError(error, log); }
     });
 
   program
@@ -156,7 +156,7 @@ Batch Rename (no AI, no API key):
     .action(async (subcommand, key, value) => {
       const log = createLogger('config', program.opts().log ?? false);
       try { await configCommand(subcommand, key, value); }
-      catch (error) { handleCliError(error, log); }
+      catch (error) { await handleCliError(error, log); }
     });
 
   program
@@ -169,7 +169,7 @@ Batch Rename (no AI, no API key):
     .action(async (directory, options) => {
       const log = createLogger('sanitize', program.opts().log ?? false);
       try { await sanitizeFiles(directory, { dryRun: options.dryRun, recursive: options.recursive, case: options.case }); }
-      catch (error) { handleCliError(error, log); }
+      catch (error) { await handleCliError(error, log); }
     });
 
   program
@@ -180,7 +180,7 @@ Batch Rename (no AI, no API key):
     .action(async (planPath, options) => {
       const log = createLogger('apply', program.opts().log ?? false);
       try { await applyPlan(planPath, { dryRun: options.dryRun }); }
-      catch (error) { handleCliError(error, log); }
+      catch (error) { await handleCliError(error, log); }
     });
 
   program
@@ -192,7 +192,7 @@ Batch Rename (no AI, no API key):
     .action(async (directory, options) => {
       const log = createLogger('dedup', program.opts().log ?? false);
       try { await dedupFiles(directory, { recursive: options.recursive, delete: options.delete }); }
-      catch (error) { handleCliError(error, log); }
+      catch (error) { await handleCliError(error, log); }
     });
 
   program
@@ -223,7 +223,7 @@ Batch Rename (no AI, no API key):
     .action(async (directory, options) => {
       const log = createLogger('watch', program.opts().log ?? false);
       try { await watchDirectory(directory, options); }
-      catch (error) { handleCliError(error, log); }
+      catch (error) { await handleCliError(error, log); }
     });
 
   program
@@ -235,7 +235,7 @@ Batch Rename (no AI, no API key):
     .action(async (sessionId, options) => {
       const log = createLogger('undo', program.opts().log ?? false);
       try { await undoRename(sessionId, { list: options.list, all: options.all }); }
-      catch (error) { handleCliError(error, log); }
+      catch (error) { await handleCliError(error, log); }
     });
 
   program
@@ -246,7 +246,7 @@ Batch Rename (no AI, no API key):
     .action(async (directory, options) => {
       const log = createLogger('stats', program.opts().log ?? false);
       try { await statsCommand(directory, { recursive: options.recursive }); }
-      catch (error) { handleCliError(error, log); }
+      catch (error) { await handleCliError(error, log); }
     });
 
   program
@@ -257,7 +257,7 @@ Batch Rename (no AI, no API key):
     .action(async (directory, options) => {
       const log = createLogger('tree', program.opts().log ?? false);
       try { await treeCommand(directory, { depth: options.depth ? parseInt(options.depth) : undefined }); }
-      catch (error) { handleCliError(error, log); }
+      catch (error) { await handleCliError(error, log); }
     });
 
   program
@@ -267,7 +267,7 @@ Batch Rename (no AI, no API key):
     .action(async (targetPath) => {
       const log = createLogger('info', program.opts().log ?? false);
       try { await infoCommand(targetPath); }
-      catch (error) { handleCliError(error, log); }
+      catch (error) { await handleCliError(error, log); }
     });
 
   program
@@ -280,7 +280,7 @@ Batch Rename (no AI, no API key):
     .action(async (directory, options) => {
       const log = createLogger('organize', program.opts().log ?? false);
       try { await organizeFiles(directory, { by: options.by, recursive: options.recursive, dryRun: options.dryRun }); }
-      catch (error) { handleCliError(error, log); }
+      catch (error) { await handleCliError(error, log); }
     });
 
   program
@@ -291,7 +291,7 @@ Batch Rename (no AI, no API key):
     .action(async (directory, options) => {
       const log = createLogger('flatten', program.opts().log ?? false);
       try { await flattenDirectory(directory, { dryRun: options.dryRun }); }
-      catch (error) { handleCliError(error, log); }
+      catch (error) { await handleCliError(error, log); }
     });
 
   program
@@ -302,7 +302,7 @@ Batch Rename (no AI, no API key):
     .action(async (directory, options) => {
       const log = createLogger('clean-empty', program.opts().log ?? false);
       try { await cleanEmptyDirs(directory, { dryRun: options.dryRun }); }
-      catch (error) { handleCliError(error, log); }
+      catch (error) { await handleCliError(error, log); }
     });
 
   program
@@ -328,7 +328,7 @@ Batch Rename (no AI, no API key):
           olderThan: options.olderThan,
           recursive: options.recursive
         });
-      } catch (error) { handleCliError(error, log); }
+      } catch (error) { await handleCliError(error, log); }
     });
 
   program
@@ -341,6 +341,6 @@ Batch Rename (no AI, no API key):
     .action(async (dir1, dir2, options) => {
       const log = createLogger('diff', program.opts().log ?? false);
       try { await diffDirectories(dir1, dir2, { by: options.by, recursive: options.recursive }); }
-      catch (error) { handleCliError(error, log); }
+      catch (error) { await handleCliError(error, log); }
     });
 }

@@ -10,6 +10,7 @@ interface PlanResult {
 }
 
 interface PlanFile {
+  directory?: string;
   results: PlanResult[];
 }
 
@@ -26,7 +27,14 @@ export async function applyPlan(planPath: string, options: { dryRun?: boolean } 
     throw new Error('Invalid plan file: missing "results" array');
   }
 
-  const pending = plan.results.filter(r => r.success && r.originalPath !== r.newPath);
+  // Plans written by older versions stored paths relative to the scanned
+  // directory; anchor them there instead of whatever cwd apply runs from.
+  const anchor = (f: string) =>
+    path.isAbsolute(f) || !plan.directory ? f : path.join(plan.directory, f);
+
+  const pending = plan.results
+    .filter(r => r.success && r.originalPath !== r.newPath)
+    .map(r => ({ ...r, originalPath: anchor(r.originalPath), newPath: anchor(r.newPath) }));
 
   if (pending.length === 0) {
     ui.info('No renames to apply.');
@@ -39,6 +47,16 @@ export async function applyPlan(planPath: string, options: { dryRun?: boolean } 
     } catch {
       throw new Error(`Source file not found: ${r.originalPath}`);
     }
+  }
+
+  // Two plan entries pointing at one target would silently overwrite each
+  // other when applied — fs.rename replaces existing files without error.
+  const seenTargets = new Set<string>();
+  for (const r of pending) {
+    if (seenTargets.has(r.newPath)) {
+      throw new Error(`Duplicate target in plan: ${r.newPath} (two files would overwrite each other)`);
+    }
+    seenTargets.add(r.newPath);
   }
 
   for (const r of pending) {

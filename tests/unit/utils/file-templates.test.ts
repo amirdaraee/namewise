@@ -347,6 +347,79 @@ describe('File Templates', () => {
     });
   });
 
+  describe('applyTemplate() — personal name stripping', () => {
+    it('strips the personal name from the start of the AI content for document category', () => {
+      const result = applyTemplate(
+        'amirhossein-daraei-birth-certificate',
+        'document',
+        { personalName: 'amirhossein-daraei', dateFormat: 'none' },
+        'kebab-case'
+      );
+      expect(result).toBe('birth-certificate-amirhossein-daraei');
+    });
+
+    it('strips the personal name from the middle of space-separated content', () => {
+      const result = applyTemplate(
+        'certificate amirhossein daraei of residence',
+        'document',
+        { personalName: 'amirhossein-daraei', dateFormat: 'none' },
+        'kebab-case'
+      );
+      expect(result).toBe('certificate-of-residence-amirhossein-daraei');
+    });
+
+    it('matches the personal name case-insensitively and separator-insensitively', () => {
+      const result = applyTemplate(
+        'Amirhossein-Daraei-contract',
+        'document',
+        { personalName: 'amirhossein daraei', dateFormat: 'none' },
+        'kebab-case'
+      );
+      expect(result).toBe('contract-amirhossein-daraei');
+    });
+
+    it('keeps the content when it is exactly the personal name (no empty {content})', () => {
+      const result = applyTemplate(
+        'amirhossein-daraei',
+        'document',
+        { personalName: 'amirhossein-daraei', dateFormat: 'none' },
+        'kebab-case'
+      );
+      expect(result).toBe('amirhossein-daraei-amirhossein-daraei');
+    });
+
+    it('does not strip the name for categories whose pattern has no {personalName}', () => {
+      const result = applyTemplate(
+        'amirhossein-daraei-notes',
+        'general',
+        { personalName: 'amirhossein-daraei' },
+        'kebab-case'
+      );
+      expect(result).toBe('amirhossein-daraei-notes');
+    });
+
+    it('strips every occurrence of the personal name', () => {
+      const result = applyTemplate(
+        'amirhossein-daraei-passport-amirhossein-daraei-scan',
+        'document',
+        { personalName: 'amirhossein-daraei', dateFormat: 'none' },
+        'kebab-case'
+      );
+      expect(result).toBe('passport-scan-amirhossein-daraei');
+    });
+
+    it('leaves content untouched when the personal name has no alphanumeric tokens', () => {
+      // stripNameFromContent bails out when the name yields zero tokens
+      const result = applyTemplate(
+        'notes',
+        'document',
+        { personalName: '---', dateFormat: 'none' },
+        'kebab-case'
+      );
+      expect(result).toBe('notes');
+    });
+  });
+
   describe('getTemplateInstructions()', () => {
     it('should return instructions for each category', () => {
       const categories: FileCategory[] = ['document', 'movie', 'music', 'series', 'photo', 'book', 'general'];

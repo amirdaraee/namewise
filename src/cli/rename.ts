@@ -143,7 +143,7 @@ export async function renameFiles(directory: string, options: RenameOptions): Pr
     }
 
   } catch (error) {
-    handleCliError(error, log);
+    await handleCliError(error, log);
   }
 }
 
@@ -311,7 +311,12 @@ async function writeJsonReport(
       succeeded: results.filter(r => r.success).length,
       failed: results.filter(r => !r.success).length
     },
-    results
+    // Absolute paths so `namewise apply` works from any working directory
+    results: results.map(r => ({
+      ...r,
+      originalPath: path.resolve(r.originalPath),
+      newPath: path.resolve(r.newPath)
+    }))
   };
   try {
     await fs.writeFile(outputPath, JSON.stringify(report, null, 2), 'utf-8');

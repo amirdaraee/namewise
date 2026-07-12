@@ -12,6 +12,11 @@ const IMAGE_EXTENSIONS = new Set([
 ]);
 
 export class FileRenamer {
+  // Targets already promised to other files in this batch. fs.access alone
+  // can't see them: dry-run never touches the disk, and concurrent live
+  // renames race the check — either way two files could claim one target.
+  private claimedTargets = new Set<string>();
+
   constructor(
     private parserFactory: DocumentParserFactory,
     // undefined when noAi is set — the AI paths below are never reached then
@@ -24,6 +29,7 @@ export class FileRenamer {
     files: FileInfo[],
     onProgress?: (completed: number, total: number, currentFile: string) => void
   ): Promise<RenameSessionResult> {
+    this.claimedTargets.clear();
     const results: RenameResult[] = new Array(files.length);
     let totalInputTokens: number | undefined = undefined;
     let totalOutputTokens: number | undefined = undefined;
@@ -183,17 +189,15 @@ export class FileRenamer {
     const ext = path.extname(newPath);
     const base = path.join(path.dirname(newPath), path.basename(newPath, ext));
 
-    try {
-      await fs.access(newPath);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return newPath;
-      throw error;
-    }
-
-    for (let i = 2; i <= 99; i++) {
-      const candidate = `${base}-${i}${ext}`;
+    for (let i = 1; i <= 99; i++) {
+      const candidate = i === 1 ? newPath : `${base}-${i}${ext}`;
+      if (this.claimedTargets.has(candidate)) continue;
+      // Claim before awaiting: concurrent resolveConflict calls run between
+      // awaits, so a synchronous claim is what makes the reservation atomic.
+      this.claimedTargets.add(candidate);
       try {
         await fs.access(candidate);
+        // exists on disk — leave the (harmless) claim and try the next suffix
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') return candidate;
         throw error;

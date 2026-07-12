@@ -66,6 +66,34 @@ describe('applyPlan()', () => {
     expect(appendHistory).toHaveBeenCalled();
   });
 
+  it('anchors relative plan paths to the plan directory, not the cwd', async () => {
+    // Plans from older versions stored paths relative to the scanned directory
+    vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({
+      directory: '/scan/dir',
+      results: [{ originalPath: 'old.pdf', newPath: 'new.pdf', success: true }]
+    }) as any);
+    vi.mocked(fs.access).mockImplementation(async (p) => {
+      if (String(p) === '/scan/dir/old.pdf') return;
+      throw Object.assign(new Error(), { code: 'ENOENT' });
+    });
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await applyPlan('/plan.json');
+    expect(fs.rename).toHaveBeenCalledWith('/scan/dir/old.pdf', '/scan/dir/new.pdf');
+  });
+
+  it('leaves relative paths untouched when the plan has no directory field', async () => {
+    vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({
+      results: [{ originalPath: 'old.pdf', newPath: 'new.pdf', success: true }]
+    }) as any);
+    vi.mocked(fs.access).mockImplementation(async (p) => {
+      if (String(p) === 'old.pdf') return;
+      throw Object.assign(new Error(), { code: 'ENOENT' });
+    });
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await applyPlan('/plan.json');
+    expect(fs.rename).toHaveBeenCalledWith('old.pdf', 'new.pdf');
+  });
+
   it('does not rename in dry-run mode', async () => {
     vi.mocked(fs.access).mockImplementation(async (p) => {
       if (String(p) === '/dir/old.pdf') return;
@@ -85,6 +113,19 @@ describe('applyPlan()', () => {
     await applyPlan('/plan.json');
     expect(spy).toHaveBeenCalledWith('No renames to apply.');
     spy.mockRestore();
+  });
+
+  it('throws when two plan entries share the same target path', async () => {
+    vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({
+      results: [
+        { originalPath: '/dir/a.pdf', newPath: '/dir/same.pdf', success: true },
+        { originalPath: '/dir/b.pdf', newPath: '/dir/same.pdf', success: true }
+      ]
+    }) as any);
+    // both source files exist
+    vi.mocked(fs.access).mockResolvedValue(undefined);
+    await expect(applyPlan('/plan.json')).rejects.toThrow(/Duplicate target in plan/);
+    expect(fs.rename).not.toHaveBeenCalled();
   });
 
   it('throws when target path already exists', async () => {

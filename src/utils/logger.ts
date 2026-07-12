@@ -43,6 +43,11 @@ export class Logger {
     });
   }
 
+  /** Wait for all queued log writes to reach disk (call before process.exit). */
+  async flush(): Promise<void> {
+    await this.writeQueue;
+  }
+
   session(ctx: { command: string; directory: string; provider?: string; dryRun: boolean }): void {
     this.write({ ts: new Date().toISOString(), level: 'info', msg: 'session_start', ...ctx });
   }

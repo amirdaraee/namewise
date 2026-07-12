@@ -9,7 +9,8 @@ vi.mock('fs', async () => {
       ...(actual as any).promises,
       readFile: vi.fn(),
       writeFile: vi.fn().mockResolvedValue(undefined),
-      mkdir: vi.fn().mockResolvedValue(undefined)
+      mkdir: vi.fn().mockResolvedValue(undefined),
+      chmod: vi.fn().mockResolvedValue(undefined)
     }
   };
 });
@@ -60,6 +61,8 @@ describe('initCommand()', () => {
     expect(written).toMatchObject({ provider: 'claude', apiKey: 'sk-ant-abc', case: 'snake_case', dryRun: true, name: 'alice' });
     expect(written.model).toBeUndefined(); // blank model not stored
     expect(written.language).toBeUndefined(); // blank language not stored
+    // writeFile's mode only applies on creation — chmod must lock down overwrites too
+    expect(fs.chmod).toHaveBeenCalledWith(path.join('/home/testuser', '.namewise.json'), 0o600);
   });
 
   it('writes project config when scope is project', async () => {
@@ -355,5 +358,32 @@ describe('initCommand()', () => {
     await initCommand();
     const written = JSON.parse(vi.mocked(fs.writeFile).mock.calls[0][1] as string);
     expect(written.context).toBeUndefined();
+  });
+
+  // Regression: inquirer v14 removed the legacy 'list' prompt type ('select' now).
+  // Passing an unregistered type crashes at runtime, which mocked tests can't see —
+  // so pin every type we use against the set v14 actually registers.
+  it('only uses prompt types registered by inquirer v14', async () => {
+    const registered = ['checkbox', 'confirm', 'editor', 'expand', 'input', 'number', 'password', 'rawlist', 'search', 'select'];
+    queueAnswers(
+      { scope: 'global' },
+      { provider: 'ollama' },
+      { baseUrl: 'http://localhost:11434' },
+      { model: '' },
+      { namingConvention: 'kebab-case' },
+      { language: '' },
+      { dryRun: true },
+      { personalName: '' },
+      { context: '' }
+    );
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await initCommand();
+    const typesUsed = prompt.mock.calls.flatMap(
+      call => (call[0] as Array<{ type: string }>).map(q => q.type)
+    );
+    expect(typesUsed.length).toBeGreaterThan(0);
+    for (const type of typesUsed) {
+      expect(registered).toContain(type);
+    }
   });
 });

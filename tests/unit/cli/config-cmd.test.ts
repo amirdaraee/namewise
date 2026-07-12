@@ -10,7 +10,8 @@ vi.mock('fs', async () => {
       ...(actual as any).promises,
       mkdir: vi.fn().mockResolvedValue(undefined),
       readFile: vi.fn(),
-      writeFile: vi.fn().mockResolvedValue(undefined)
+      writeFile: vi.fn().mockResolvedValue(undefined),
+      chmod: vi.fn().mockResolvedValue(undefined)
     }
   };
 });
@@ -89,6 +90,8 @@ describe('configCommand()', () => {
         expect.stringContaining('"provider": "openai"'),
         { encoding: 'utf-8', mode: 0o600 }
       );
+      // writeFile's mode only applies on creation — chmod must lock down overwrites too
+      expect(fs.chmod).toHaveBeenCalledWith(CONFIG_PATH, 0o600);
       spy.mockRestore();
     });
 

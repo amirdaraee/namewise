@@ -66,6 +66,7 @@ vi.mock('../../../src/services/file-renamer.js', () => {
   };
 });
 
+import path from 'path';
 import { renameFiles, getFilesToProcessForTest } from '../../../src/cli/rename.js';
 import { promises as fs } from 'fs';
 import inquirer from 'inquirer';
@@ -799,6 +800,21 @@ describe('renameFiles()', () => {
       expect(allOutput).toContain('Report saved to: /tmp/report.json');
 
       logSpy.mockRestore();
+    });
+
+    it('writes absolute result paths so apply works from any cwd', async () => {
+      vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      mockRenameFilesMethod.mockResolvedValue({
+        results: [{ success: true, originalPath: 'doc.pdf', newPath: 'document.pdf' }],
+        tokenUsage: { inputTokens: 100, outputTokens: 10 }
+      });
+
+      await renameFiles('/test/dir', { ...defaultOptions, output: '/tmp/report.json' });
+
+      const written = JSON.parse(vi.mocked(fs.writeFile).mock.calls[0][1] as string);
+      expect(written.results[0].originalPath).toBe(path.resolve('doc.pdf'));
+      expect(written.results[0].newPath).toBe(path.resolve('document.pdf'));
     });
 
     it('warns when writeFile throws an Error (line 156)', async () => {

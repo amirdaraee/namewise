@@ -92,6 +92,32 @@ describe('Logger write lifecycle', () => {
   });
 });
 
+describe('Logger.flush', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('resolves only after queued writes reach appendFile', async () => {
+    let release!: () => void;
+    (fs.appendFile as ReturnType<typeof vi.fn>).mockImplementationOnce(
+      () => new Promise<void>(r => { release = r; })
+    );
+    const log = createLogger('test', true);
+    log.info('pending');
+    let flushed = false;
+    const flushPromise = log.flush().then(() => { flushed = true; });
+    await new Promise(r => setTimeout(r, 0));
+    expect(flushed).toBe(false);
+    release();
+    await flushPromise;
+    expect(flushed).toBe(true);
+    expect(fs.appendFile).toHaveBeenCalledTimes(1);
+  });
+
+  it('resolves immediately when nothing was queued', async () => {
+    const log = createLogger('test', false);
+    await expect(log.flush()).resolves.toBeUndefined();
+  });
+});
+
 describe('Logger.warn', () => {
   beforeEach(() => vi.clearAllMocks());
 

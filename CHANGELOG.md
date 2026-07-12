@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-07-12
+
+### Fixed
+- **Scanned-PDF vision analysis never reached the AI**: the PDF parser embedded
+  the rendered page as a `[SCANNED_PDF_IMAGE]:<base64>` marker inside the text
+  content, but nothing consumed that marker — the AI received thousands of
+  characters of literal base64 as "document content" and produced generic names
+  (`scanned-document`, `bill-invoice`) for every scanned PDF. The rendered page
+  now flows through `ParseResult.imageData` (the vision path the image parser
+  already used), with any sparse extracted text kept as extra context. Naming
+  quality for scanned documents improves dramatically — in testing, a folder of
+  53 scanned bills went from 0 to 53 specific issuer+date names
+- **Two files could silently overwrite each other**: conflict resolution only
+  checked the disk, so dry-run plans could assign the identical target to two
+  files, and concurrent live renames (default concurrency 3) could race the
+  existence check — either way the second `fs.rename` clobbered the first file.
+  Targets are now claimed per batch, and `apply` rejects plans containing
+  duplicate targets
+- **`namewise init` crashed at the first prompt**: inquirer v14 removed the
+  legacy `list` prompt type; the wizard's three selection prompts now use
+  `select`
+- **`--log` produced no log file on crashes**: the process exited before queued
+  log writes reached disk; the logger is now flushed before exit — precisely the
+  situation where the log matters most
+- **Config overwrites left the API key world-readable**: `writeFile`'s
+  `mode: 0o600` only applies when the file is created; `init` and `config set`
+  now `chmod` the config file explicitly on every write
+- **Personal name no longer duplicated**: when the AI echoed the owner's name
+  into the generated content (it appears in most personal documents), the
+  document/photo templates produced `john-contract-john`; the template layer now
+  strips the personal name from AI content before appending it
+- **Rename plans work from any directory**: `--output` reports store absolute
+  paths, and `apply` anchors relative paths from older plans to the plan's
+  recorded directory instead of the current working directory
+- **`apply` validation failures are user errors, not crashes**: missing plan
+  file, moved source, or occupied target now print the actual problem with an
+  actionable hint instead of "An unexpected error occurred"
+
+### Added
+- **Oversized images and PDFs are analyzed instead of skipped**: files above
+  `--max-size` proceed when a compressed analysis path exists (images via
+  `ImageCompressor`, PDFs via text extraction or page rendering) — the AI sees a
+  reduced temporary copy and the original file is never modified. A 100MB hard
+  ceiling still applies; other file types respect `--max-size` as before
+- **Junk-name guards**: when the AI echoes back a meaningless camera/scanner
+  filename (`IMG_0042`, `scan-001`) or returns a prose explanation instead of a
+  filename, the file now fails with a clear error instead of receiving a junk
+  name
+
+### Changed
+- **Vision input resolution raised from 1024px to 1568px** (longest side): at
+  1024px the body text of A4 scans is illegible to vision models; 1568px is the
+  sweet spot for Claude/OpenAI vision. Scanned pages and photos of documents
+  become readable, and image token cost stays comparable
+- Conflict counters now insert before a trailing personal name
+  (`bill-2-john.pdf`, not `bill-john-2.pdf`) so the personal name always ends
+  the filename
+- The AI prompt now asks for distinctive identifying details (issuer, document
+  type, reference number, billing period) over generic terms, and forbids
+  echoing meaningless original filenames
+
 ## [1.1.1] - 2026-07-05
 
 ### Fixed

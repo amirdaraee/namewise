@@ -128,7 +128,7 @@ After init, all saved settings apply automatically — no flags needed on every 
 | `--name` | Personal name to include in filenames | - |
 | `--date` | Date format (YYYY-MM-DD, YYYY, YYYYMMDD, none) | `none` |
 | `--dry-run` | Preview changes without renaming | `false` |
-| `--max-size` | Maximum file size in MB | `10` |
+| `--max-size` | Maximum file size in MB (images/PDFs above it are still analyzed via a compressed copy) | `10` |
 | `-r, --recursive` | Recursively scan subdirectories | `false` |
 | `--depth <n>` | Maximum recursion depth (requires `--recursive`) | Unlimited |
 | `--concurrency <n>` | Files to process in parallel | `3` |
@@ -634,7 +634,7 @@ For unexpected errors, the terminal either points to the log (if `--log` was use
 - **Dry Run Mode**: Always preview changes first with `--dry-run`
 - **Undo**: Reverse any session with `namewise undo` (or `undo --all`)
 - **Conflict Auto-Numbering**: Never overwrites an existing file
-- **File Size Limits**: Skips files above `--max-size`
+- **File Size Limits**: Files above `--max-size` are skipped — except images and PDFs, which are analyzed through a size-reduced copy (originals are never modified); a 100MB hard ceiling applies
 - **Extension Preservation**: Original file extensions are never changed
 - **Comprehensive Testing**: 1,000+ tests with 100% coverage, run on Node 20/22/24 in CI
 

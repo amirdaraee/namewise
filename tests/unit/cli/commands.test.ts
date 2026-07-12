@@ -95,7 +95,7 @@ describe('CLI Commands', () => {
       // Check max-size option
       const maxSizeOption = options?.find(opt => opt.long === '--max-size');
       expect(maxSizeOption).toBeDefined();
-      expect(maxSizeOption?.description).toBe('Maximum file size in MB (default: 10)');
+      expect(maxSizeOption?.description).toBe('Maximum file size in MB (default: 10); images and PDFs above it are still analyzed via a compressed copy');
 
       // Check new flags exist
       const recursiveOption = options?.find(opt => opt.long === '--recursive');

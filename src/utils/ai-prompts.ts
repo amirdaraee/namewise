@@ -65,7 +65,8 @@ Document Properties:`;
 - Ignore irrelevant folder names that don't describe the document content
 - Only use letters, numbers, and appropriate separators for the naming convention
 - Focus on the document's actual content and purpose, not just metadata
-- Current filename stem (without extension): "${currentStem}" — if the name you would generate is very similar or equivalent to this (same words, minor formatting differences), return this exact stem unchanged
+- Prefer distinctive identifying details from the content (issuer/company/organization, document type, reference or invoice number, billing period) over generic terms — avoid vague names like "scanned-document", "bill-invoice", or "document-scan" unless the content truly offers nothing specific
+- Current filename stem (without extension): "${currentStem}" — if the name you would generate is very similar or equivalent to this (same words, minor formatting differences), return this exact stem unchanged. Never do this when the stem is a meaningless camera/scanner/export name (e.g. IMG_1234, scan-001, DSC_0042); in that case describe whatever is identifiable in the content instead
 
 ${metadataContext}
 ${contextSection}

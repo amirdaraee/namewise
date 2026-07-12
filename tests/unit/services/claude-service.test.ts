@@ -232,10 +232,10 @@ describe('ClaudeService', () => {
     });
 
     it('should handle snake_case truncation removing partial word at end', async () => {
-      // This name becomes exactly 101 chars in snake_case, so truncation is triggered
-      // After substring(0, 100), it ends with '_' which gets cleaned up
+      // 104-char, 5-word name: passes the prose guard but triggers >100 truncation;
+      // after substring(0, 100) the trailing partial word is cleaned up
       mockClient.messages.create.mockResolvedValue({
-        content: [{ type: 'text', text: 'a_very_long_filename_that_exceeds_the_one_hundred_character_limit_and_needs_truncation_applied_here_x' }],
+        content: [{ type: 'text', text: 'extendedsegmentword0_extendedsegmentword1_extendedsegmentword2_extendedsegmentword3_extendedsegmentword4' }],
         usage: { input_tokens: 100, output_tokens: 10 }
       });
 

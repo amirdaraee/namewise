@@ -36,7 +36,7 @@ describe('ImageCompressor', () => {
   });
 
   describe('compress() - resize logic', () => {
-    it('should not resize if width and height are both ≤ 1024', async () => {
+    it('should not resize if width and height are both ≤ 1568', async () => {
       mockLoadImage.mockResolvedValue({ width: 800, height: 600 });
       const { ImageCompressor } = await import('../../../src/utils/image-compressor.js');
 
@@ -45,31 +45,31 @@ describe('ImageCompressor', () => {
       expect(mockCreateCanvas).toHaveBeenCalledWith(800, 600);
     });
 
-    it('should resize landscape image so width = 1024 and height scales proportionally', async () => {
+    it('should resize landscape image so width = 1568 and height scales proportionally', async () => {
       mockLoadImage.mockResolvedValue({ width: 2048, height: 1024 });
       const { ImageCompressor } = await import('../../../src/utils/image-compressor.js');
 
       await ImageCompressor.compress(Buffer.from('fake'), 'image/jpeg');
 
-      expect(mockCreateCanvas).toHaveBeenCalledWith(1024, 512);
+      expect(mockCreateCanvas).toHaveBeenCalledWith(1568, 784);
     });
 
-    it('should resize portrait image so height = 1024 and width scales proportionally', async () => {
+    it('should resize portrait image so height = 1568 and width scales proportionally', async () => {
       mockLoadImage.mockResolvedValue({ width: 768, height: 2048 });
       const { ImageCompressor } = await import('../../../src/utils/image-compressor.js');
 
       await ImageCompressor.compress(Buffer.from('fake'), 'image/jpeg');
 
-      expect(mockCreateCanvas).toHaveBeenCalledWith(384, 1024);
+      expect(mockCreateCanvas).toHaveBeenCalledWith(588, 1568);
     });
 
-    it('should resize square image so both sides = 1024', async () => {
+    it('should resize square image so both sides = 1568', async () => {
       mockLoadImage.mockResolvedValue({ width: 4000, height: 4000 });
       const { ImageCompressor } = await import('../../../src/utils/image-compressor.js');
 
       await ImageCompressor.compress(Buffer.from('fake'), 'image/jpeg');
 
-      expect(mockCreateCanvas).toHaveBeenCalledWith(1024, 1024);
+      expect(mockCreateCanvas).toHaveBeenCalledWith(1568, 1568);
     });
 
     it('should not resize a small image (512x512)', async () => {

@@ -1050,6 +1050,172 @@ describe('FileRenamer', () => {
     });
   });
 
+  describe('Oversized reducible files (images/PDFs above maxFileSize)', () => {
+    const enoent = () => Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+
+    // Parser factory that returns imageData (simulates ImageParser downscaling)
+    const makeImageParserFactory = () => ({
+      getParser: vi.fn().mockReturnValue({
+        parse: vi.fn().mockResolvedValue({
+          content: '',
+          imageData: 'data:image/jpeg;base64,/9j/fakeimage'
+        })
+      })
+    }) as unknown as DocumentParserFactory;
+
+    // Parser factory that yields text content (simulates PDF text extraction)
+    const makeTextParserFactory = () => ({
+      getParser: vi.fn().mockReturnValue({
+        parse: vi.fn().mockResolvedValue({ content: 'invoice from enovos for may 2026' })
+      })
+    }) as unknown as DocumentParserFactory;
+
+    const makeNamedService = (name: string): AIProvider => ({
+      name: 'NamedAI',
+      generateFileName: vi.fn().mockResolvedValue({ name, inputTokens: undefined, outputTokens: undefined })
+    } as unknown as AIProvider);
+
+    it('should rename a 15MB .jpg despite a 10MB maxFileSize (image is compressed for AI)', async () => {
+      vi.mocked(fs.access).mockRejectedValue(enoent());
+      vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+      const renamer = new FileRenamer(makeImageParserFactory(), makeNamedService('sunset-over-lake'), config);
+      const file: FileInfo = {
+        path: '/test/huge-photo.jpg',
+        name: 'huge-photo.jpg',
+        extension: '.jpg',
+        size: 15 * 1024 * 1024 // 15MB > 10MB limit, but reducible
+      };
+
+      const { results } = await renamer.renameFiles([file]);
+
+      expect(results[0].success).toBe(true);
+      expect(results[0].newPath).toBe(path.join('/test', 'sunset-over-lake.jpg'));
+      expect(fs.rename).toHaveBeenCalledOnce();
+    });
+
+    it('should rename a 15MB .pdf despite a 10MB maxFileSize (scanned pages are compressed for AI)', async () => {
+      vi.mocked(fs.access).mockRejectedValue(enoent());
+      vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+      const renamer = new FileRenamer(makeTextParserFactory(), makeNamedService('enovos-invoice-may-2026'), config);
+      const file: FileInfo = {
+        path: '/test/huge-scan.pdf',
+        name: 'huge-scan.pdf',
+        extension: '.pdf',
+        size: 15 * 1024 * 1024 // 15MB > 10MB limit, but reducible
+      };
+
+      const { results } = await renamer.renameFiles([file]);
+
+      expect(results[0].success).toBe(true);
+      expect(results[0].newPath).toBe(path.join('/test', 'enovos-invoice-may-2026.pdf'));
+      expect(fs.rename).toHaveBeenCalledOnce();
+    });
+
+    it('should still fail a 15MB .docx (non-reducible type)', async () => {
+      const parserFactory = makeTextParserFactory();
+      const renamer = new FileRenamer(parserFactory, makeNamedService('should-never-be-used'), config);
+      const file: FileInfo = {
+        path: '/test/huge-report.docx',
+        name: 'huge-report.docx',
+        extension: '.docx',
+        size: 15 * 1024 * 1024 // 15MB > 10MB limit, not reducible
+      };
+
+      const { results } = await renamer.renameFiles([file]);
+
+      expect(results[0].success).toBe(false);
+      expect(results[0].error).toContain('exceeds maximum allowed size');
+      expect(parserFactory.getParser).not.toHaveBeenCalled();
+      expect(fs.rename).not.toHaveBeenCalled();
+    });
+
+    it('should fail a 150MB .jpg above the 100MB absolute ceiling', async () => {
+      const parserFactory = makeImageParserFactory();
+      const renamer = new FileRenamer(parserFactory, makeNamedService('should-never-be-used'), config);
+      const file: FileInfo = {
+        path: '/test/gigantic-photo.jpg',
+        name: 'gigantic-photo.jpg',
+        extension: '.jpg',
+        size: 150 * 1024 * 1024 // 150MB > 100MB absolute ceiling
+      };
+
+      const { results } = await renamer.renameFiles([file]);
+
+      expect(results[0].success).toBe(false);
+      expect(results[0].error).toContain('exceeds maximum allowed size');
+      expect(parserFactory.getParser).not.toHaveBeenCalled();
+      expect(fs.rename).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Generic-stem echo guard', () => {
+    const enoent = () => Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+
+    const makeTextParserFactory = () => ({
+      getParser: vi.fn().mockReturnValue({
+        parse: vi.fn().mockResolvedValue({ content: 'water bill from enovos, may 2024' })
+      })
+    }) as unknown as DocumentParserFactory;
+
+    const makeEchoService = (name: string): AIProvider => ({
+      name: 'EchoAI',
+      generateFileName: vi.fn().mockResolvedValue({ name, inputTokens: undefined, outputTokens: undefined })
+    } as unknown as AIProvider);
+
+    it('should fail when the AI echoes back a generic camera/scanner stem', async () => {
+      const renamer = new FileRenamer(makeTextParserFactory(), makeEchoService('img-20260515121559'), config);
+      const file: FileInfo = {
+        path: '/test/IMG_20260515121559.pdf',
+        name: 'IMG_20260515121559.pdf',
+        extension: '.pdf',
+        size: 1000
+      };
+
+      const { results } = await renamer.renameFiles([file]);
+
+      expect(results[0].success).toBe(false);
+      expect(results[0].error).toMatch(/could not derive a meaningful name/);
+      expect(fs.rename).not.toHaveBeenCalled();
+    });
+
+    it('should succeed when the AI returns a meaningful name for a generic stem (no false positive)', async () => {
+      vi.mocked(fs.access).mockRejectedValue(enoent());
+      vi.mocked(fs.rename).mockResolvedValue(undefined);
+
+      const renamer = new FileRenamer(makeTextParserFactory(), makeEchoService('water-bill-enovos-2024'), config);
+      const file: FileInfo = {
+        path: '/test/IMG_1234.pdf',
+        name: 'IMG_1234.pdf',
+        extension: '.pdf',
+        size: 1000
+      };
+
+      const { results } = await renamer.renameFiles([file]);
+
+      expect(results[0].success).toBe(true);
+      expect(results[0].newPath).toBe(path.join('/test', 'water-bill-enovos-2024.pdf'));
+      expect(fs.rename).toHaveBeenCalledOnce();
+    });
+
+    it('should allow the AI to echo a meaningful stem (no-op rename)', async () => {
+      const renamer = new FileRenamer(makeTextParserFactory(), makeEchoService('quarterly-report'), config);
+      const file: FileInfo = {
+        path: '/test/quarterly-report.pdf',
+        name: 'quarterly-report.pdf',
+        extension: '.pdf',
+        size: 1000
+      };
+
+      const { results } = await renamer.renameFiles([file]);
+
+      expect(results[0].success).toBe(true);
+      expect(results[0].newPath).toBe(results[0].originalPath); // no-op rename
+      expect(fs.rename).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Image file handling', () => {
     let imageParserFactory: any;
 

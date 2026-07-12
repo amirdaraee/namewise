@@ -5,7 +5,9 @@ type CanvasModule = typeof import('canvas');
 
 export class ImageCompressor {
   private static readonly MAX_SIZE_BYTES = 5 * 1024 * 1024;
-  private static readonly MAX_DIMENSION = 1024;
+  // 1568px is the sweet spot for Claude/OpenAI vision: at 1024px the body
+  // text of an A4 scan becomes illegible and bills/forms can't be read.
+  private static readonly MAX_DIMENSION = 1568;
 
   /**
    * `canvas` is an optionalDependency (native module needing a build
@@ -28,7 +30,7 @@ export class ImageCompressor {
 
   /**
    * Compresses an image buffer to a base64 JPEG data URL under 5MB.
-   * Resizes to max 1024px on the longest side first, then applies progressive
+   * Resizes to max 1568px on the longest side first, then applies progressive
    * quality reduction. HEIC/HEIF inputs are decoded to JPEG before processing.
    */
   static async compress(buffer: Buffer, mimeType: string): Promise<string> {

@@ -282,6 +282,28 @@ describe('AI Prompts', () => {
       expect(prompt).toContain('return this exact stem unchanged');
     });
 
+    it('should include the anti-generic naming instruction', () => {
+      const prompt = buildFileNamePrompt({
+        content: 'Water bill from Enovos for May 2024.',
+        originalName: 'scan-001.pdf',
+        namingConvention: 'kebab-case',
+        category: 'general'
+      });
+
+      expect(prompt).toContain('avoid vague names like "scanned-document"');
+    });
+
+    it('should exclude meaningless camera/scanner stems from the keep-the-stem rule', () => {
+      const prompt = buildFileNamePrompt({
+        content: 'Water bill from Enovos for May 2024.',
+        originalName: 'IMG_1234.jpg',
+        namingConvention: 'kebab-case',
+        category: 'general'
+      });
+
+      expect(prompt).toContain('Never do this when the stem is a meaningless camera/scanner/export name');
+    });
+
     it('should strip extension correctly for files with no extension', () => {
       const prompt = buildFileNamePrompt({
         content: 'A plain text document.',

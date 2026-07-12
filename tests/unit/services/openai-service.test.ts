@@ -230,9 +230,9 @@ describe('OpenAIService', () => {
     });
 
     it('should truncate long kebab-case filenames removing partial word at end', async () => {
-      // This name becomes exactly 101 chars in kebab-case, triggering truncation
+      // 104-char, 5-word name: passes the prose guard but triggers >100 truncation
       mockClient.chat.completions.create.mockResolvedValue({
-        choices: [{ message: { content: 'a-very-long-kebab-case-filename-that-is-definitely-over-one-hundred-characters-in-total-length-yes-xy' } }],
+        choices: [{ message: { content: 'extendedsegmentword0-extendedsegmentword1-extendedsegmentword2-extendedsegmentword3-extendedsegmentword4' } }],
         usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
       });
       const result = await service.generateFileName('content', 'file.txt', 'kebab-case');
@@ -260,9 +260,9 @@ describe('OpenAIService', () => {
     });
 
     it('should truncate long snake_case filenames removing partial word at end', async () => {
-      // 102-char snake_case string → triggers the > 100 truncation branch
+      // 104-char, 5-word snake_case string → passes the prose guard, triggers the > 100 truncation branch
       mockClient.chat.completions.create.mockResolvedValue({
-        choices: [{ message: { content: 'a_very_long_snake_case_name_that_is_definitely_over_one_hundred_characters_in_total_length_yes_yes_x_z' } }],
+        choices: [{ message: { content: 'extendedsegmentword0_extendedsegmentword1_extendedsegmentword2_extendedsegmentword3_extendedsegmentword4' } }],
         usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }
       });
       const result = await service.generateFileName('content', 'file.txt', 'snake_case');

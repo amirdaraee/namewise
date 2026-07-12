@@ -12,6 +12,23 @@ const IMAGE_EXTENSIONS = new Set([
   '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.heic', '.webp'
 ]);
 
+// Images are downscaled by ImageCompressor and scanned PDFs by pdf-to-image
+// before reaching the AI, so oversized files of these types can still be
+// analyzed without touching the original. Everything else respects maxFileSize.
+const REDUCIBLE_EXTENSIONS = new Set([...IMAGE_EXTENSIONS, '.pdf']);
+// Sanity ceiling for reducible types — above this we refuse to load the file.
+const ABSOLUTE_MAX_FILE_SIZE = 100 * 1024 * 1024;
+
+/** Lowercase and strip separators so 'IMG_1234' and 'img-1234' compare equal. */
+function normalizeName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+/** Camera/scanner/export stems (IMG_0042, scan-2024…) carry no meaning to echo back. */
+function isGenericStem(stem: string): boolean {
+  return /^(img|image|dsc|dscn|dscf|pxl|scan|scanned|screenshot|photo|pict|untitled|document|doc|file)[-_ ()\d]*$/i.test(stem);
+}
+
 export class FileRenamer {
   // Targets already promised to other files in this batch. fs.access alone
   // can't see them: dry-run never touches the disk, and concurrent live
@@ -81,7 +98,12 @@ export class FileRenamer {
 
   private async renameFile(file: FileInfo): Promise<{ result: RenameResult; inputTokens?: number; outputTokens?: number }> {
     if (file.size > this.config.maxFileSize) {
-      throw new FileSizeError(`File size (${Math.round(file.size / 1024 / 1024)}MB) exceeds maximum allowed size (${Math.round(this.config.maxFileSize / 1024 / 1024)}MB)`);
+      const reducible = REDUCIBLE_EXTENSIONS.has(file.extension.toLowerCase());
+      if (!reducible || file.size > ABSOLUTE_MAX_FILE_SIZE) {
+        throw new FileSizeError(`File size (${Math.round(file.size / 1024 / 1024)}MB) exceeds maximum allowed size (${Math.round(this.config.maxFileSize / 1024 / 1024)}MB)`);
+      }
+      // Reducible type (image/PDF): proceed — the parser sends a compressed
+      // representation to the AI and the original file is never modified.
     }
 
     const parser = this.parserFactory.getParser(file.path);
@@ -126,6 +148,14 @@ export class FileRenamer {
 
     if (!aiResult.name || aiResult.name.trim().length === 0) {
       throw new NetworkError('Failed to generate a filename');
+    }
+
+    // The prompt tells the AI to keep already-good names, but echoing back a
+    // meaningless camera/scanner stem (IMG_0042) means it read nothing useful —
+    // fail loudly instead of blessing the junk name.
+    const originalStem = path.basename(file.name, file.extension);
+    if (isGenericStem(originalStem) && normalizeName(aiResult.name) === normalizeName(originalStem)) {
+      throw new ParseError(`AI could not derive a meaningful name (it returned the original filename "${file.name}")`);
     }
 
     const coreFileName = aiResult.name;

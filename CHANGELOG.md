@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-07-31
+
+### Changed
+- **Dependency updates**: `@anthropic-ai/sdk` 0.115.0, `fs-extra` 11.4.0,
+  `pdfjs-dist` 6.2.108 + `pdf-to-png-converter` 4.2.0 (bumped as a pair so both
+  dedupe to a single pdf.js install; 4.2.0 renders via `@napi-rs/canvas`
+  internally — scanned-PDF conversion verified end-to-end), plus dev tooling
+  (`eslint` 10.8.0, `tsx` 4.23.1, `typescript-eslint` 8.65.0,
+  `@types/node` 26.1.2)
+- `chalk` 6 and `openai` 7 were deliberately **not** taken: both require
+  Node >= 22 and namewise supports Node >= 20; `typescript` 7 is not yet
+  supported by `typescript-eslint`
+
+### Security
+- Resolved all `npm audit` findings: `postcss` path-traversal advisory
+  (transitive, via `npm audit fix`) and the `brace-expansion` DoS advisories
+  under exceljs's archiver chain (forced to the patched 5.0.9 line via an npm
+  override — that glob code path receives no untrusted patterns in namewise)
+
 ## [1.2.0] - 2026-07-12
 
 ### Fixed

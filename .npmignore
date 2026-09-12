@@ -18,3 +18,14 @@ eng.traineddata
 # Dev files
 *.log
 .env*
+
+# Dev-only files that .gitignore covers but .npmignore must repeat: having a
+# .npmignore makes npm ignore .gitignore entirely, so these shipped in the
+# published tarball up to 1.2.1.
+.claude/
+coverage/
+smoke-corpus/
+scripts/
+eslint.config.js
+CLAUDE.md
+docs/superpowers/

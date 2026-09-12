@@ -1202,7 +1202,10 @@ describe('FileRenamer', () => {
     it('should allow the AI to echo a meaningful stem (no-op rename)', async () => {
       const renamer = new FileRenamer(makeTextParserFactory(), makeEchoService('quarterly-report'), config);
       const file: FileInfo = {
-        path: '/test/quarterly-report.pdf',
+        // platform-native input: FileRenamer detects a no-op by comparing
+        // file.path against its path.join result, so a POSIX literal would
+        // look like a real rename on Windows
+        path: path.join('/test', 'quarterly-report.pdf'),
         name: 'quarterly-report.pdf',
         extension: '.pdf',
         size: 1000

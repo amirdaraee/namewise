@@ -11,6 +11,10 @@ export default defineConfig({
     globalSetup: ['tests/integration/helpers/generate-fixtures.ts'],
     include: ['tests/**/*.test.{ts,js}'],
     exclude: ['node_modules', 'dist'],
+    // Vitest defaults to 5s, which is too tight for the native PDF and canvas
+    // decode paths on Windows CI runners. Nothing legitimate comes close: the
+    // whole suite runs in a few seconds locally.
+    testTimeout: 30_000,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],

@@ -18,6 +18,7 @@ vi.mock('../../../src/utils/history.js', () => ({
 }));
 
 import { promises as fs } from 'fs';
+import path from 'path';
 import { appendHistory } from '../../../src/utils/history.js';
 import { applyPlan } from '../../../src/cli/apply.js';
 
@@ -72,13 +73,15 @@ describe('applyPlan()', () => {
       directory: '/scan/dir',
       results: [{ originalPath: 'old.pdf', newPath: 'new.pdf', success: true }]
     }) as any);
+    // applyPlan anchors via path.join, which yields \ separators on Windows
+    const anchored = (f: string) => path.join('/scan/dir', f);
     vi.mocked(fs.access).mockImplementation(async (p) => {
-      if (String(p) === '/scan/dir/old.pdf') return;
+      if (String(p) === anchored('old.pdf')) return;
       throw Object.assign(new Error(), { code: 'ENOENT' });
     });
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await applyPlan('/plan.json');
-    expect(fs.rename).toHaveBeenCalledWith('/scan/dir/old.pdf', '/scan/dir/new.pdf');
+    expect(fs.rename).toHaveBeenCalledWith(anchored('old.pdf'), anchored('new.pdf'));
   });
 
   it('leaves relative paths untouched when the plan has no directory field', async () => {

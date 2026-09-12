@@ -4,7 +4,7 @@
 [![npm](https://img.shields.io/npm/v/@amirdaraee/namewise.svg)](https://www.npmjs.com/package/@amirdaraee/namewise)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#testing--development)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-22.13+-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 **AI-Powered File Renaming CLI Tool**
@@ -636,7 +636,7 @@ For unexpected errors, the terminal either points to the log (if `--log` was use
 - **Conflict Auto-Numbering**: Never overwrites an existing file
 - **File Size Limits**: Files above `--max-size` are skipped — except images and PDFs, which are analyzed through a size-reduced copy (originals are never modified); a 100MB hard ceiling applies
 - **Extension Preservation**: Original file extensions are never changed
-- **Comprehensive Testing**: 1,000+ tests with 100% coverage, run on Node 20/22/24 in CI
+- **Comprehensive Testing**: 1,000+ tests with 100% coverage, run on Node 22/24 in CI
 
 ## Testing & Development
 
@@ -664,7 +664,7 @@ npm run test:integration # Integration tests only
 
 ## Requirements
 
-- **Node.js**: 20.0.0 or higher
+- **Node.js**: 22.13.0 or higher
 - **AI Provider**: Choose one:
   - **Local**: Ollama or LMStudio (no API key needed)
   - **Cloud**: Claude (Anthropic) or OpenAI API key

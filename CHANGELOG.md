@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-09-13
+
+### BREAKING
+- **Minimum Node.js is now 22.13.0** (was 20.0.0). The declared floor no longer
+  matched reality: `pdfjs-dist` and `pdf-to-png-converter` both require
+  `>=22.13.0`, `commander` 15 requires `>=22.12.0`, `chokidar` 5 requires
+  `>=20.19.0` and `inquirer` 14 requires `>=20.17.0`. On Node 20 npm silently
+  skipped `pdf-to-png-converter` as an unusable optional dependency, which took
+  its type declarations with it and broke `tsc`. Staying on Node 20 would mean
+  holding `pdfjs-dist` below 6.2.108 and keeping a high-severity
+  arbitrary-JavaScript-execution advisory open, so the floor moves up instead.
+  The CI matrix now runs Node 22 and 24 on ubuntu, windows and macOS (6 jobs).
+
+### Security
+- `@xmldom/xmldom` 0.8.13 → 0.8.15, closing ten advisories: `requireWellFormed`
+  injection bypasses via `createElement()`, `setAttribute()`, processing
+  instructions, DocType names and invalid `EntityReference.nodeName`, plus
+  end-tag ReDoS and quadratic-time/-memory parsing. It arrives through
+  `mammoth`, which declares `^0.8.6`, so the lockfile held the vulnerable
+  version even after bumping mammoth; it is now pinned through `overrides`
+  alongside `uuid` and `brace-expansion`.
+- `vitest` 4.1.11 closes the `@vitest/mocker` path-traversal / arbitrary file
+  read advisory and pulls `postcss` 8.5.28, which fixes `nanoid` looping
+  indefinitely on a zero size.
+- `npm audit` is clean.
+
+### Changed
+- Dependency updates: `@anthropic-ai/sdk` 0.125.0, `inquirer` 14.2.2,
+  `mammoth` 1.12.3, `pdf-to-png-converter` 4.2.1, plus dev tooling
+  (`@types/node` 26.4.1, `eslint` 10.10.0, `pdfkit` 0.20.2, `tsx` 4.23.13,
+  `typescript-eslint` 8.70.0, `vitest` and friends 4.1.11)
+- `actions/setup-node` v6 → v7 in both workflows
+- `pdfjs-dist` stays at 6.2.108: `pdf-to-png-converter` 4.2.1 requires
+  `~6.2.108` and the two must dedupe to a single pdf.js install or their
+  workers conflict at runtime
+- `typescript` 7 is still skipped — outside `typescript-eslint`'s
+  `typescript >=4.8.4 <6.1.0` peer range
+
+### Fixed
+- `vitest.config.ts` used `__dirname`, which only resolved because Vite
+  pre-transpiles the config to CJS. Vite now warns that its native config
+  loader, planned as a future default, cannot provide it in an ESM config;
+  switched to `fileURLToPath(import.meta.url)`
+- Three Windows CI failures: two test path assertions compared a `path.join`
+  result against a hardcoded POSIX literal, and two PDF integration tests
+  exceeded Vitest's 5s default. The global `testTimeout` is now 30s, since the
+  native PDF and canvas decode paths are much slower on Windows runners
+
 ## [1.2.1] - 2026-07-31
 
 ### Changed

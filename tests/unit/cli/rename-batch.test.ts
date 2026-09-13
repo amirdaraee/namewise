@@ -34,6 +34,7 @@ vi.mock('fs', async () => {
 });
 
 import { promises as fs } from 'fs';
+import path from 'path';
 import { collectFiles } from '../../../src/utils/fs-collect.js';
 import { runBatchRenames, renameFiles, runPatternRenamesForTest } from '../../../src/cli/rename.js';
 
@@ -80,9 +81,9 @@ describe('runBatchRenames()', () => {
     await runBatchRenames('/dir', { truncate: 7 }, false, false);
     const targets = vi.mocked(fs.rename).mock.calls.map(c => c[1]);
     expect(targets).toEqual([
-      '/dir/report-.txt',
-      '/dir/report--2.txt',
-      '/dir/report--3.txt'
+      path.join('/dir', 'report-.txt'),
+      path.join('/dir', 'report--2.txt'),
+      path.join('/dir', 'report--3.txt')
     ]);
   });
 
@@ -204,7 +205,10 @@ describe('runPatternRenames()', () => {
       config(['s/january|february//'])
     );
     const targets = vi.mocked(fs.rename).mock.calls.map(c => c[1]);
-    expect(targets).toEqual(['/dir/report-.txt', '/dir/report--2.txt']);
+    expect(targets).toEqual([
+      path.join('/dir', 'report-.txt'),
+      path.join('/dir', 'report--2.txt')
+    ]);
   });
 
   it('never renames two files onto the same target', async () => {
@@ -234,6 +238,6 @@ describe('runPatternRenames()', () => {
     );
     // the stem only changes case, so it is renamed rather than emptied to '.txt'
     const targets = vi.mocked(fs.rename).mock.calls.map(c => c[1]);
-    expect(targets).toEqual(['/dir/документ.txt']);
+    expect(targets).toEqual([path.join('/dir', 'документ.txt')]);
   });
 });

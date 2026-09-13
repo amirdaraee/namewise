@@ -8,6 +8,7 @@ import { FileRenamer } from '../services/file-renamer.js';
 import { loadConfig, NamiwiseFileConfig } from '../utils/config-loader.js';
 import { recordSession } from '../utils/record-session.js';
 import { applyPatterns } from '../utils/pattern-rename.js';
+import { resolveTargetPath } from '../utils/resolve-target.js';
 import { applyNamingConvention } from '../utils/naming-conventions.js';
 import { collectFiles } from '../utils/fs-collect.js';
 import { statToFileInfo } from '../utils/file-info.js';
@@ -347,24 +348,38 @@ async function getFilesToProcess(
 
 // Exported for integration testing only
 export { getFilesToProcess as getFilesToProcessForTest };
+export { runPatternRenames as runPatternRenamesForTest };
 
 async function runPatternRenames(files: FileInfo[], config: Config): Promise<void> {
   const renames: Array<{ originalPath: string; newPath: string }> = [];
   let previewCount = 0;
+  const claimed = new Set<string>();
 
   for (const file of files) {
     const stem = path.basename(file.name, file.extension);
     let newStem = applyPatterns(stem, config.patterns!);
     newStem = applyNamingConvention(newStem, config.namingConvention);
+    // A stem of only punctuation or, before the normaliser understood Unicode,
+    // any non-Latin script, reduces to ''. Renaming to a bare '.txt' would
+    // hide the file and collide with every other emptied name.
+    if (!newStem) {
+      ui.warn(`${file.name} → skipped: pattern left an empty filename`);
+      continue;
+    }
     const newName = newStem + file.extension;
 
     if (newName === file.name) continue;
 
-    const newPath = path.join(path.dirname(file.path), newName);
+    const newPath = await resolveTargetPath(
+      path.join(path.dirname(file.path), newName),
+      claimed,
+      file.path
+    );
+    const finalName = path.basename(newPath);
     if (config.dryRun) {
-      ui.dim(`[dry-run] ${file.name} → ${newName}`);
+      ui.dim(`[dry-run] ${file.name} → ${finalName}`);
     } else {
-      ui.success(`${file.name} → ${newName}`);
+      ui.success(`${file.name} → ${finalName}`);
     }
 
     if (!config.dryRun) {
@@ -428,6 +443,7 @@ export async function runBatchRenames(
   const renames: Array<{ originalPath: string; newPath: string }> = [];
   let previewCount = 0;
   const total = filePaths.length;
+  const claimed = new Set<string>();
 
   for (let i = 0; i < filePaths.length; i++) {
     const filePath = filePaths[i];
@@ -450,11 +466,12 @@ export async function runBatchRenames(
     const newName = stem + ext;
     if (newName === path.basename(filePath)) continue;
 
-    const newPath = path.join(path.dirname(filePath), newName);
+    const newPath = await resolveTargetPath(path.join(path.dirname(filePath), newName), claimed, filePath);
+    const finalName = path.basename(newPath);
     if (dryRun) {
-      ui.dim(`[dry-run] ${path.basename(filePath)} → ${newName}`);
+      ui.dim(`[dry-run] ${path.basename(filePath)} → ${finalName}`);
     } else {
-      ui.success(`${path.basename(filePath)} → ${newName}`);
+      ui.success(`${path.basename(filePath)} → ${finalName}`);
     }
 
     if (!dryRun) {

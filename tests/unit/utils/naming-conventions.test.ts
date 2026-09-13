@@ -35,6 +35,35 @@ describe('Naming Conventions', () => {
       expect(result).toBe('PROJECTREQUIREMENTSDOCUMENT2024');
     });
 
+    // The normaliser used \w, which is ASCII-only in JavaScript, so every
+    // non-Latin character was treated as "special" and deleted. Cyrillic and
+    // CJK names collapsed to an empty string.
+    describe('non-ASCII text', () => {
+      it('preserves Cyrillic letters', () => {
+        expect(applyNamingConvention('Документ', 'kebab-case')).toBe('документ');
+      });
+
+      it('preserves CJK characters', () => {
+        expect(applyNamingConvention('新建文本文档', 'kebab-case')).toBe('新建文本文档');
+      });
+
+      it('preserves accented Latin letters', () => {
+        expect(applyNamingConvention('café résumé', 'kebab-case')).toBe('café-résumé');
+      });
+
+      it('preserves Greek letters', () => {
+        expect(applyNamingConvention('Ω omega', 'kebab-case')).toBe('ω-omega');
+      });
+
+      it('still strips punctuation from non-ASCII text', () => {
+        expect(applyNamingConvention('Документ (черновик)!', 'kebab-case')).toBe('документ-черновик');
+      });
+
+      it('keeps digits from other scripts', () => {
+        expect(applyNamingConvention('報告 2024', 'kebab-case')).toBe('報告-2024');
+      });
+    });
+
     it('should handle text with special characters', () => {
       const textWithSpecialChars = 'User@Guide & Manual (v2.1)';
       

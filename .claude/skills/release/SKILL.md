@@ -8,6 +8,8 @@ disable-model-invocation: true
 
 Releases are driven by `v*` tags: pushing the tag triggers `.github/workflows/release.yml` (test -> build -> npm publish -> GitHub release).
 
+Publishing authenticates via OIDC against the trusted publisher configured on npm for this repo + `release.yml`. There is no NPM_TOKEN: the job needs `id-token: write`, and published versions carry provenance attestation.
+
 ## Pre-flight checks (abort if any fail)
 
 1. On `main` with a clean working tree:
@@ -32,17 +34,35 @@ This runs build + tests again, then `npm version <level>` which commits and crea
 
 ## Post-bump
 
-1. Check the hardcoded version string in `src/index.ts` - it can lag behind `package.json`. If it does, update it, amend it into the version commit, and move the tag:
-   ```bash
-   git add src/index.ts && git commit --amend --no-edit
-   git tag -f v<X.Y.Z>
-   ```
-2. Push commit and tag together:
+1. Push commit and tag together:
    ```bash
    git push --follow-tags
    ```
-3. Confirm the release workflow started and succeeded:
+2. Confirm the release workflow started and succeeded:
    ```bash
    gh run watch $(gh run list --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId')
    ```
-4. Verify the publish: `npm view @amirdaraee/namewise version`
+3. Verify the publish. The registry takes a minute or two to serve a new
+   version, so a 404 right after a successful run means "still processing",
+   not "failed":
+   ```bash
+   npm view @amirdaraee/namewise version
+   ```
+
+`src/index.ts` reads the version from `package.json` at runtime, so there is no
+version string to keep in sync and nothing to amend after `npm version`.
+
+## If the workflow needs a fix mid-release
+
+Actions runs the workflow file **from the ref that triggered it**, so fixing
+`release.yml` on `main` does nothing for an existing tag — `gh run rerun` will
+replay the old file. The tag has to move:
+
+```bash
+git push origin :refs/tags/v<X.Y.Z>   # delete remote tag
+git tag -d v<X.Y.Z> && git tag v<X.Y.Z>
+git push origin v<X.Y.Z>              # retriggers the release
+```
+
+Only do this while the version is genuinely unconsumed - not on npm and no
+GitHub release for it. Once either exists, ship a new patch version instead.

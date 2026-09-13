@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-09-13
+
+### Fixed
+- **Mechanical renames no longer overwrite each other.** `runPatternRenames`
+  and `runBatchRenames` called `fs.rename` with no collision check, so several
+  files resolving to one name silently destroyed each other while every one was
+  reported as succeeding — `--truncate 7` over `report-january.txt`,
+  `report-february.txt` and `report-march.txt` left a single file. `undo` could
+  not recover the overwritten content. Affected `--pattern`, `--truncate`,
+  `--strip`, `--sequence`, `--prefix`, `--suffix` and `--date-stamp`;
+  `FileRenamer`'s AI path was already guarded. Colliding targets now fall back
+  to `name-2`, `name-3`, … and targets are claimed during dry runs too, so a
+  preview matches the real run.
+- **Non-ASCII filenames are no longer stripped.** `applyNamingConvention`
+  normalised with `/[^\w\s-]/g`, and JavaScript's `\w` is ASCII-only, so
+  Cyrillic, CJK, Greek and accented characters were deleted — `Документ.txt`
+  and `新建文本文档.txt` both became a bare `.txt`, and `café résumé.txt` became
+  `caf-rsum.txt`. Combined with the missing collision guard this destroyed
+  files. Also unblocks `--language`, which asks the AI for a filename in
+  another script that was then stripped away.
+- A `--pattern` that empties the filename now skips the file instead of
+  renaming it to a bare extension.
+- Case-only renames (`Документ.txt` → `документ.txt`) are no longer mistaken for
+  collisions on case-insensitive filesystems; the resolver compares device and
+  inode rather than relying on `fs.access` alone.
+
 ## [2.1.0] - 2026-09-13
 
 ### Changed

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-09-13
+
+### Changed
+- `chalk` 5.6.2 → 6.0.0 and `openai` 6.45.0 → 7.15.0. Both were held back only
+  by their Node floor — each requires Node >= 22, which 2.0.0 now guarantees.
+  Neither carries an API change: openai 7.0.0's sole breaking change is
+  "require Node.js 22 and codify version support", and chalk 6 likewise only
+  raises its engines.
+
 ## [2.0.0] - 2026-09-13
 
 ### BREAKING
@@ -37,6 +46,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`@types/node` 26.4.1, `eslint` 10.10.0, `pdfkit` 0.20.2, `tsx` 4.23.13,
   `typescript-eslint` 8.70.0, `vitest` and friends 4.1.11)
 - `actions/setup-node` v6 → v7 in both workflows
+- Releases now publish to npm via OIDC trusted publishing rather than a stored
+  `NPM_TOKEN`, so nothing expires and published versions carry provenance
+  attestation
 - `pdfjs-dist` stays at 6.2.108: `pdf-to-png-converter` 4.2.1 requires
   `~6.2.108` and the two must dedupe to a single pdf.js install or their
   workers conflict at runtime

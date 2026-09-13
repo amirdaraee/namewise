@@ -3,7 +3,10 @@ export type NamingConvention = 'kebab-case' | 'snake_case' | 'camelCase' | 'Pasc
 export function applyNamingConvention(text: string, convention: NamingConvention): string {
   // First, normalize the text by removing special characters and extra spaces
   const normalized = text
-    .replace(/[^\w\s-]/g, '') // Remove special characters except hyphens
+    // \w is ASCII-only in JavaScript, so it deleted every Cyrillic, CJK and
+    // accented character. Match Unicode letters and numbers instead, keeping
+    // the underscore and hyphen that \w and the old class allowed.
+    .replace(/[^\p{L}\p{N}\s_-]/gu, '') // Remove special characters except hyphens
     .replace(/\s+/g, ' ')      // Normalize spaces
     .trim();
 

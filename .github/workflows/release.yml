@@ -9,6 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # Required to mint the OIDC token for npm trusted publishing. Without it
+      # npm falls back to NODE_AUTH_TOKEN and the trusted publisher is bypassed.
+      id-token: write
 
     steps:
       - uses: actions/checkout@v7
@@ -28,10 +31,11 @@ jobs:
       - name: Build
         run: npm run build && chmod +x dist/index.js
 
+      # Authenticates via OIDC against the trusted publisher configured on npm
+      # for this repo + release.yml, so no NPM_TOKEN is involved and published
+      # versions carry provenance.
       - name: Publish to npm
         run: npm publish --ignore-scripts
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Extract changelog for this version
         id: changelog

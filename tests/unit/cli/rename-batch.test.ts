@@ -27,14 +27,15 @@ vi.mock('fs', async () => {
       ...(actual as any).promises,
       stat: vi.fn(),
       rename: vi.fn().mockResolvedValue(undefined),
-      readdir: vi.fn().mockResolvedValue([])
+      readdir: vi.fn().mockResolvedValue([]),
+      access: vi.fn().mockRejectedValue(Object.assign(new Error(), { code: 'ENOENT' }))
     }
   };
 });
 
 import { promises as fs } from 'fs';
 import { collectFiles } from '../../../src/utils/fs-collect.js';
-import { runBatchRenames, renameFiles } from '../../../src/cli/rename.js';
+import { runBatchRenames, renameFiles, runPatternRenamesForTest } from '../../../src/cli/rename.js';
 
 const fakeStat = { isDirectory: () => true, mtime: new Date(), birthtime: new Date() };
 
@@ -64,6 +65,49 @@ describe('runBatchRenames()', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await runBatchRenames('/dir', { prefix: 'new-' }, true, false);
     expect(fs.rename).not.toHaveBeenCalled();
+  });
+
+  // Two files resolving to one target used to be renamed straight over each
+  // other with fs.rename, silently destroying the first. --truncate and
+  // --strip collide readily on files sharing a prefix.
+  it('disambiguates colliding targets with a conflict counter', async () => {
+    vi.mocked(collectFiles).mockResolvedValue([
+      '/dir/report-january.txt',
+      '/dir/report-february.txt',
+      '/dir/report-march.txt'
+    ]);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await runBatchRenames('/dir', { truncate: 7 }, false, false);
+    const targets = vi.mocked(fs.rename).mock.calls.map(c => c[1]);
+    expect(targets).toEqual([
+      '/dir/report-.txt',
+      '/dir/report--2.txt',
+      '/dir/report--3.txt'
+    ]);
+  });
+
+  it('never renames two files onto the same target', async () => {
+    vi.mocked(collectFiles).mockResolvedValue([
+      '/dir/report-january.txt',
+      '/dir/report-february.txt',
+      '/dir/report-march.txt'
+    ]);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await runBatchRenames('/dir', { truncate: 7 }, false, false);
+    const targets = vi.mocked(fs.rename).mock.calls.map(c => c[1]);
+    expect(new Set(targets).size).toBe(targets.length);
+  });
+
+  it('reserves targets in dry-run too, so the preview matches a real run', async () => {
+    vi.mocked(collectFiles).mockResolvedValue([
+      '/dir/report-january.txt',
+      '/dir/report-february.txt'
+    ]);
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await runBatchRenames('/dir', { truncate: 7 }, true, false);
+    const out = spy.mock.calls.map(c => c[0]).join('\n');
+    expect(out).toContain('report--2.txt');
+    spy.mockRestore();
   });
 
   it('skips files whose name does not change', async () => {
@@ -140,5 +184,56 @@ describe('runBatchRenames()', () => {
     await runBatchRenames('/dir', { dateStamp: 'created' }, false, false);
     const { applyDateStamp } = await import('../../../src/utils/batch-rename.js');
     expect(vi.mocked(applyDateStamp)).toHaveBeenCalledWith('report', birthtime, 'YYYY-MM-DD');
+  });
+});
+
+describe('runPatternRenames()', () => {
+  const file = (name: string) => ({
+    path: `/dir/${name}`,
+    name,
+    extension: '.txt',
+    size: 1
+  });
+  const config = (patterns: string[], dryRun = false) =>
+    ({ patterns, namingConvention: 'kebab-case', dryRun }) as any;
+
+  it('disambiguates colliding targets with a conflict counter', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await runPatternRenamesForTest(
+      [file('report-january.txt'), file('report-february.txt')],
+      config(['s/january|february//'])
+    );
+    const targets = vi.mocked(fs.rename).mock.calls.map(c => c[1]);
+    expect(targets).toEqual(['/dir/report-.txt', '/dir/report--2.txt']);
+  });
+
+  it('never renames two files onto the same target', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await runPatternRenamesForTest(
+      [file('report-january.txt'), file('report-february.txt'), file('report-march.txt')],
+      config(['s/january|february|march//'])
+    );
+    const targets = vi.mocked(fs.rename).mock.calls.map(c => c[1]);
+    expect(new Set(targets).size).toBe(targets.length);
+  });
+
+  it('skips a file when the pattern leaves an empty filename', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await runPatternRenamesForTest([file('report.txt')], config(['s/report//']));
+    expect(fs.rename).not.toHaveBeenCalled();
+    expect(spy.mock.calls.map(c => c[0]).join('\n')).toContain('empty filename');
+    spy.mockRestore();
+  });
+
+  it('preserves non-ASCII filenames instead of emptying them', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await runPatternRenamesForTest(
+      [{ path: '/dir/Документ.txt', name: 'Документ.txt', extension: '.txt', size: 1 }],
+      config(['s/zzznomatch//'])
+    );
+    // the stem only changes case, so it is renamed rather than emptied to '.txt'
+    const targets = vi.mocked(fs.rename).mock.calls.map(c => c[1]);
+    expect(targets).toEqual(['/dir/документ.txt']);
   });
 });

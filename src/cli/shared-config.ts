@@ -51,12 +51,46 @@ export function resolveProvider(
   return (options.provider ?? fileConfig.provider ?? 'claude') as Config['aiProvider'];
 }
 
-/** Whether the provider needs an API key (cloud providers, unless --no-ai). */
+/**
+ * Whether the provider needs an API key. 9Router runs locally but still
+ * authenticates with its own issued key, separate from the upstream provider
+ * keys it holds.
+ */
 export function providerRequiresApiKey(
   provider: Config['aiProvider'],
   aiDisabled: boolean
 ): boolean {
-  return ['claude', 'openai'].includes(provider) && !aiDisabled;
+  return ['claude', 'openai', '9router'].includes(provider) && !aiDisabled;
+}
+
+/** Environment variable each key-taking provider reads. */
+const PROVIDER_KEY_ENV: Partial<Record<Config['aiProvider'], string>> = {
+  claude: 'ANTHROPIC_API_KEY',
+  openai: 'OPENAI_API_KEY',
+  '9router': 'NINEROUTER_API_KEY'
+};
+
+export function apiKeyEnvVar(provider: Config['aiProvider']): string | undefined {
+  return PROVIDER_KEY_ENV[provider];
+}
+
+/**
+ * The key in .namewise.json belongs to the provider it was configured for.
+ * Returning it for a different provider would send, say, an Anthropic key to
+ * whatever gateway `--base-url` names — a local listener could simply keep it.
+ *
+ * A config with no `provider` is treated as claude, matching resolveProvider's
+ * default. `ignoredFrom` names the provider a withheld key was stored for so
+ * the caller can explain itself instead of failing to authenticate silently.
+ */
+export function resolveStoredApiKey(
+  fileConfig: NamiwiseFileConfig,
+  provider: Config['aiProvider']
+): { apiKey?: string; ignoredFrom?: Config['aiProvider'] } {
+  if (!fileConfig.apiKey) return {};
+  const storedFor = fileConfig.provider ?? 'claude';
+  if (storedFor === provider) return { apiKey: fileConfig.apiKey };
+  return { ignoredFrom: storedFor };
 }
 
 /**
@@ -80,6 +114,10 @@ export function resolveApiKey(
     if (envKey) return envKey;
   } else if (provider === 'openai' && process.env.OPENAI_API_KEY) {
     return process.env.OPENAI_API_KEY;
+  } else if (provider === '9router' && process.env.NINEROUTER_API_KEY) {
+    // Not 9ROUTER_API_KEY: POSIX environment variable names cannot begin with
+    // a digit, so that spelling is unusable in a shell.
+    return process.env.NINEROUTER_API_KEY;
   }
   return initialKey;
 }

@@ -1,5 +1,5 @@
 import { AI_SYSTEM_PROMPT } from '../utils/ai-prompts.js';
-import { BaseLocalService } from './base-local-service.js';
+import { BaseLocalService, LocalCompletion } from './base-local-service.js';
 
 interface OllamaResponse {
   model: string;
@@ -29,7 +29,7 @@ export class OllamaService extends BaseLocalService<OllamaChatRequest, OllamaRes
     super('Ollama', baseUrl, model);
   }
 
-  protected async requestCompletion(prompt: string, imageData?: string): Promise<string | undefined> {
+  protected async requestCompletion(prompt: string, imageData?: string): Promise<LocalCompletion> {
     const userMessage: OllamaChatMessage = imageData
       ? { role: 'user', content: prompt, images: [imageData.split(',')[1]] }
       : { role: 'user', content: prompt };
@@ -43,7 +43,7 @@ export class OllamaService extends BaseLocalService<OllamaChatRequest, OllamaRes
       stream: false
     });
 
-    return response.message?.content;
+    return { content: response.message?.content };
   }
 
   async isAvailable(): Promise<boolean> {

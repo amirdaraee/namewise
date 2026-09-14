@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // vi.mock is hoisted to top, so these mocks apply when index.ts is imported
 vi.mock('commander', () => ({
@@ -24,6 +24,14 @@ const pkg = JSON.parse(
 );
 
 describe('CLI entry point (index.ts)', () => {
+  // ES modules are cached, so `await import()` only runs index.ts the first
+  // time. Without resetting the registry these tests read the mock calls made
+  // by the first one rather than executing the module themselves.
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
   it('should initialize program with correct name, version and setup commands', async () => {
     // Import index.ts to run the main() function
     await import('../../src/index.js');

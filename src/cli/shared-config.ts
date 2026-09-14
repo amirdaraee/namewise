@@ -21,6 +21,8 @@ export interface SharedRenameOptions {
   depth?: string;
   concurrency?: string;
   output?: string;
+  /** Skip confirmation prompts so the run can proceed unattended. */
+  yes?: boolean;
   pattern?: string | string[];
   /** Commander sets `ai: false` when --no-ai is passed. */
   ai?: boolean;

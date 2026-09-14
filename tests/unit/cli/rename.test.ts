@@ -451,6 +451,28 @@ describe('renameFiles()', () => {
       warnSpy.mockRestore();
     });
 
+    it('fails fast instead of prompting for a key when --yes is set', async () => {
+      // --yes promises no prompts; blocking on a question nobody can answer
+      // would hang an unattended run forever
+      const saved = { c: process.env.CLAUDE_API_KEY, a: process.env.ANTHROPIC_API_KEY };
+      delete process.env.CLAUDE_API_KEY;
+      delete process.env.ANTHROPIC_API_KEY;
+      vi.mocked(loadConfig).mockResolvedValue({} as any);
+      mockReaddir.mockResolvedValue([]);
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as any);
+
+      await renameFiles('/test/dir', { ...defaultOptions, apiKey: undefined, provider: 'claude', yes: true });
+
+      expect(mockInquirerPrompt).not.toHaveBeenCalled();
+      expect(exitSpy).toHaveBeenCalled();
+
+      if (saved.c !== undefined) process.env.CLAUDE_API_KEY = saved.c;
+      if (saved.a !== undefined) process.env.ANTHROPIC_API_KEY = saved.a;
+      exitSpy.mockRestore();
+    });
+
     it('should use NINEROUTER_API_KEY env var when provider is 9router', async () => {
       // not 9ROUTER_API_KEY: POSIX env var names cannot begin with a digit
       const originalKey = process.env.NINEROUTER_API_KEY;

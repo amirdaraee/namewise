@@ -23,6 +23,7 @@ import {
 } from '../utils/batch-rename.js';
 import * as ui from '../utils/ui.js';
 import { createLogger, logger } from '../utils/logger.js';
+import { ConfigError } from '../errors.js';
 import { handleCliError } from './handle-cli-error.js';
 import {
   RenameOptions,
@@ -102,7 +103,7 @@ export async function renameFiles(directory: string, options: RenameOptions): Pr
     }
 
     // Confirm before processing
-    if (!config.dryRun && !(await confirmProceed())) {
+    if (!config.dryRun && !options.yes && !(await confirmProceed())) {
       ui.info('Cancelled.');
       return;
     }
@@ -181,6 +182,14 @@ async function resolveRenameConfig(
   }
 
   if (providerRequiresApiKey(provider, aiDisabled) && !apiKey) {
+    // --yes promises no prompts, so an unattended run must fail loudly here
+    // rather than block on a question nobody is there to answer.
+    if (options.yes) {
+      throw new ConfigError(
+        `No API key for provider "${provider}" and --yes forbids prompting.`,
+        { hint: `Set ${apiKeyEnvVar(provider)} or pass --api-key.` }
+      );
+    }
     const keyPrompt = await inquirer.prompt([
       {
         type: 'password',

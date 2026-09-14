@@ -66,6 +66,7 @@ Example:
     .option('--depth <n>', 'Maximum recursion depth when using --recursive')
     .option('--concurrency <n>', 'Files to process in parallel (default: 3)')
     .option('--output <path>', 'Save rename report as JSON to this path')
+    .option('-y, --yes', 'Skip the confirmation prompt (for unattended runs)', false)
     .option(
       '--pattern <pattern>',
       'Regex rename pattern (s/find/replace/flags or find:replace); repeatable, skips AI',
@@ -144,7 +145,9 @@ Batch Rename (no AI, no API key):
   namewise rename ./downloads --truncate 30 --dry-run
 `)
     .action(async (directory, options) => {
-      await renameFiles(directory, options);
+      // --log is declared on the program, so it lands in program.opts() rather
+      // than in this subcommand's options, which is what renameFiles reads.
+      await renameFiles(directory, { ...options, log: options.log ?? program.opts().log ?? false });
     });
 
   program
@@ -189,9 +192,10 @@ Batch Rename (no AI, no API key):
     .argument('[directory]', 'Directory to scan (default: current directory)', '.')
     .option('-r, --recursive', 'Scan subdirectories', false)
     .option('--delete', 'Delete duplicates after confirmation', false)
+    .option('-y, --yes', 'Skip the confirmation prompt (for unattended runs)', false)
     .action(async (directory, options) => {
       const log = createLogger('dedup', program.opts().log ?? false);
-      try { await dedupFiles(directory, { recursive: options.recursive, delete: options.delete }); }
+      try { await dedupFiles(directory, { recursive: options.recursive, delete: options.delete, yes: options.yes }); }
       catch (error) { await handleCliError(error, log); }
     });
 
@@ -232,9 +236,10 @@ Batch Rename (no AI, no API key):
     .argument('[session-id]', 'Session ID to undo (use --list to see IDs)')
     .option('--list', 'List recent rename sessions with their IDs')
     .option('--all', 'Undo all rename sessions')
+    .option('-y, --yes', 'Skip the confirmation prompt (for unattended runs)', false)
     .action(async (sessionId, options) => {
       const log = createLogger('undo', program.opts().log ?? false);
-      try { await undoRename(sessionId, { list: options.list, all: options.all }); }
+      try { await undoRename(sessionId, { list: options.list, all: options.all, yes: options.yes }); }
       catch (error) { await handleCliError(error, log); }
     });
 

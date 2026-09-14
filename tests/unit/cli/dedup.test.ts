@@ -118,6 +118,16 @@ describe('dedupFiles()', () => {
     expect(fs.unlink).not.toHaveBeenCalled();
   });
 
+  it('deletes without prompting when --yes is set', async () => {
+    vi.mocked(findDuplicates).mockResolvedValue(new Map([
+      ['abc123', ['/dir/a.txt', '/dir/b.txt']]
+    ]));
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await dedupFiles('/dir', { delete: true, yes: true });
+    expect(inquirer.prompt).not.toHaveBeenCalled();
+    expect(fs.unlink).toHaveBeenCalled();
+  });
+
   it('deletes duplicates when user confirms', async () => {
     vi.mocked(findDuplicates).mockResolvedValue(new Map([
       ['abc123', ['/dir/a.txt', '/dir/b.txt']]

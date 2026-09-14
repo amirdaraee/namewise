@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-09-14
+
+### Added
+- **9Router provider** (`--provider 9router`). 9Router is a self-hosted gateway
+  that fans one OpenAI-compatible endpoint out to 40+ upstream providers with
+  tiered fallback. It runs locally (default `http://localhost:20128`) but
+  authenticates with its own issued key, separate from the upstream provider
+  keys it holds, read from `NINEROUTER_API_KEY` — not `9ROUTER_API_KEY`, since
+  POSIX environment variable names cannot begin with a digit. Models are
+  namespaced by upstream (`glm/`, `minimax/`, `cc/`, `cx/`, `gh/`, `kr/`,
+  `vertex/`), so there is no default and `--model` is required. The base URL
+  must point at localhost, as with the other local providers.
+- Local providers can now report token usage. Ollama and LMStudio run free
+  local models and continue to show `N/A (local provider)`, but 9Router fronts
+  paid upstreams, so its counts appear in the summary.
+
+### Fixed
+- **A saved API key is no longer sent to a provider it does not belong to.**
+  `.namewise.json` stores one `apiKey`, and it was passed to whichever provider
+  was selected: `--provider openai` forwarded a saved Anthropic key to OpenAI.
+  With a gateway provider this was worse, because `--base-url` names the
+  destination — any process listening on that localhost port would have
+  received the key. The saved key is now scoped to the provider it was saved
+  for, and selecting another provider ignores it with a warning naming the
+  environment variable to set instead. An explicit `--api-key` is always
+  honoured, and providers that need no key (`ollama`, `lmstudio`) stay quiet.
+
 ## [2.1.1] - 2026-09-13
 
 ### Fixed

@@ -396,6 +396,76 @@ describe('renameFiles()', () => {
       consoleSpy.mockRestore();
     });
 
+    it('does not hand a saved claude key to a different provider', async () => {
+      // The saved key belongs to claude; sending it to a --base-url gateway
+      // would let any local listener keep it.
+      const originalKey = process.env.NINEROUTER_API_KEY;
+      process.env.NINEROUTER_API_KEY = 'env-9router-key';
+      vi.mocked(loadConfig).mockResolvedValue({ provider: 'claude', apiKey: 'sk-ant-SAVED' } as any);
+      mockReaddir.mockResolvedValue([]);
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const { AIServiceFactory } = await import('../../../src/services/ai-factory.js');
+
+      await renameFiles('/test/dir', { ...defaultOptions, apiKey: undefined, provider: '9router', model: 'glm/glm-5.1' });
+
+      expect(AIServiceFactory.create).toHaveBeenCalledWith('9router', 'env-9router-key', expect.anything());
+      expect(AIServiceFactory.create).not.toHaveBeenCalledWith('9router', 'sk-ant-SAVED', expect.anything());
+      expect(warnSpy.mock.calls.map(c => c[0]).join('\n')).toContain('does not belong to provider');
+
+      if (originalKey !== undefined) process.env.NINEROUTER_API_KEY = originalKey;
+      else delete process.env.NINEROUTER_API_KEY;
+      warnSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+
+    it('names the environment variable to set when it withholds a saved key', async () => {
+      const originalKey = process.env.NINEROUTER_API_KEY;
+      delete process.env.NINEROUTER_API_KEY;
+      vi.mocked(loadConfig).mockResolvedValue({ provider: 'claude', apiKey: 'sk-ant-SAVED' } as any);
+      mockReaddir.mockResolvedValue([]);
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      mockInquirerPrompt.mockResolvedValueOnce({ apiKey: 'typed-key' } as any);
+
+      await renameFiles('/test/dir', { ...defaultOptions, apiKey: undefined, provider: '9router', model: 'glm/glm-5.1' });
+
+      expect(warnSpy.mock.calls.map(c => c[0]).join('\n')).toContain('NINEROUTER_API_KEY');
+
+      if (originalKey !== undefined) process.env.NINEROUTER_API_KEY = originalKey;
+      warnSpy.mockRestore();
+    });
+
+    it('stays quiet about a saved key when the provider needs none', async () => {
+      // switching to ollama should not nag about an unused cloud key
+      vi.mocked(loadConfig).mockResolvedValue({ provider: 'claude', apiKey: 'sk-ant-SAVED' } as any);
+      mockReaddir.mockResolvedValue([]);
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      await renameFiles('/test/dir', { ...defaultOptions, apiKey: undefined, provider: 'ollama' });
+
+      expect(warnSpy.mock.calls.map(c => c[0]).join('\n')).not.toContain('does not belong to provider');
+      warnSpy.mockRestore();
+    });
+
+    it('should use NINEROUTER_API_KEY env var when provider is 9router', async () => {
+      // not 9ROUTER_API_KEY: POSIX env var names cannot begin with a digit
+      const originalKey = process.env.NINEROUTER_API_KEY;
+      process.env.NINEROUTER_API_KEY = 'env-9router-key';
+      mockReaddir.mockResolvedValue([]);
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const { AIServiceFactory } = await import('../../../src/services/ai-factory.js');
+
+      await renameFiles('/test/dir', { ...defaultOptions, apiKey: undefined, provider: '9router', model: 'glm/glm-5.1' });
+
+      expect(AIServiceFactory.create).toHaveBeenCalledWith('9router', 'env-9router-key', expect.anything());
+
+      if (originalKey !== undefined) process.env.NINEROUTER_API_KEY = originalKey;
+      else delete process.env.NINEROUTER_API_KEY;
+      consoleSpy.mockRestore();
+    });
+
     it('should prompt for API key when env var not set and no apiKey option', async () => {
       const originalClaudeKey = process.env.CLAUDE_API_KEY;
       delete process.env.CLAUDE_API_KEY;

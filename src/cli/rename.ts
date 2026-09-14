@@ -28,6 +28,8 @@ import {
   RenameOptions,
   resolveProvider,
   resolveApiKey,
+  resolveStoredApiKey,
+  apiKeyEnvVar,
   providerRequiresApiKey,
   buildConfig
 } from './shared-config.js';
@@ -161,8 +163,20 @@ async function resolveRenameConfig(
   const provider = resolveProvider(options, fileConfig);
   const aiDisabled = options.ai === false;
 
-  // Get API key for cloud providers only (CLI flag > config file > env vars)
-  let apiKey = resolveApiKey(provider, options.apiKey ?? fileConfig.apiKey, aiDisabled);
+  // Get API key (CLI flag > config file > env vars). The stored key is scoped
+  // to the provider it was saved for: reusing it across providers would send a
+  // cloud key to whatever gateway --base-url names.
+  const stored = resolveStoredApiKey(fileConfig, provider);
+  // Only worth saying when the selected provider actually needs a key —
+  // switching to ollama should not nag about an unused cloud key. That gate
+  // also guarantees the provider has a mapped environment variable.
+  if (stored.ignoredFrom && !options.apiKey && providerRequiresApiKey(provider, aiDisabled)) {
+    ui.warn(
+      `Ignoring the saved ${stored.ignoredFrom} API key: it does not belong to provider "${provider}". ` +
+      `Set ${apiKeyEnvVar(provider)} or pass --api-key.`
+    );
+  }
+  let apiKey = resolveApiKey(provider, options.apiKey ?? stored.apiKey, aiDisabled);
 
   if (providerRequiresApiKey(provider, aiDisabled) && !apiKey) {
     const keyPrompt = await inquirer.prompt([

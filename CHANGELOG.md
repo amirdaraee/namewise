@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-09-14
+
+### Added
+- **`-y`/`--yes`** on `rename`, `dedup` and `undo`, skipping the confirmation
+  prompt so the CLI can run from cron or CI. Without it, a closed stdin made
+  inquirer fail and the command died with `An unexpected error occurred`. With
+  `--yes`, a missing API key is reported as an error rather than prompted for —
+  a flag promising no questions must not then block on a different one.
+
+### Fixed
+- **`--log` now works for `rename`.** The flag is declared on the program, so
+  it lands in `program.opts()`; every subcommand read it from there except
+  `rename`, which read `options.log` and so never enabled logging. Since
+  `rename` is the only command that logs on success rather than only on error,
+  its session logs had been missing entirely.
+- The error hint said "Run with `--log` for detailed error information" without
+  mentioning that the detail goes to a file, so re-running with the flag looked
+  like a no-op. It now names `~/.namewise/logs/`.
+
+### Changed
+- Dependabot ignores TypeScript major bumps. typescript-eslint's peer range is
+  still `>=4.8.4 <6.1.0` as of 8.70.x and no v9 exists, so TypeScript 7 cannot
+  be adopted yet.
+
 ## [2.2.1] - 2026-09-14
 
 ### Fixed

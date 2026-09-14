@@ -414,6 +414,9 @@ namewise rename ./documents --provider claude --dry-run
 
 export OPENAI_API_KEY=your-key
 namewise rename ./files --provider openai --dry-run
+
+export NINEROUTER_API_KEY=your-9router-key
+namewise rename ./files --provider 9router --model glm/glm-5.1 --dry-run
 ```
 
 **Before and after:**
@@ -486,6 +489,24 @@ Supported keys: `provider`, `apiKey`, `case`, `template`, `name`, `date`, `maxSi
 | `openai` | Yes | Yes (`OPENAI_API_KEY`) | `gpt-5.5` |
 | `ollama` | Model-dependent | No | `llama3.1` |
 | `lmstudio` | Model-dependent | No | `local-model` |
+| `9router` | Model-dependent | Yes (`NINEROUTER_API_KEY`) | none — `--model` required |
+
+**9Router** is a self-hosted gateway that fans one OpenAI-compatible endpoint out to 40+ upstream
+providers with tiered fallback. It runs locally (default `http://localhost:20128`) but authenticates
+with its own issued key, separate from the upstream provider keys it holds. Models are namespaced by
+upstream, so there is no default — pass one:
+
+```bash
+export NINEROUTER_API_KEY=your-9router-key
+namewise rename ./documents --provider 9router --model glm/glm-5.1 --dry-run
+```
+
+Prefixes include `cc/`, `cx/`, `gh/`, `glm/`, `minimax/`, `kr/` and `vertex/`. Because 9Router fronts
+paid upstreams, token counts are reported in the summary rather than shown as `N/A`. The base URL
+must point at localhost; tunnel a remote gateway rather than naming it directly.
+
+> A saved API key is scoped to the provider it was saved for. Selecting a different provider ignores
+> it — with a warning — rather than forwarding a cloud key to whatever gateway `--base-url` names.
 
 > **Image files** require a vision-capable model. If the selected model does not support vision, the file is recorded as failed and skipped — no rename is attempted.
 

@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2026-09-14
+
+### Fixed
+- **A skipped optionalDependency no longer breaks the build.** `canvas` and
+  `pdf-to-png-converter` are optional native modules, and npm silently skips an
+  optional dependency whose engines do not match or whose prebuilt binary is
+  unavailable. Because the code referred to their real types via `typeof
+  import('canvas')`, a skipped install became a hard `tsc` failure
+  (`TS2307: Cannot find module 'canvas'`) — the mechanism behind every Node 20
+  job failing before the 2.0.0 floor change, and behind an intermittent
+  macOS/Node 22 CI failure since. The usage is now typed by explicit local
+  interfaces plus shorthand ambient declarations, and `tsc` is clean whether or
+  not the packages are installed. Runtime is unchanged: both are still loaded
+  through `await import()` in a try/catch that explains how to install them.
+
+### Changed
+- `vitest`, `@vitest/coverage-v8` and `@vitest/ui` 4.1.11 → 5.0.0 (dev only).
+  The upgrade exposed two tests that asserted against mock calls left by an
+  earlier test — ES modules are cached, so re-`import()`ing a module does not
+  re-execute it — which now reset the module registry instead.
+
 ## [2.3.0] - 2026-09-14
 
 ### Added

@@ -170,6 +170,15 @@ describe('undoRename()', () => {
       expect(fs.rename).not.toHaveBeenCalled();
     });
 
+    it('undoes all sessions without prompting when --yes is set', async () => {
+      const session2 = { ...session, id: 'session-2', renames: [{ originalPath: '/some/dir/a.pdf', newPath: '/some/dir/b.pdf' }] };
+      mockReadHistory.mockResolvedValue([session, session2]);
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      await undoRename(undefined, { all: true, yes: true });
+      expect(inquirer.prompt).not.toHaveBeenCalled();
+      expect(fs.rename).toHaveBeenCalled();
+    });
+
     it('undoes all sessions when user confirms', async () => {
       const session2 = { ...session, id: 'session-2', renames: [{ originalPath: '/some/dir/a.pdf', newPath: '/some/dir/b.pdf' }] };
       mockReadHistory.mockResolvedValue([session, session2]);

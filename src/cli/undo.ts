@@ -6,7 +6,7 @@ import * as ui from '../utils/ui.js';
 
 export async function undoRename(
   sessionId?: string,
-  options: { list?: boolean; all?: boolean } = {}
+  options: { list?: boolean; all?: boolean; yes?: boolean } = {}
 ): Promise<void> {
   if (options.list) {
     const history = await readHistory();
@@ -24,7 +24,7 @@ export async function undoRename(
   }
 
   if (options.all) {
-    await undoAll();
+    await undoAll(options.yes ?? false);
     return;
   }
 
@@ -83,7 +83,7 @@ async function undoSession(entry: HistoryEntry): Promise<{ succeeded: number; sk
   return { succeeded, skipped };
 }
 
-async function undoAll(): Promise<void> {
+async function undoAll(yes: boolean): Promise<void> {
   const history = await readHistory();
   const sessions = [...history].reverse().filter(e => !e.dryRun);
 
@@ -93,12 +93,12 @@ async function undoAll(): Promise<void> {
   }
 
   if (sessions.length > 1) {
-    const { confirm } = await inquirer.prompt([{
+    const confirm = yes || (await inquirer.prompt([{
       type: 'confirm',
       name: 'confirm',
       message: `Undo all ${sessions.length} rename session(s)?`,
       default: false
-    }]);
+    }])).confirm;
     if (!confirm) {
       ui.info('Cancelled.');
       return;

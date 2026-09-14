@@ -136,6 +136,28 @@ describe('CLI Commands', () => {
       expect(renameFiles).toHaveBeenCalledWith('/test/directory', expect.any(Object));
     });
 
+    // --log is declared on the program, so it lands in program.opts(), not in
+    // the subcommand's options. Every other command reads it from there;
+    // rename read options.log and so never logged at all.
+    it('passes the program-level --log through to rename', async () => {
+      const { renameFiles } = await import('../../../src/cli/rename.js');
+      setupCommands(program); // registers --log on the program itself
+
+      await program.parseAsync(['node', 'test', '--log', 'rename', '/test/dir'], { from: 'node' });
+
+      expect(renameFiles).toHaveBeenCalledWith('/test/dir', expect.objectContaining({ log: true }));
+    });
+
+    it('leaves log unset for rename when --log is absent', async () => {
+      const { renameFiles } = await import('../../../src/cli/rename.js');
+      setupCommands(program);
+
+      await program.parseAsync(['node', 'test', 'rename', '/test/dir'], { from: 'node' });
+
+      const opts = vi.mocked(renameFiles).mock.calls[0][1] as any;
+      expect(opts.log).toBeFalsy();
+    });
+
     it('should parse options correctly', async () => {
       const { renameFiles } = await import('../../../src/cli/rename.js');
       
@@ -395,7 +417,7 @@ describe('CLI Commands', () => {
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'dedup', '/my/dir', '--recursive', '--delete'], { from: 'node' });
 
-      expect(dedupFiles).toHaveBeenCalledWith('/my/dir', { recursive: true, delete: true });
+      expect(dedupFiles).toHaveBeenCalledWith('/my/dir', { recursive: true, delete: true, yes: false });
     });
 
     it('should exit with 1 when dedupFiles throws', async () => {
@@ -497,7 +519,7 @@ describe('CLI Commands', () => {
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'undo', 'sess-123', '--list'], { from: 'node' });
 
-      expect(undoRename).toHaveBeenCalledWith('sess-123', { list: true, all: undefined });
+      expect(undoRename).toHaveBeenCalledWith('sess-123', { list: true, all: undefined, yes: false });
     });
 
     it('should call undoRename with --all flag', async () => {
@@ -507,7 +529,7 @@ describe('CLI Commands', () => {
       setupCommands(program);
       await program.parseAsync(['node', 'test', 'undo', '--all'], { from: 'node' });
 
-      expect(undoRename).toHaveBeenCalledWith(undefined, { list: undefined, all: true });
+      expect(undoRename).toHaveBeenCalledWith(undefined, { list: undefined, all: true, yes: false });
     });
 
     it('should exit with 1 when undoRename throws', async () => {

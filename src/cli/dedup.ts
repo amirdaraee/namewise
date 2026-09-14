@@ -8,7 +8,7 @@ import * as ui from '../utils/ui.js';
 
 export async function dedupFiles(
   directory: string,
-  options: { recursive?: boolean; delete?: boolean } = {}
+  options: { recursive?: boolean; delete?: boolean; yes?: boolean } = {}
 ): Promise<void> {
   await assertDirectory(directory);
 
@@ -40,12 +40,12 @@ export async function dedupFiles(
 
   if (!options.delete) return;
 
-  const { confirm } = await inquirer.prompt([{
+  const confirm = options.yes || (await inquirer.prompt([{
     type: 'confirm',
     name: 'confirm',
     message: `Delete ${totalDuplicates} duplicate(s)? This cannot be undone.`,
     default: false
-  }]);
+  }])).confirm;
 
   if (!confirm) {
     ui.info('Cancelled.');

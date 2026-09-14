@@ -16,7 +16,7 @@ export async function handleCliError(error: unknown, log: ReturnType<typeof crea
     if (log.enabled) {
       ui.hint(`See log: ${log.currentLogPath}`);
     } else {
-      ui.hint('Run with --log for detailed error information.');
+      ui.hint('Run with --log to record details to ~/.namewise/logs/.');
     }
   }
   // process.exit does not wait for pending async writes — flush the log first

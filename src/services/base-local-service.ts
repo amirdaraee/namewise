@@ -6,6 +6,28 @@ import { AuthError, NetworkError, RateLimitError, ConfigError } from '../errors.
 import { sanitizeLocalFileName } from '../utils/ai-name-sanitizer.js';
 
 /**
+ * Pull a human reason out of an error body. Gateways answer with their own
+ * status while the actual cause sits in the payload — 9Router returns 503 for
+ * an upstream's "Paid Model - Credits Required" 402 — so reporting only the
+ * status makes a fixable problem look like an outage. Truncated, since the
+ * body is arbitrary remote text.
+ */
+function upstreamReason(body: string): string | undefined {
+  const trimmed = body?.trim();
+  if (!trimmed) return undefined;
+
+  let message = trimmed;
+  try {
+    const parsed = JSON.parse(trimmed);
+    const found = parsed?.error?.message ?? parsed?.message;
+    if (typeof found === 'string' && found.trim()) message = found.trim();
+  } catch {
+    // not JSON; fall back to the raw body
+  }
+  return message.length > 300 ? `${message.slice(0, 300)}…` : message;
+}
+
+/**
  * What a local provider's chat call yields. Ollama and LMStudio run free local
  * models and report no usage, so the summary shows "N/A (local provider)".
  * A gateway to paid upstreams — 9Router — does report usage, and the summary
@@ -121,7 +143,12 @@ export abstract class BaseLocalService<TRequest, TResponse> implements AIProvide
       if (response.status === 429) {
         throw new RateLimitError(`${this.name} rate limit exceeded`, { details: { status: response.status } });
       }
-      throw new NetworkError(`${this.name} API request failed: ${response.status} ${response.statusText}`, { details: { status: response.status, body: errorText } });
+      const reason = upstreamReason(errorText);
+      throw new NetworkError(
+        `${this.name} API request failed: ${response.status} ${response.statusText}` +
+        (reason ? ` — ${reason}` : ''),
+        { details: { status: response.status, body: errorText } }
+      );
     }
 
     return response.json() as Promise<TResponse>;

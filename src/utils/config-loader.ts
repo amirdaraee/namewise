@@ -4,7 +4,7 @@ import os from 'os';
 import * as ui from './ui.js';
 
 export interface NamiwiseFileConfig {
-  provider?: 'claude' | 'openai' | 'ollama' | 'lmstudio';
+  provider?: 'claude' | 'openai' | 'ollama' | 'lmstudio' | '9router';
   apiKey?: string;
   case?: string;
   template?: string;

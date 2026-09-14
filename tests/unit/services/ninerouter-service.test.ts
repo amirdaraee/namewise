@@ -107,6 +107,56 @@ describe('NineRouterService', () => {
       ]);
     });
 
+    // 9Router answers 503 when an upstream refuses, putting the real reason —
+    // "Paid Model - Credits Required" — in the body. Hiding it makes a fixable
+    // billing problem look like an outage.
+    it('surfaces the upstream reason from a JSON error body', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+        text: async () => JSON.stringify({
+          error: { message: '[kilocode/deepseek/deepseek-chat] [402]: Paid Model - Credits Required' }
+        })
+      });
+      await expect(service.generateFileName('content', 'a.txt'))
+        .rejects.toThrow(/Paid Model - Credits Required/);
+    });
+
+    it('falls back to the raw body when it is not JSON', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false, status: 502, statusText: 'Bad Gateway', text: async () => 'upstream refused the connection'
+      });
+      await expect(service.generateFileName('content', 'a.txt'))
+        .rejects.toThrow(/upstream refused the connection/);
+    });
+
+    it('reads a top-level message when there is no error wrapper', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false, status: 503, statusText: 'Service Unavailable',
+        text: async () => JSON.stringify({ message: 'all upstreams exhausted' })
+      });
+      await expect(service.generateFileName('content', 'a.txt'))
+        .rejects.toThrow(/all upstreams exhausted/);
+    });
+
+    it('truncates a very long upstream message', async () => {
+      const long = 'x'.repeat(500);
+      mockFetch.mockResolvedValueOnce({
+        ok: false, status: 503, statusText: 'Service Unavailable',
+        text: async () => JSON.stringify({ error: { message: long } })
+      });
+      await expect(service.generateFileName('content', 'a.txt')).rejects.toThrow(/x{300}…/);
+    });
+
+    it('still reports the status when the body is empty', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false, status: 500, statusText: 'Internal Server Error', text: async () => ''
+      });
+      await expect(service.generateFileName('content', 'a.txt'))
+        .rejects.toThrow(/500 Internal Server Error/);
+    });
+
     it('maps a 401 from the gateway to an auth error', async () => {
       mockFetch.mockResolvedValueOnce({ ok: false, status: 401, statusText: 'Unauthorized', text: async () => 'bad key' });
       await expect(service.generateFileName('content', 'a.txt')).rejects.toThrow(/authentication failed/i);

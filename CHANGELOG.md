@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2026-09-14
+
+### Fixed
+- The saved-key scoping added in 2.2.0 warned whenever it withheld a key,
+  without checking whether the environment then supplied a usable one, so every
+  9Router run printed `Ignoring the saved claude API key…` even when it
+  succeeded. The warning now appears only when no key was found at all, right
+  before the prompt that asks for one.
+- Gateway errors now name the upstream reason. 9Router answers 503 Service
+  Unavailable when an upstream refuses with 402 `Paid Model - Credits
+  Required`, and reporting only the status made a billing problem look like an
+  outage. The reason is read from the response body (`error.message`, then a
+  top-level `message`, else the raw text) and truncated to 300 characters; the
+  full body was already retained in the error details. Applies to every local
+  provider.
+
 ## [2.2.0] - 2026-09-14
 
 ### Added

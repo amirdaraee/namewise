@@ -6,7 +6,19 @@ import { AuthError, NetworkError, RateLimitError, ConfigError } from '../errors.
 import { sanitizeLocalFileName } from '../utils/ai-name-sanitizer.js';
 
 /**
- * Shared skeleton for local AI providers (Ollama, LMStudio): localhost URL
+ * What a local provider's chat call yields. Ollama and LMStudio run free local
+ * models and report no usage, so the summary shows "N/A (local provider)".
+ * A gateway to paid upstreams — 9Router — does report usage, and the summary
+ * keys off whether these are present rather than off the provider.
+ */
+export interface LocalCompletion {
+  content?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+}
+
+/**
+ * Shared skeleton for local AI providers (Ollama, LMStudio, 9Router): localhost URL
  * validation, HTTP request/status mapping, and the generateFileName flow.
  * Subclasses supply the chat request payload and response extraction.
  */
@@ -14,11 +26,22 @@ export abstract class BaseLocalService<TRequest, TResponse> implements AIProvide
   readonly name: string;
   protected baseUrl: string;
   protected model: string;
+  /** Set only by gateways that authenticate, such as 9Router. */
+  protected apiKey?: string;
 
-  protected constructor(name: string, baseUrl: string, model: string) {
+  protected constructor(name: string, baseUrl: string, model: string, apiKey?: string) {
     this.name = name;
     this.baseUrl = this.validateLocalUrl(baseUrl);
     this.model = model;
+    this.apiKey = apiKey;
+  }
+
+  /**
+   * Authorization header for gateways that require a key. Ollama and LMStudio
+   * pass no key and so send no header, which their tests assert exactly.
+   */
+  protected authHeaders(): Record<string, string> {
+    return this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {};
   }
 
   private validateLocalUrl(url: string): string {
@@ -63,10 +86,14 @@ export abstract class BaseLocalService<TRequest, TResponse> implements AIProvide
         context
       });
 
-      const responseContent = await this.requestCompletion(prompt, imageData);
+      const completion = await this.requestCompletion(prompt, imageData);
 
-      if (responseContent) {
-        return { name: sanitizeLocalFileName(responseContent), inputTokens: undefined, outputTokens: undefined };
+      if (completion?.content) {
+        return {
+          name: sanitizeLocalFileName(completion.content),
+          inputTokens: completion.inputTokens,
+          outputTokens: completion.outputTokens
+        };
       }
       throw new NetworkError(`No response content from ${this.name}`);
     } catch (error) {
@@ -76,13 +103,13 @@ export abstract class BaseLocalService<TRequest, TResponse> implements AIProvide
   }
 
   /** Sends the chat request and returns the raw response content, if any. */
-  protected abstract requestCompletion(prompt: string, imageData?: string): Promise<string | undefined>;
+  protected abstract requestCompletion(prompt: string, imageData?: string): Promise<LocalCompletion | undefined>;
 
   protected async makeRequest(endpoint: string, payload: TRequest): Promise<TResponse> {
     const url = `${this.baseUrl}${endpoint}`;
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...this.authHeaders() },
       body: JSON.stringify(payload)
     });
 

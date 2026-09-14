@@ -1,5 +1,5 @@
 import { AI_SYSTEM_PROMPT } from '../utils/ai-prompts.js';
-import { BaseLocalService } from './base-local-service.js';
+import { BaseLocalService, LocalCompletion } from './base-local-service.js';
 
 interface OpenAICompatibleResponse {
   choices: Array<{
@@ -44,7 +44,7 @@ export class LMStudioService extends BaseLocalService<LMStudioChatRequest, OpenA
     super('LMStudio', baseUrl, model);
   }
 
-  protected async requestCompletion(prompt: string, imageData?: string): Promise<string | undefined> {
+  protected async requestCompletion(prompt: string, imageData?: string): Promise<LocalCompletion> {
     const userMessage: OpenAIMessage = imageData
       ? {
           role: 'user',
@@ -66,7 +66,7 @@ export class LMStudioService extends BaseLocalService<LMStudioChatRequest, OpenA
       stream: false
     });
 
-    return response.choices?.[0]?.message?.content;
+    return { content: response.choices?.[0]?.message?.content };
   }
 
   // Method to check if LMStudio service is available

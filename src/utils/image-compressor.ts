@@ -1,7 +1,5 @@
-import type { Image } from 'canvas';
 import { VisionError } from '../errors.js';
-
-type CanvasModule = typeof import('canvas');
+import type { CanvasImage, CanvasModule } from '../types/optional-native.js';
 
 export class ImageCompressor {
   private static readonly MAX_SIZE_BYTES = 5 * 1024 * 1024;
@@ -16,7 +14,7 @@ export class ImageCompressor {
    */
   private static async loadCanvasModule(): Promise<CanvasModule> {
     try {
-      return await import('canvas');
+      return (await import('canvas')) as unknown as CanvasModule;
     } catch (cause) {
       throw new VisionError(
         'Image processing requires the optional "canvas" package, which is not installed.',
@@ -74,7 +72,7 @@ export class ImageCompressor {
 
   private static renderToDataUrl(
     canvasModule: CanvasModule,
-    img: Image,
+    img: CanvasImage,
     width: number,
     height: number,
     quality: number

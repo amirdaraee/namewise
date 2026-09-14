@@ -1,6 +1,7 @@
 import { createRequire } from 'module';
 import { ImageCompressor } from './image-compressor.js';
 import { VisionError } from '../errors.js';
+import type { CanvasModule, PdfToPngModule } from '../types/optional-native.js';
 
 export interface PDFToImageOptions {
   scale?: number;
@@ -11,12 +12,12 @@ export interface PDFToImageOptions {
 // `pdf-to-png-converter` and `canvas` are optionalDependencies (native
 // modules needing a build toolchain). They are loaded lazily so the CLI
 // works without them everywhere except the scanned-PDF vision path.
-async function loadConverter(): Promise<typeof import('pdf-to-png-converter')> {
-  let canvasModule: typeof import('canvas');
-  let converter: typeof import('pdf-to-png-converter');
+async function loadConverter(): Promise<PdfToPngModule> {
+  let canvasModule: CanvasModule;
+  let converter: PdfToPngModule;
   try {
-    canvasModule = await import('canvas');
-    converter = await import('pdf-to-png-converter');
+    canvasModule = (await import('canvas')) as unknown as CanvasModule;
+    converter = (await import('pdf-to-png-converter')) as unknown as PdfToPngModule;
   } catch (cause) {
     throw new VisionError(
       'Scanned-PDF processing requires the optional "canvas" and "pdf-to-png-converter" packages, which are not installed.',

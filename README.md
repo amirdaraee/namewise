@@ -505,6 +505,21 @@ Prefixes include `cc/`, `cx/`, `gh/`, `glm/`, `minimax/`, `kr/` and `vertex/`. B
 paid upstreams, token counts are reported in the summary rather than shown as `N/A`. The base URL
 must point at localhost; tunnel a remote gateway rather than naming it directly.
 
+### Unattended runs
+
+`rename`, `dedup --delete` and `undo --all` ask for confirmation. Pass `-y`/`--yes` to skip it, for
+cron jobs and CI:
+
+```bash
+namewise rename ./inbox --provider 9router --model cheap --yes
+namewise dedup ./archive --recursive --delete --yes
+```
+
+With `--yes`, a missing API key fails with a clear error instead of prompting — an unattended run
+should never block on a question nobody is there to answer.
+
+Add `--log` to write a JSON session log to `~/.namewise/logs/` (the last 20 runs are kept).
+
 > A saved API key is scoped to the provider it was saved for. Selecting a different provider ignores
 > it — with a warning — rather than forwarding a cloud key to whatever gateway `--base-url` names.
 

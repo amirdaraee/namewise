@@ -79,7 +79,7 @@ describe('CLI Commands', () => {
       // Check provider option
       const providerOption = options?.find(opt => opt.long === '--provider');
       expect(providerOption).toBeDefined();
-      expect(providerOption?.description).toBe('AI provider: claude|openai|ollama|lmstudio (default: claude)');
+      expect(providerOption?.description).toBe('AI provider: claude|openai|ollama|lmstudio|9router (default: claude)');
 
       // Check api-key option
       const apiKeyOption = options?.find(opt => opt.long === '--api-key');

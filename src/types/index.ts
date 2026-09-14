@@ -65,7 +65,7 @@ export interface TemplateOptions {
 }
 
 export interface Config {
-  aiProvider: 'claude' | 'openai' | 'ollama' | 'lmstudio';
+  aiProvider: 'claude' | 'openai' | 'ollama' | 'lmstudio' | '9router';
   apiKey?: string; // Optional for local providers
   maxFileSize: number;
   supportedExtensions: string[];

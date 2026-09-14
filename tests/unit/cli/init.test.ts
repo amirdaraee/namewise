@@ -181,6 +181,52 @@ describe('initCommand()', () => {
     expect(written.model).toBe('mistral-7b');
   });
 
+  it('prompts 9router for an API key as well as a base URL', async () => {
+    // 9Router runs locally but authenticates with its own issued key
+    queueAnswers(
+      { scope: 'global' },
+      { provider: '9router' },
+      { apiKey: 'nr-secret' },
+      { baseUrl: 'http://localhost:20128' },
+      { model: 'glm/glm-5.1' },
+      { namingConvention: 'kebab-case' },
+      { language: '' },
+      { dryRun: false },
+      { personalName: '' },
+      { context: '' }
+    );
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await initCommand();
+    const written = JSON.parse(vi.mocked(fs.writeFile).mock.calls[0][1] as string);
+    expect(written.provider).toBe('9router');
+    expect(written.apiKey).toBe('nr-secret');
+    expect(written.model).toBe('glm/glm-5.1');
+    // the default port is not persisted
+    expect(written.baseUrl).toBeUndefined();
+  });
+
+  it('asks 9router for a model without offering a default', async () => {
+    queueAnswers(
+      { scope: 'global' },
+      { provider: '9router' },
+      { apiKey: 'nr-secret' },
+      { baseUrl: 'http://localhost:20128' },
+      { model: 'minimax/m2.7' },
+      { namingConvention: 'kebab-case' },
+      { language: '' },
+      { dryRun: false },
+      { personalName: '' },
+      { context: '' }
+    );
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    await initCommand();
+    const modelPrompt = vi.mocked(inquirer.prompt).mock.calls
+      .map(c => (c[0] as any)[0])
+      .find(q => q.name === 'model');
+    expect(modelPrompt.message).toContain('required for 9Router');
+    expect(modelPrompt.message).not.toContain('leave blank');
+  });
+
   it('does not store lmstudio default baseUrl', async () => {
     queueAnswers(
       { scope: 'global' },

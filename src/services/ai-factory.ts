@@ -3,6 +3,7 @@ import { ClaudeService } from './claude-service.js';
 import { OpenAIService } from './openai-service.js';
 import { OllamaService } from './ollama-service.js';
 import { LMStudioService } from './lmstudio-service.js';
+import { NineRouterService, NINEROUTER_DEFAULT_BASE_URL } from './ninerouter-service.js';
 import { AuthError, ConfigError } from '../errors.js';
 
 interface LocalLLMConfig {
@@ -12,7 +13,7 @@ interface LocalLLMConfig {
 
 export class AIServiceFactory {
   static create(
-    provider: 'claude' | 'openai' | 'ollama' | 'lmstudio', 
+    provider: 'claude' | 'openai' | 'ollama' | 'lmstudio' | '9router', 
     apiKey?: string,
     localLLMConfig?: LocalLLMConfig
   ): AIProvider {
@@ -32,6 +33,21 @@ export class AIServiceFactory {
         return new LMStudioService(
           localLLMConfig?.baseUrl || 'http://localhost:1234',
           localLLMConfig?.model || 'local-model'
+        );
+      case '9router':
+        if (!apiKey) throw new AuthError('API key is required for 9Router provider');
+        // 9Router namespaces models by upstream (glm/…, minimax/…, cc/…), so
+        // there is no meaningful default to fall back on.
+        if (!localLLMConfig?.model) {
+          throw new ConfigError(
+            'A model is required for the 9Router provider. Pass --model, e.g. --model glm/glm-5.1 ' +
+            '(other prefixes: cc/, cx/, gh/, minimax/, kr/, vertex/).'
+          );
+        }
+        return new NineRouterService(
+          apiKey,
+          localLLMConfig?.baseUrl || NINEROUTER_DEFAULT_BASE_URL,
+          localLLMConfig.model
         );
       default:
         throw new ConfigError(`Unsupported AI provider: ${provider}`);

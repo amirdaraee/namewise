@@ -35,6 +35,40 @@ describe('AIServiceFactory', () => {
       expect(typeof service.generateFileName).toBe('function');
     });
 
+    it('should create NineRouterService for 9router provider', () => {
+      const service = AIServiceFactory.create('9router', 'nr-key', { model: 'glm/glm-5.1' });
+
+      expect(service).toBeDefined();
+      expect(service.name).toBe('9Router');
+      expect(typeof service.generateFileName).toBe('function');
+    });
+
+    it('should throw when 9router is given no API key', () => {
+      expect(() => AIServiceFactory.create('9router', undefined, { model: 'glm/glm-5.1' }))
+        .toThrow(/API key is required for 9Router/);
+    });
+
+    it('should throw when 9router is given no model', () => {
+      // 9Router namespaces models by upstream, so there is nothing to default to
+      expect(() => AIServiceFactory.create('9router', 'nr-key'))
+        .toThrow(/A model is required for the 9Router provider/);
+    });
+
+    it('should honour a custom 9router base URL', () => {
+      const service = AIServiceFactory.create('9router', 'nr-key', {
+        baseUrl: 'http://127.0.0.1:30000',
+        model: 'minimax/m2.7'
+      });
+      expect(service.name).toBe('9Router');
+    });
+
+    it('should reject a remote 9router base URL', () => {
+      expect(() => AIServiceFactory.create('9router', 'nr-key', {
+        baseUrl: 'https://my-vps.example.com',
+        model: 'glm/glm-5.1'
+      })).toThrow(/localhost/);
+    });
+
     it('should create Ollama service with custom config', () => {
       const service = AIServiceFactory.create('ollama', undefined, {
         baseUrl: 'http://localhost:8080',

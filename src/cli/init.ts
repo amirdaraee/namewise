@@ -9,12 +9,15 @@ const PROVIDER_DEFAULT_MODELS: Record<string, string> = {
   claude: 'claude-opus-4-8',
   openai: 'gpt-5.5',
   ollama: 'llama3.1',
-  lmstudio: 'local-model'
+  lmstudio: 'local-model',
+  // 9Router namespaces models by upstream, so there is nothing to default to
+  '9router': ''
 };
 
 const PROVIDER_DEFAULT_URLS: Record<string, string> = {
   ollama: 'http://localhost:11434',
-  lmstudio: 'http://localhost:1234'
+  lmstudio: 'http://localhost:1234',
+  '9router': 'http://localhost:20128'
 };
 
 export async function initCommand(): Promise<void> {
@@ -57,15 +60,16 @@ export async function initCommand(): Promise<void> {
     type: 'select',
     name: 'provider',
     message: 'Which AI provider would you like to use by default?',
-    choices: ['claude', 'openai', 'ollama', 'lmstudio'],
+    choices: ['claude', 'openai', 'ollama', 'lmstudio', '9router'],
     default: existing.provider ?? 'claude'
   }]);
 
   const config: NamiwiseFileConfig = { provider };
 
-  // API key for cloud providers
-  if (provider === 'claude' || provider === 'openai') {
-    const label = provider === 'claude' ? 'Anthropic' : 'OpenAI';
+  // API key: the cloud providers, plus 9Router, which runs locally but
+  // authenticates with its own issued key.
+  if (provider === 'claude' || provider === 'openai' || provider === '9router') {
+    const label = provider === 'claude' ? 'Anthropic' : provider === 'openai' ? 'OpenAI' : '9Router';
     const { apiKey } = await inquirer.prompt([{
       type: 'password',
       name: 'apiKey',
@@ -76,7 +80,7 @@ export async function initCommand(): Promise<void> {
   }
 
   // Base URL for local providers
-  if (provider === 'ollama' || provider === 'lmstudio') {
+  if (provider === 'ollama' || provider === 'lmstudio' || provider === '9router') {
     const defaultUrl = PROVIDER_DEFAULT_URLS[provider];
     const { baseUrl } = await inquirer.prompt([{
       type: 'input',
@@ -92,7 +96,9 @@ export async function initCommand(): Promise<void> {
   const { model } = await inquirer.prompt([{
     type: 'input',
     name: 'model',
-    message: `Model (leave blank for default: ${defaultModel}):`,
+    message: defaultModel
+      ? `Model (leave blank for default: ${defaultModel}):`
+      : 'Model (required for 9Router, e.g. glm/glm-5.1):',
     default: existing.model ?? ''
   }]);
   if (model) config.model = model;

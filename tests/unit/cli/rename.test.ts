@@ -411,7 +411,9 @@ describe('renameFiles()', () => {
 
       expect(AIServiceFactory.create).toHaveBeenCalledWith('9router', 'env-9router-key', expect.anything());
       expect(AIServiceFactory.create).not.toHaveBeenCalledWith('9router', 'sk-ant-SAVED', expect.anything());
-      expect(warnSpy.mock.calls.map(c => c[0]).join('\n')).toContain('does not belong to provider');
+      // the env var supplied a usable key, so withholding the saved one cost
+      // the user nothing and does not deserve a warning on every run
+      expect(warnSpy.mock.calls.map(c => c[0]).join('\n')).not.toContain('does not belong to provider');
 
       if (originalKey !== undefined) process.env.NINEROUTER_API_KEY = originalKey;
       else delete process.env.NINEROUTER_API_KEY;

@@ -167,16 +167,18 @@ async function resolveRenameConfig(
   // to the provider it was saved for: reusing it across providers would send a
   // cloud key to whatever gateway --base-url names.
   const stored = resolveStoredApiKey(fileConfig, provider);
-  // Only worth saying when the selected provider actually needs a key —
-  // switching to ollama should not nag about an unused cloud key. That gate
-  // also guarantees the provider has a mapped environment variable.
-  if (stored.ignoredFrom && !options.apiKey && providerRequiresApiKey(provider, aiDisabled)) {
+  let apiKey = resolveApiKey(provider, options.apiKey ?? stored.apiKey, aiDisabled);
+
+  // Only speak up when withholding the saved key actually left us without one.
+  // If the environment supplied a usable key the scoping cost the user nothing,
+  // and saying so on every run is noise. The providerRequiresApiKey gate keeps
+  // us quiet for ollama and lmstudio, and guarantees a mapped variable name.
+  if (stored.ignoredFrom && !apiKey && providerRequiresApiKey(provider, aiDisabled)) {
     ui.warn(
       `Ignoring the saved ${stored.ignoredFrom} API key: it does not belong to provider "${provider}". ` +
       `Set ${apiKeyEnvVar(provider)} or pass --api-key.`
     );
   }
-  let apiKey = resolveApiKey(provider, options.apiKey ?? stored.apiKey, aiDisabled);
 
   if (providerRequiresApiKey(provider, aiDisabled) && !apiKey) {
     const keyPrompt = await inquirer.prompt([

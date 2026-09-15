@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-09-15
+
+### Changed
+- **`{date}` now comes from the document itself.** The AI reads the date printed
+  on the content — an invoice date, a letter date — and returns it alongside the
+  filename. Resolution is AI-reported date → `documentMetadata.creationDate` →
+  omit the segment.
+- **A filename is never stamped with today's date.** `{date}` previously
+  resolved to `documentMetadata.creationDate ?? new Date()`, so a 2019 invoice
+  with no usable metadata was named `...-20260914`. For scans, `creationDate` is
+  when the scan was made rather than the document's own date, so the fallback
+  fired often. Omitting the segment is now the outcome when no real date exists.
+- Reported dates are accepted only as `YYYY-MM-DD` and must fall within 1900 to
+  one year from today, so a misread page number or hallucinated year falls
+  through to metadata instead of landing in a filename.
+- Unfilled template tokens (including omitted `{date}` segments) are removed and
+  adjacent separator runs collapsed and trimmed, preventing stray separators or
+  literal token text in filenames.
+
+Only affects users who opt in with `--date` or `date` in config; the default
+`none` is unchanged.
+
 ## [2.3.1] - 2026-09-14
 
 ### Fixed

@@ -52,6 +52,13 @@ Document Properties:`;
 
   const languageInstruction = language ? `- Generate the filename in ${language}, regardless of the document's original language` : '';
   const contextSection = userContext ? `\nUser-provided context:\n${userContext}\n` : '';
+  const dateInstruction = `
+If the document itself states a date — an invoice date, a letter date, a
+statement period — add a second line of exactly:
+DATE: YYYY-MM-DD
+This must be the date printed on the document, not today's date and not the
+date it was scanned. If the document states no date, do not guess: omit the
+line entirely.`;
 
   return `Based on the following document information, generate a descriptive filename that captures the main topic/purpose of the document. The filename should be:
 - Descriptive and meaningful
@@ -74,11 +81,12 @@ Document content (first 5000 characters):
 ${content.substring(0, 5000)}
 
 Important: If this document is specifically for or about a particular person mentioned in the content, start the filename with their name. Otherwise, focus on the document's main purpose and content.
+${dateInstruction}
 
-Respond with only the filename using the specified naming convention, no explanation.`;
+Respond with the filename on the first line using the specified naming convention, followed by the optional DATE line described above, and no explanation.`;
 }
 
 /**
  * System prompt for AI models that need a separate system message
  */
-export const AI_SYSTEM_PROMPT = 'You are a helpful assistant that generates descriptive filenames based on document content. Always respond with just the filename, no explanation or additional text.';
+export const AI_SYSTEM_PROMPT = 'You are a helpful assistant that generates descriptive filenames based on document content. Respond with the filename on the first line and no explanation. If the document states its own date, add a second line of exactly "DATE: YYYY-MM-DD".';

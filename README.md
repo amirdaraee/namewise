@@ -592,7 +592,7 @@ namewise rename ./photos --no-ai --dry-run
 1. **File Discovery**: Scans directory (recursively if `--recursive`) for supported file types
 2. **Content Extraction**: Uses specialized parsers to extract text and metadata; falls back to vision AI for scanned PDFs
 3. **AI Processing**: Sends up to 5000 characters of content plus metadata to the configured AI provider for filename suggestions
-4. **Template & Convention**: Applies the chosen category template and naming convention; for `document` and `photo` templates, uses the document's own creation date from metadata when available
+4. **Template & Convention**: Applies the chosen category template and naming convention; for `document` and `photo` templates, `{date}` is the date printed on the document (read by the AI), falling back to the file's `creationDate` metadata, and otherwise omitted — never today's date
 5. **Conflict Resolution**: If the target name exists, auto-numbers (`-2`, `-3`, …)
 6. **Rename / Preview**: Renames files on disk, or shows a preview in dry-run mode
 7. **History**: Saves the session to `~/.namewise/history.json` for later undo (includes token usage for cloud providers)

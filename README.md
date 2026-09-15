@@ -481,6 +481,15 @@ Supported keys: `provider`, `apiKey`, `case`, `template`, `name`, `date`, `maxSi
 | `book` | AI provides full name | `george-orwell-1984.pdf` | Books — AI includes author name |
 | `auto` | *Automatic* | *Varies by detected type* | Let AI detect and choose best template |
 
+`{date}` is the date printed on the document — an invoice date, a letter date —
+read by the AI from the content. When the document states no date, namewise
+falls back to the file's `creationDate` metadata, and if that is missing too it
+omits the date from the filename rather than stamping today's date on it.
+
+Dates are accepted only in `YYYY-MM-DD` form and must fall between 1900 and one
+year from today; anything else falls through to metadata. `--date none` (the
+default) renders no date at all.
+
 ## AI Provider Setup
 
 | Provider | Vision Support | API Key Required | Default Model |

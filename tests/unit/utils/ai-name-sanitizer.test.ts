@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sanitizeCloudFileName, sanitizeLocalFileName } from '../../../src/utils/ai-name-sanitizer.js';
+import { sanitizeCloudFileName, sanitizeLocalFileName, splitAiResponse } from '../../../src/utils/ai-name-sanitizer.js';
 
 describe('sanitizeCloudFileName', () => {
   it('strips the extension and applies the naming convention', () => {
@@ -78,5 +78,41 @@ describe('sanitizeLocalFileName', () => {
   it('rejects prose explanations like cloud sanitizer does', () => {
     expect(() => sanitizeLocalFileName('Here is a descriptive filename for this document based on its content and purpose'))
       .toThrow(/explanation instead of a filename/);
+  });
+});
+
+describe('splitAiResponse()', () => {
+  it('returns the single line as the name when there is nothing else', () => {
+    expect(splitAiResponse('quarterly-financial-report')).toEqual({
+      nameLine: 'quarterly-financial-report'
+    });
+  });
+
+  it('lifts a DATE line out', () => {
+    expect(splitAiResponse('quarterly-financial-report\nDATE: 2024-03-15')).toEqual({
+      nameLine: 'quarterly-financial-report',
+      dateLine: '2024-03-15'
+    });
+  });
+
+  it('matches the DATE label case-insensitively and ignores spacing', () => {
+    expect(splitAiResponse('report\ndate:2024-03-15').dateLine).toBe('2024-03-15');
+    expect(splitAiResponse('report\nDate:   2024-03-15').dateLine).toBe('2024-03-15');
+  });
+
+  it('discards a stray trailing line rather than failing', () => {
+    expect(splitAiResponse('report\nHope that helps!')).toEqual({ nameLine: 'report' });
+  });
+
+  it('finds the DATE line even when other lines precede it', () => {
+    expect(splitAiResponse('report\nsome noise\nDATE: 2024-03-15').dateLine).toBe('2024-03-15');
+  });
+
+  it('ignores blank lines when choosing the name line', () => {
+    expect(splitAiResponse('\n\nreport\nDATE: 2024-03-15').nameLine).toBe('report');
+  });
+
+  it('does not invent a date line for an empty DATE value', () => {
+    expect(splitAiResponse('report\nDATE:   ').dateLine).toBeUndefined();
   });
 });

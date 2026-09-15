@@ -3,6 +3,7 @@ import { ParseError } from '../errors.js';
 
 const MAX_NAME_WORDS = 12;
 const PROSE_PREFIX = /^(based on|i can|i cannot|i am|i'm|this is|this appears|the document|the image|unable to|sorry|it appears|here is|here's)\b/i;
+const DATE_LINE = /^DATE:\s*(.+)$/i;
 
 /**
  * Reject AI output that is an explanation rather than a filename ("Based on
@@ -55,4 +56,28 @@ export function sanitizeLocalFileName(filename: string): string {
     .replace(/[<>:"/\\|?*]/g, '-') // Replace invalid characters
     .replace(/\s+/g, '-') // Replace spaces with hyphens
     .toLowerCase();
+}
+
+/**
+ * Splits a raw AI response into the filename line and an optional
+ * "DATE: YYYY-MM-DD" line.
+ *
+ * The filename is the first non-blank line, so a model that ignores the date
+ * instruction behaves exactly as before. Any other trailing content is
+ * discarded rather than treated as an error: a stray line should not fail a
+ * file whose name is perfectly good.
+ */
+export function splitAiResponse(raw: string): { nameLine: string; dateLine?: string } {
+  const lines = raw.split('\n').map(line => line.trim()).filter(Boolean);
+  const nameLine = lines[0] ?? '';
+
+  for (const line of lines.slice(1)) {
+    const match = DATE_LINE.exec(line);
+    if (match) {
+      const value = match[1].trim();
+      if (value) return { nameLine, dateLine: value };
+    }
+  }
+
+  return { nameLine };
 }

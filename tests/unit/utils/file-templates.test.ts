@@ -665,13 +665,12 @@ describe('File Templates', () => {
       expect(result).toBe('invoice-john');
     });
 
-    // Covers the offset===0 branch of the token-cleanup regex: with an empty
-    // {content} substitution, the next unfilled token becomes effectively
-    // leading. No current FILE_TEMPLATES pattern starts with a token itself,
-    // but an empty aiGeneratedName reaches the same code path.
-    it('handles an unfilled token that becomes leading once {content} is empty', () => {
-      const result = applyTemplate('', 'document', { dateFormat: 'none' }, 'kebab-case');
-      expect(result).toBe('personalname');
+    it('never leaks an unfilled token into the output, even with empty content', () => {
+      const result = applyTemplate('', 'document', { dateFormat: 'YYYYMMDD' }, 'kebab-case',
+        { path: '/x/a.pdf', name: 'a.pdf', extension: '.pdf', size: 1 } as any, undefined);
+      expect(result).not.toContain('personal');
+      expect(result).not.toContain('date');
+      expect(result).toBe('');
     });
   });
 });

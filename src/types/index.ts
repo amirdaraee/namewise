@@ -37,6 +37,8 @@ export interface RenameResult {
 
 export interface AINameResult {
   name: string;
+  /** Raw, unvalidated date string the model read off the document. */
+  documentDate?: string;
   inputTokens?: number;
   outputTokens?: number;
 }

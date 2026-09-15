@@ -511,4 +511,26 @@ describe('LMStudioService', () => {
       expect(userMsg.content).toContain('These are tax documents');
     });
   });
+
+  describe('documentDate parsing', () => {
+    it('returns the document date the model reported', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: 'quarterly-report\nDATE: 2024-03-15', role: 'assistant' }, finish_reason: 'stop' }] })
+      });
+      const result = await lmstudioService.generateFileName('content', 'a.txt');
+      expect(result.name).toBe('quarterly-report');
+      expect(result.documentDate).toBe('2024-03-15');
+    });
+
+    it('leaves documentDate unset when the model reports none', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: 'quarterly-report', role: 'assistant' }, finish_reason: 'stop' }] })
+      });
+      const result = await lmstudioService.generateFileName('content', 'a.txt');
+      expect(result.name).toBe('quarterly-report');
+      expect(result.documentDate).toBeUndefined();
+    });
+  });
 });

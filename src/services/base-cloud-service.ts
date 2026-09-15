@@ -3,7 +3,7 @@ import { AIProvider, FileInfo, AINameResult } from '../types/index.js';
 import { NamingConvention } from '../utils/naming-conventions.js';
 import { FileCategory } from '../utils/file-templates.js';
 import { buildFileNamePrompt } from '../utils/ai-prompts.js';
-import { sanitizeCloudFileName } from '../utils/ai-name-sanitizer.js';
+import { sanitizeCloudFileName, splitAiResponse } from '../utils/ai-name-sanitizer.js';
 
 /** Shape shared by the Anthropic and OpenAI SDK error classes. */
 export interface CloudApiError {
@@ -79,8 +79,11 @@ export abstract class BaseCloudService<TResponse> implements AIProvider {
       const suggestedName = this.extractSuggestedName(response);
       const { inputTokens, outputTokens } = this.extractTokenUsage(response);
 
+      const { nameLine, dateLine } = splitAiResponse(suggestedName);
+
       return {
-        name: sanitizeCloudFileName(suggestedName, convention),
+        name: sanitizeCloudFileName(nameLine, convention),
+        documentDate: dateLine,
         inputTokens,
         outputTokens
       };

@@ -460,6 +460,18 @@ describe('ClaudeService', () => {
       expect(result.name).toBe('quarterly-report');
       expect(result.documentDate).toBeUndefined();
     });
+
+    it('degrades to the untitled-document fallback for a DATE-only response, without crashing', async () => {
+      mockClient.messages.create.mockResolvedValue({
+        content: [{ type: 'text', text: 'DATE: 2024-03-15' }],
+        usage: { input_tokens: 100, output_tokens: 10 }
+      });
+
+      const result = await service.generateFileName('content', 'file.txt');
+
+      expect(result.name).toBe('untitled-document');
+      expect(result.documentDate).toBe('2024-03-15');
+    });
   });
 
   describe('SDK error dispatch', () => {

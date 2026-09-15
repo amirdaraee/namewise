@@ -73,10 +73,7 @@ export function splitAiResponse(raw: string): { nameLine: string; dateLine?: str
 
   for (const line of lines.slice(1)) {
     const match = DATE_LINE.exec(line);
-    if (match) {
-      const value = match[1].trim();
-      if (value) return { nameLine, dateLine: value };
-    }
+    if (match) return { nameLine, dateLine: match[1] };
   }
 
   return { nameLine };

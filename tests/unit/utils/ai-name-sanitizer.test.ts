@@ -115,4 +115,16 @@ describe('splitAiResponse()', () => {
   it('does not invent a date line for an empty DATE value', () => {
     expect(splitAiResponse('report\nDATE:   ').dateLine).toBeUndefined();
   });
+
+  it('returns empty nameLine for empty or whitespace-only input', () => {
+    expect(splitAiResponse('')).toEqual({ nameLine: '' });
+    expect(splitAiResponse('  \n  ')).toEqual({ nameLine: '' });
+  });
+
+  it('extracts DATE with various content in multiple-line response', () => {
+    expect(splitAiResponse('filename\nextra text\nDATE: 2025-01-20\nmore')).toEqual({
+      nameLine: 'filename',
+      dateLine: '2025-01-20'
+    });
+  });
 });

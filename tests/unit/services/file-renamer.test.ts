@@ -1219,6 +1219,58 @@ describe('FileRenamer', () => {
     });
   });
 
+  describe('Document-derived date threading', () => {
+    const enoent = () => Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+
+    const makeTextParserFactory = () => ({
+      getParser: vi.fn().mockReturnValue({
+        parse: vi.fn().mockResolvedValue({ content: 'water bill from enovos, may 2024' })
+      })
+    }) as unknown as DocumentParserFactory;
+
+    it('uses the date the AI read off the document', async () => {
+      vi.mocked(fs.access).mockRejectedValue(enoent());
+      const dateConfig: Config = {
+        ...config,
+        dryRun: true,
+        templateOptions: { category: 'document', personalName: 'john', dateFormat: 'YYYYMMDD' }
+      };
+      const ai = {
+        name: 'AI',
+        generateFileName: vi.fn().mockResolvedValue({ name: 'water-bill', documentDate: '2019-04-02' })
+      } as unknown as AIProvider;
+      const renamer = new FileRenamer(makeTextParserFactory(), ai, dateConfig);
+      const file: FileInfo = {
+        path: path.join('/test', 'scan.pdf'), name: 'scan.pdf', extension: '.pdf', size: 1000
+      };
+
+      const { results } = await renamer.renameFiles([file]);
+
+      expect(path.basename(results[0].newPath)).toBe('water-bill-john-20190402.pdf');
+    });
+
+    it('omits the date when the AI reports none and there is no metadata', async () => {
+      vi.mocked(fs.access).mockRejectedValue(enoent());
+      const dateConfig: Config = {
+        ...config,
+        dryRun: true,
+        templateOptions: { category: 'document', personalName: 'john', dateFormat: 'YYYYMMDD' }
+      };
+      const ai = {
+        name: 'AI',
+        generateFileName: vi.fn().mockResolvedValue({ name: 'water-bill' })
+      } as unknown as AIProvider;
+      const renamer = new FileRenamer(makeTextParserFactory(), ai, dateConfig);
+      const file: FileInfo = {
+        path: path.join('/test', 'scan.pdf'), name: 'scan.pdf', extension: '.pdf', size: 1000
+      };
+
+      const { results } = await renamer.renameFiles([file]);
+
+      expect(path.basename(results[0].newPath)).toBe('water-bill-john.pdf');
+    });
+  });
+
   describe('Image file handling', () => {
     let imageParserFactory: any;
 

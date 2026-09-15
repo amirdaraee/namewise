@@ -213,11 +213,13 @@ describe('File Templates', () => {
         'driving-license',
         'document',
         { category: 'document', personalName: 'amirhossein', dateFormat: 'YYYYMMDD' },
-        'kebab-case'
+        'kebab-case',
+        undefined,
+        '2023-06-15'
       );
-      
+
       // Should match pattern: {content}-{personalName}-{date}
-      expect(result).toMatch(/^driving-license-amirhossein-\d{8}$/);
+      expect(result).toBe('driving-license-amirhossein-20230615');
     });
 
     it('should apply movie template (AI provides the full name including year)', () => {
@@ -261,14 +263,14 @@ describe('File Templates', () => {
 
     it('should apply different date formats', () => {
       const baseOptions = { category: 'document' as FileCategory, personalName: 'john' };
-      
-      const yyyymmdd = applyTemplate('contract', 'document', { ...baseOptions, dateFormat: 'YYYYMMDD' }, 'kebab-case');
-      const yyyymmdd2 = applyTemplate('contract', 'document', { ...baseOptions, dateFormat: 'YYYY-MM-DD' }, 'kebab-case');
-      const yyyy = applyTemplate('contract', 'document', { ...baseOptions, dateFormat: 'YYYY' }, 'kebab-case');
-      
-      expect(yyyymmdd).toMatch(/^contract-john-\d{8}$/);
-      expect(yyyymmdd2).toMatch(/^contract-john-\d{4}-\d{2}-\d{2}$/);
-      expect(yyyy).toMatch(/^contract-john-\d{4}$/);
+
+      const yyyymmdd = applyTemplate('contract', 'document', { ...baseOptions, dateFormat: 'YYYYMMDD' }, 'kebab-case', undefined, '2023-06-15');
+      const yyyymmdd2 = applyTemplate('contract', 'document', { ...baseOptions, dateFormat: 'YYYY-MM-DD' }, 'kebab-case', undefined, '2023-06-15');
+      const yyyy = applyTemplate('contract', 'document', { ...baseOptions, dateFormat: 'YYYY' }, 'kebab-case', undefined, '2023-06-15');
+
+      expect(yyyymmdd).toBe('contract-john-20230615');
+      expect(yyyymmdd2).toBe('contract-john-2023-06-15');
+      expect(yyyy).toBe('contract-john-2023');
     });
 
     it('should handle no date format', () => {
@@ -287,10 +289,12 @@ describe('File Templates', () => {
         'report',
         'document',
         { category: 'document', dateFormat: 'YYYY' },
-        'kebab-case'
+        'kebab-case',
+        undefined,
+        '2023-06-15'
       );
-      
-      expect(result).toMatch(/^report-\d{4}$/);
+
+      expect(result).toBe('report-2023');
     });
 
     it('should apply naming conventions correctly', () => {
@@ -340,10 +344,12 @@ describe('File Templates', () => {
         'contract',
         'document',
         { category: 'document', personalName: 'john', dateFormat: 'UNKNOWN' as any },
-        'kebab-case'
+        'kebab-case',
+        undefined,
+        '2023-06-15'
       );
       // The default case returns YYYYMMDD format: year + month + day
-      expect(result).toMatch(/^contract-john-\d{8}$/);
+      expect(result).toBe('contract-john-20230615');
     });
   });
 
@@ -532,18 +538,18 @@ describe('File Templates', () => {
   });
 
   describe('applyTemplate() — date fallback behaviour', () => {
-    it('should fall back to current date when fileInfo is not provided', () => {
+    it('should omit the date segment when fileInfo is not provided', () => {
       const result = applyTemplate(
         'report',
         'document',
         { category: 'document', personalName: 'admin', dateFormat: 'YYYY' },
         'kebab-case'
-        // no fileInfo
+        // no fileInfo, no documentDate — no source for a real date
       );
-      expect(result).toBe(`report-admin-${new Date().getFullYear()}`);
+      expect(result).toBe('report-admin');
     });
 
-    it('should fall back to current date when documentMetadata is absent', () => {
+    it('should omit the date segment when documentMetadata is absent', () => {
       const fileInfoNoMeta: FileInfo = {
         path: '/docs/file.pdf',
         name: 'file.pdf',
@@ -563,10 +569,10 @@ describe('File Templates', () => {
         'kebab-case',
         fileInfoNoMeta
       );
-      expect(result).toBe(`memo-user-${new Date().getFullYear()}`);
+      expect(result).toBe('memo-user');
     });
 
-    it('should fall back to current date when creationDate is missing from metadata', () => {
+    it('should omit the date segment when creationDate is missing from metadata', () => {
       const fileInfoPartialMeta: FileInfo = {
         path: '/docs/file.pdf',
         name: 'file.pdf',
@@ -586,7 +592,7 @@ describe('File Templates', () => {
         'kebab-case',
         fileInfoPartialMeta
       );
-      expect(result).toBe(`contract-jane-${new Date().getFullYear()}`);
+      expect(result).toBe('contract-jane');
     });
   });
 
@@ -608,6 +614,63 @@ describe('File Templates', () => {
         expect(template.pattern).toContain('{content}');
         expect(template.examples.length).toBeGreaterThan(2);
       });
+    });
+  });
+
+  describe('date resolution', () => {
+    const opts = { personalName: 'john', dateFormat: 'YYYYMMDD' as const };
+    const withMetaDate = (d: Date) => ({
+      path: '/x/a.pdf', name: 'a.pdf', extension: '.pdf', size: 1,
+      documentMetadata: { creationDate: d }
+    }) as any;
+
+    it('prefers the date the model read off the document', () => {
+      const result = applyTemplate('invoice', 'document', opts, 'kebab-case',
+        withMetaDate(new Date(2023, 10, 8)), '2019-04-02');
+      expect(result).toBe('invoice-john-20190402');
+    });
+
+    it('falls back to file metadata when the model reported no date', () => {
+      const result = applyTemplate('report', 'document', opts, 'kebab-case',
+        withMetaDate(new Date(2023, 10, 8)), undefined);
+      expect(result).toBe('report-john-20231108');
+    });
+
+    it('falls back to file metadata when the reported date is invalid', () => {
+      const result = applyTemplate('report', 'document', opts, 'kebab-case',
+        withMetaDate(new Date(2023, 10, 8)), '2087-04-02');
+      expect(result).toBe('report-john-20231108');
+    });
+
+    // the bug: a scanned file with no usable date used to be stamped with today
+    it('omits the segment entirely when no date is available', () => {
+      const result = applyTemplate('dental-invoice', 'document', opts, 'kebab-case',
+        { path: '/x/a.pdf', name: 'a.pdf', extension: '.pdf', size: 1 } as any, undefined);
+      expect(result).toBe('dental-invoice-john');
+      expect(result).not.toMatch(/\d{8}/);
+    });
+
+    it('leaves no trailing separator when the date is omitted', () => {
+      const result = applyTemplate('dental-invoice', 'document',
+        { dateFormat: 'YYYYMMDD' as const }, 'kebab-case',
+        { path: '/x/a.pdf', name: 'a.pdf', extension: '.pdf', size: 1 } as any, undefined);
+      expect(result).toBe('dental-invoice');
+      expect(result.endsWith('-')).toBe(false);
+    });
+
+    it('renders no date at all when dateFormat is none', () => {
+      const result = applyTemplate('invoice', 'document',
+        { personalName: 'john', dateFormat: 'none' as const }, 'kebab-case',
+        withMetaDate(new Date(2023, 10, 8)), '2019-04-02');
+      expect(result).toBe('invoice-john');
+    });
+
+    it('never leaks an unfilled token into the output, even with empty content', () => {
+      const result = applyTemplate('', 'document', { dateFormat: 'YYYYMMDD' }, 'kebab-case',
+        { path: '/x/a.pdf', name: 'a.pdf', extension: '.pdf', size: 1 } as any, undefined);
+      expect(result).not.toContain('personal');
+      expect(result).not.toContain('date');
+      expect(result).toBe('');
     });
   });
 });

@@ -3,6 +3,9 @@ import { ParseError } from '../errors.js';
 
 const MAX_NAME_WORDS = 12;
 const PROSE_PREFIX = /^(based on|i can|i cannot|i am|i'm|this is|this appears|the document|the image|unable to|sorry|it appears|here is|here's)\b/i;
+const DATE_LINE = /^DATE:\s*(.+)$/i;
+const TRAILING_DATE = /^(.*?)\s+DATE:\s*(\S+)\s*$/i;
+const FENCE_LINE = /^`{3,}[\w-]*$/;
 
 /**
  * Reject AI output that is an explanation rather than a filename ("Based on
@@ -55,4 +58,52 @@ export function sanitizeLocalFileName(filename: string): string {
     .replace(/[<>:"/\\|?*]/g, '-') // Replace invalid characters
     .replace(/\s+/g, '-') // Replace spaces with hyphens
     .toLowerCase();
+}
+
+/**
+ * Splits a raw AI response into the filename line and an optional
+ * "DATE: YYYY-MM-DD" line.
+ *
+ * The name is the first non-blank line that is not itself a DATE line and
+ * not a code fence marker (```` ``` ```` or ```` ```text ````) — so a
+ * DATE line or a fence placed before the name no longer gets mistaken for
+ * the filename. Every line is searched for a `DATE:` line, and the first
+ * match wins; a response containing only a DATE line yields an empty
+ * nameLine.
+ *
+ * A date trailing the chosen name line on the same line (`name DATE: ...`)
+ * is always split off so it can never leak into the filename, even for
+ * dateFormat: 'none' users. Its value is used as the date only when no
+ * separate DATE line was already found elsewhere in the response — a
+ * separate DATE line always wins as the date source.
+ *
+ * Any other trailing content is discarded rather than treated as an error:
+ * a stray line should not fail a file whose name is perfectly good.
+ */
+export function splitAiResponse(raw: string): { nameLine: string; dateLine?: string } {
+  const lines = raw.split('\n').map(line => line.trim()).filter(Boolean);
+
+  let dateLine: string | undefined;
+  for (const line of lines) {
+    const match = DATE_LINE.exec(line);
+    if (match) {
+      dateLine = match[1].trim();
+      break;
+    }
+  }
+
+  let nameLine = '';
+  for (const line of lines) {
+    if (DATE_LINE.test(line) || FENCE_LINE.test(line)) continue;
+    nameLine = line;
+    break;
+  }
+
+  const trailingMatch = TRAILING_DATE.exec(nameLine);
+  if (trailingMatch) {
+    nameLine = trailingMatch[1].trim();
+    dateLine ??= trailingMatch[2];
+  }
+
+  return dateLine ? { nameLine, dateLine } : { nameLine };
 }

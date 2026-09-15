@@ -440,6 +440,40 @@ describe('ClaudeService', () => {
     });
   });
 
+  describe('documentDate parsing', () => {
+    it('returns the document date the model reported', async () => {
+      mockClient.messages.create.mockResolvedValueOnce({
+        content: [{ type: 'text', text: 'quarterly-report\nDATE: 2024-03-15' }],
+        usage: { input_tokens: 10, output_tokens: 5 }
+      });
+      const result = await service.generateFileName('content', 'a.txt');
+      expect(result.name).toBe('quarterly-report');
+      expect(result.documentDate).toBe('2024-03-15');
+    });
+
+    it('leaves documentDate unset when the model reports none', async () => {
+      mockClient.messages.create.mockResolvedValueOnce({
+        content: [{ type: 'text', text: 'quarterly-report' }],
+        usage: { input_tokens: 10, output_tokens: 5 }
+      });
+      const result = await service.generateFileName('content', 'a.txt');
+      expect(result.name).toBe('quarterly-report');
+      expect(result.documentDate).toBeUndefined();
+    });
+
+    it('degrades to the untitled-document fallback for a DATE-only response, without crashing', async () => {
+      mockClient.messages.create.mockResolvedValue({
+        content: [{ type: 'text', text: 'DATE: 2024-03-15' }],
+        usage: { input_tokens: 100, output_tokens: 10 }
+      });
+
+      const result = await service.generateFileName('content', 'file.txt');
+
+      expect(result.name).toBe('untitled-document');
+      expect(result.documentDate).toBe('2024-03-15');
+    });
+  });
+
   describe('SDK error dispatch', () => {
     const minimalArgs: Parameters<ClaudeService['generateFileName']> = [
       'content', 'file.pdf', 'kebab-case', 'general', undefined, undefined, undefined, undefined

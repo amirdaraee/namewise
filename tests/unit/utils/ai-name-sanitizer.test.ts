@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sanitizeCloudFileName, sanitizeLocalFileName } from '../../../src/utils/ai-name-sanitizer.js';
+import { sanitizeCloudFileName, sanitizeLocalFileName, splitAiResponse } from '../../../src/utils/ai-name-sanitizer.js';
 
 describe('sanitizeCloudFileName', () => {
   it('strips the extension and applies the naming convention', () => {
@@ -78,5 +78,103 @@ describe('sanitizeLocalFileName', () => {
   it('rejects prose explanations like cloud sanitizer does', () => {
     expect(() => sanitizeLocalFileName('Here is a descriptive filename for this document based on its content and purpose'))
       .toThrow(/explanation instead of a filename/);
+  });
+});
+
+describe('splitAiResponse()', () => {
+  it('returns the single line as the name when there is nothing else', () => {
+    expect(splitAiResponse('quarterly-financial-report')).toEqual({
+      nameLine: 'quarterly-financial-report'
+    });
+  });
+
+  it('lifts a DATE line out', () => {
+    expect(splitAiResponse('quarterly-financial-report\nDATE: 2024-03-15')).toEqual({
+      nameLine: 'quarterly-financial-report',
+      dateLine: '2024-03-15'
+    });
+  });
+
+  it('matches the DATE label case-insensitively and ignores spacing', () => {
+    expect(splitAiResponse('report\ndate:2024-03-15').dateLine).toBe('2024-03-15');
+    expect(splitAiResponse('report\nDate:   2024-03-15').dateLine).toBe('2024-03-15');
+  });
+
+  it('discards a stray trailing line rather than failing', () => {
+    expect(splitAiResponse('report\nHope that helps!')).toEqual({ nameLine: 'report' });
+  });
+
+  it('finds the DATE line even when other lines precede it', () => {
+    expect(splitAiResponse('report\nsome noise\nDATE: 2024-03-15').dateLine).toBe('2024-03-15');
+  });
+
+  it('ignores blank lines when choosing the name line', () => {
+    expect(splitAiResponse('\n\nreport\nDATE: 2024-03-15').nameLine).toBe('report');
+  });
+
+  it('does not invent a date line for an empty DATE value', () => {
+    expect(splitAiResponse('report\nDATE:   ').dateLine).toBeUndefined();
+  });
+
+  it('returns empty nameLine for empty or whitespace-only input', () => {
+    expect(splitAiResponse('')).toEqual({ nameLine: '' });
+    expect(splitAiResponse('  \n  ')).toEqual({ nameLine: '' });
+  });
+
+  it('extracts DATE with various content in multiple-line response', () => {
+    expect(splitAiResponse('filename\nextra text\nDATE: 2025-01-20\nmore')).toEqual({
+      nameLine: 'filename',
+      dateLine: '2025-01-20'
+    });
+  });
+
+  it('picks the name from a later line when a DATE line comes first', () => {
+    expect(splitAiResponse('DATE: 2024-03-15\nquarterly-report')).toEqual({
+      nameLine: 'quarterly-report',
+      dateLine: '2024-03-15'
+    });
+  });
+
+  it('yields an empty nameLine for a DATE-only response', () => {
+    expect(splitAiResponse('DATE: 2024-03-15')).toEqual({
+      nameLine: '',
+      dateLine: '2024-03-15'
+    });
+  });
+
+  it('splits a same-line trailing date off the name', () => {
+    expect(splitAiResponse('quarterly-report DATE: 2024-03-15')).toEqual({
+      nameLine: 'quarterly-report',
+      dateLine: '2024-03-15'
+    });
+  });
+
+  it('prefers a separate DATE line over a same-line trailing date, but still strips the same-line text from the name', () => {
+    // Precedence: a separate DATE line always wins as the date value. The
+    // same-line date is still split off the name line so it never leaks into
+    // the filename, even though its value is discarded here.
+    expect(splitAiResponse('quarterly-report DATE: 2024-01-01\nDATE: 2024-03-15')).toEqual({
+      nameLine: 'quarterly-report',
+      dateLine: '2024-03-15'
+    });
+  });
+
+  it('ignores a code fence line when choosing the name', () => {
+    expect(splitAiResponse('```\nquarterly-report\n```')).toEqual({
+      nameLine: 'quarterly-report'
+    });
+  });
+
+  it('ignores a code fence line with a language tag', () => {
+    expect(splitAiResponse('```text\nquarterly-report\n```')).toEqual({
+      nameLine: 'quarterly-report'
+    });
+  });
+
+  it('handles CRLF line endings', () => {
+    expect(splitAiResponse('report\r\nDATE: 2024-03-15\r\n')).toEqual({
+      nameLine: 'report',
+      dateLine: '2024-03-15'
+    });
   });
 });

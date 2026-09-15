@@ -160,7 +160,8 @@ export class FileRenamer {
 
     const coreFileName = aiResult.name;
     const templatedName = applyTemplate(
-      coreFileName, fileCategory, this.config.templateOptions, this.config.namingConvention, file
+      coreFileName, fileCategory, this.config.templateOptions, this.config.namingConvention, file,
+      aiResult.documentDate
     );
 
     const newFileName = `${templatedName}${file.extension}`;

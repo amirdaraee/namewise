@@ -300,11 +300,15 @@ describe('Extended workflow — date format in document template', () => {
   afterEach(async () => { await cleanup(); });
 
   it.each([
-    ['YYYY-MM-DD', /\d{4}-\d{2}-\d{2}/],
-    ['YYYYMMDD',   /\d{8}/],
-    ['YYYY',       /\d{4}/],
-    ['none',       null]
-  ] as const)('document template with dateFormat=%s produces the expected pattern', async (dateFormat, pattern) => {
+    ['YYYY-MM-DD', 'project-requirements-document-alice-2024-03-15'],
+    ['YYYYMMDD',   'project-requirements-document-alice-20240315'],
+    ['YYYY',       'project-requirements-document-alice-2024'],
+    ['none',       'project-requirements-document-alice']
+  ] as const)('document template with dateFormat=%s produces the expected pattern', async (dateFormat, expectedStem) => {
+    // The parsed .txt has no creation-date metadata, so the date can only come
+    // from the AI having read it off the document — drive that path directly
+    // rather than relying on a now-removed "stamp today's date" fallback.
+    mockAI.setDocumentDate('2024-03-15');
     const filePath = await copyTestFile('sample-text.txt', tempDir);
     const stat = await fs.stat(filePath);
     const renamer = new FileRenamer(
@@ -319,13 +323,34 @@ describe('Extended workflow — date format in document template', () => {
 
     expect(results[0].success).toBe(true);
     const stem = results[0].suggestedName.replace(/\.[^.]+$/, '');
-    if (pattern) {
-      expect(stem).toMatch(pattern);
-    } else {
-      // 'none' — no date digits block of 4+ consecutive digits
-      expect(stem).not.toMatch(/\d{8}/);
+    expect(stem).toBe(expectedStem);
+    if (dateFormat === 'none') {
+      // the 'none' case must still show no date
+      expect(stem).not.toMatch(/\d{4}/);
     }
-    expect(stem).toContain('alice');
+  });
+
+  it('omits the date segment entirely when the AI reports none, even with a date format configured', async () => {
+    // No creation-date metadata on the parsed .txt and no AI-reported date:
+    // the {date} token must be dropped along with its separator rather than
+    // falling back to today's date.
+    mockAI.setDocumentDate(undefined);
+    const filePath = await copyTestFile('sample-text.txt', tempDir);
+    const stat = await fs.stat(filePath);
+    const renamer = new FileRenamer(
+      parserFactory, mockAI,
+      makeConfig({
+        dryRun: true,
+        templateOptions: { category: 'document', personalName: 'alice', dateFormat: 'YYYYMMDD' }
+      })
+    );
+
+    const { results } = await renamer.renameFiles([makeFileInfo(filePath, { size: stat.size })]);
+
+    expect(results[0].success).toBe(true);
+    const stem = results[0].suggestedName.replace(/\.[^.]+$/, '');
+    expect(stem).toBe('project-requirements-document-alice');
+    expect(stem).not.toMatch(/\d{8}/);
   });
 });
 

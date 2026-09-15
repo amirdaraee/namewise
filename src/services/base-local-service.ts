@@ -3,7 +3,7 @@ import { buildFileNamePrompt } from '../utils/ai-prompts.js';
 import { NamingConvention } from '../utils/naming-conventions.js';
 import { FileCategory } from '../utils/file-templates.js';
 import { AuthError, NetworkError, RateLimitError, ConfigError } from '../errors.js';
-import { sanitizeLocalFileName } from '../utils/ai-name-sanitizer.js';
+import { sanitizeLocalFileName, splitAiResponse } from '../utils/ai-name-sanitizer.js';
 
 /**
  * Pull a human reason out of an error body. Gateways answer with their own
@@ -111,8 +111,10 @@ export abstract class BaseLocalService<TRequest, TResponse> implements AIProvide
       const completion = await this.requestCompletion(prompt, imageData);
 
       if (completion?.content) {
+        const { nameLine, dateLine } = splitAiResponse(completion.content);
         return {
-          name: sanitizeLocalFileName(completion.content),
+          name: sanitizeLocalFileName(nameLine),
+          documentDate: dateLine,
           inputTokens: completion.inputTokens,
           outputTokens: completion.outputTokens
         };

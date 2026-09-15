@@ -48,8 +48,9 @@ describe('parseDocumentDate()', () => {
   });
 
   it('is inclusive at the upper bound', () => {
-    const now = new Date();
-    const iso = `${now.getFullYear() + 1}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const bound = new Date();
+    bound.setFullYear(bound.getFullYear() + 1);
+    const iso = `${bound.getFullYear()}-${String(bound.getMonth() + 1).padStart(2, '0')}-${String(bound.getDate()).padStart(2, '0')}`;
     expect(parseDocumentDate(iso)).toBeInstanceOf(Date);
   });
 });

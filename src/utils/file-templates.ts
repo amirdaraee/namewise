@@ -1,5 +1,6 @@
 import { NamingConvention, FileInfo } from '../types/index.js';
 import { applyNamingConvention } from './naming-conventions.js';
+import { parseDocumentDate } from './document-date.js';
 
 export type FileCategory = 'document' | 'movie' | 'music' | 'series' | 'photo' | 'book' | 'general' | 'auto';
 
@@ -209,7 +210,8 @@ export function applyTemplate(
   category: FileCategory,
   templateOptions: TemplateOptions,
   namingConvention: NamingConvention,
-  fileInfo?: FileInfo
+  fileInfo?: FileInfo,
+  documentDate?: string
 ): string {
   if (category === 'auto') {
     throw new Error('Cannot apply template for "auto" category. Category should be resolved before calling applyTemplate.');
@@ -232,15 +234,24 @@ export function applyTemplate(
   }
 
   if (templateOptions.dateFormat && templateOptions.dateFormat !== 'none') {
-    const dateToUse = fileInfo?.documentMetadata?.creationDate ?? new Date();
-    const date = formatDate(dateToUse, templateOptions.dateFormat);
-    result = result.replace('{date}', date);
+    // The date printed on the document wins; file metadata is a reasonable
+    // second for born-digital files, where creationDate is the authoring time.
+    // Nothing else is acceptable: stamping today's date onto a 2019 invoice
+    // makes the filename assert something false.
+    const dateToUse = parseDocumentDate(documentDate) ?? fileInfo?.documentMetadata?.creationDate;
+    if (dateToUse) {
+      result = result.replace('{date}', formatDate(dateToUse, templateOptions.dateFormat));
+    }
   }
 
-  // Clean up any remaining unreplaced variables
-  result = result.replace(/\{[^}]+\}/g, '');
-  
-  // Clean up multiple hyphens or other separators
+  // Drop any token that was never filled, together with one adjacent separator
+  // — the preceding one unless the token is first — so an omitted {date} leaves
+  // "invoice-john", not "invoice-john-".
+  result = result.replace(/-?\{[^}]+\}/g, (match, offset) =>
+    offset === 0 ? match.replace(/^\{[^}]+\}-?/, '') : ''
+  );
+
+  // Collapse any separator runs left behind and trim the ends
   result = result.replace(/-+/g, '-').replace(/^-|-$/g, '');
 
   // Apply naming convention

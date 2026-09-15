@@ -51,9 +51,15 @@ export class MockAIService implements AIProvider {
   private calls: CapturedCall[] = [];
   private mockInputTokens: number | undefined = 50;
   private mockOutputTokens: number | undefined = 10;
+  private documentDate: string | undefined = undefined;
 
   setResponse(key: string, value: string): void {
     this.responses.set(key, value);
+  }
+
+  /** The date the mock claims to have read off the document, or undefined for none. */
+  setDocumentDate(date: string | undefined): void {
+    this.documentDate = date;
   }
 
   /** Alias kept for backwards compatibility with unit tests. */
@@ -83,6 +89,7 @@ export class MockAIService implements AIProvider {
     this.shouldFail = false;
     this.mockInputTokens = 50;
     this.mockOutputTokens = 10;
+    this.documentDate = undefined;
   }
 
   /** Alias kept for backwards compatibility with unit tests. */
@@ -122,7 +129,12 @@ export class MockAIService implements AIProvider {
       name = `renamed-${originalName.replace(/\.[^/.]+$/, '')}`;
     }
 
-    return { name, inputTokens: this.mockInputTokens, outputTokens: this.mockOutputTokens };
+    return {
+      name,
+      inputTokens: this.mockInputTokens,
+      outputTokens: this.mockOutputTokens,
+      documentDate: this.documentDate
+    };
   }
 }
 

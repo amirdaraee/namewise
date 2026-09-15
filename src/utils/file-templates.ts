@@ -244,14 +244,10 @@ export function applyTemplate(
     }
   }
 
-  // Drop any token that was never filled, together with one adjacent separator
-  // — the preceding one unless the token is first — so an omitted {date} leaves
-  // "invoice-john", not "invoice-john-".
-  result = result.replace(/-?\{[^}]+\}/g, (match, offset) =>
-    offset === 0 ? match.replace(/^\{[^}]+\}-?/, '') : ''
-  );
-
-  // Collapse any separator runs left behind and trim the ends
+  // Drop any token that was never filled — including an omitted {date} — then
+  // collapse the separator runs that leaves and trim the ends, so
+  // "invoice-john-{date}" becomes "invoice-john" and "{date}-invoice" becomes "invoice".
+  result = result.replace(/\{[^}]+\}/g, '');
   result = result.replace(/-+/g, '-').replace(/^-|-$/g, '');
 
   // Apply naming convention

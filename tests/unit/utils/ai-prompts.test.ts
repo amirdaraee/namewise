@@ -17,7 +17,7 @@ describe('AI Prompts', () => {
       expect(prompt).toContain('Between 3-10 words');
       expect(prompt).toContain('hyphens between words');
       expect(prompt).toContain('This is a sample document about contract negotiations');
-      expect(prompt).toContain('Respond with only the filename');
+      expect(prompt).toContain('Respond with the filename on the first line');
     });
 
     it('should include file metadata when provided', () => {
@@ -320,7 +320,7 @@ describe('AI Prompts', () => {
     it('should provide clear system instructions', () => {
       expect(AI_SYSTEM_PROMPT).toContain('helpful assistant');
       expect(AI_SYSTEM_PROMPT).toContain('generates descriptive filenames');
-      expect(AI_SYSTEM_PROMPT).toContain('just the filename');
+      expect(AI_SYSTEM_PROMPT).toContain('the filename on the first line');
       expect(AI_SYSTEM_PROMPT).toContain('no explanation');
     });
 
@@ -329,5 +329,23 @@ describe('AI Prompts', () => {
       expect(typeof AI_SYSTEM_PROMPT).toBe('string');
       expect(AI_SYSTEM_PROMPT.length).toBeGreaterThan(20);
     });
+  });
+});
+
+describe('document date instruction', () => {
+  it('asks the system prompt to allow an optional DATE line', () => {
+    expect(AI_SYSTEM_PROMPT).toMatch(/DATE:/);
+  });
+
+  it('tells the model the date must come from the document, not today', () => {
+    const prompt = buildFileNamePrompt({
+      content: 'An invoice',
+      originalName: 'scan.pdf',
+      namingConvention: 'kebab-case',
+      category: 'document'
+    });
+    expect(prompt).toMatch(/DATE: YYYY-MM-DD/);
+    expect(prompt).toMatch(/printed on the document/i);
+    expect(prompt).toMatch(/do not guess|omit the line/i);
   });
 });

@@ -127,4 +127,54 @@ describe('splitAiResponse()', () => {
       dateLine: '2025-01-20'
     });
   });
+
+  it('picks the name from a later line when a DATE line comes first', () => {
+    expect(splitAiResponse('DATE: 2024-03-15\nquarterly-report')).toEqual({
+      nameLine: 'quarterly-report',
+      dateLine: '2024-03-15'
+    });
+  });
+
+  it('yields an empty nameLine for a DATE-only response', () => {
+    expect(splitAiResponse('DATE: 2024-03-15')).toEqual({
+      nameLine: '',
+      dateLine: '2024-03-15'
+    });
+  });
+
+  it('splits a same-line trailing date off the name', () => {
+    expect(splitAiResponse('quarterly-report DATE: 2024-03-15')).toEqual({
+      nameLine: 'quarterly-report',
+      dateLine: '2024-03-15'
+    });
+  });
+
+  it('prefers a separate DATE line over a same-line trailing date, but still strips the same-line text from the name', () => {
+    // Precedence: a separate DATE line always wins as the date value. The
+    // same-line date is still split off the name line so it never leaks into
+    // the filename, even though its value is discarded here.
+    expect(splitAiResponse('quarterly-report DATE: 2024-01-01\nDATE: 2024-03-15')).toEqual({
+      nameLine: 'quarterly-report',
+      dateLine: '2024-03-15'
+    });
+  });
+
+  it('ignores a code fence line when choosing the name', () => {
+    expect(splitAiResponse('```\nquarterly-report\n```')).toEqual({
+      nameLine: 'quarterly-report'
+    });
+  });
+
+  it('ignores a code fence line with a language tag', () => {
+    expect(splitAiResponse('```text\nquarterly-report\n```')).toEqual({
+      nameLine: 'quarterly-report'
+    });
+  });
+
+  it('handles CRLF line endings', () => {
+    expect(splitAiResponse('report\r\nDATE: 2024-03-15\r\n')).toEqual({
+      nameLine: 'report',
+      dateLine: '2024-03-15'
+    });
+  });
 });

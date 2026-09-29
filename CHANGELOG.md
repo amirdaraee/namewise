@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.4.0] - 2026-09-15
+## [2.4.0] - 2026-09-29
 
 ### Changed
 - **`{date}` now comes from the document itself.** The AI reads the date printed
@@ -23,6 +23,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unfilled template tokens (including omitted `{date}` segments) are removed and
   adjacent separator runs collapsed and trimmed, preventing stray separators or
   literal token text in filenames.
+- The date is no longer repeated. When the AI also writes the document's date
+  into the name, it is removed there so the `{date}` slot shows it once —
+  `product-team-meeting-notes-amir-2026-06-03`, not
+  `product-team-meeting-notes-2026-06-03-amir-2026-06-03`. Other dates and
+  numbers in the name (an invoice number such as `2024-0312`) are kept, and so
+  is the name's date when `--date YYYY` shows only the year.
+
+### Dependencies
+- `@anthropic-ai/sdk` 0.127.0, `openai` 7.20.0, `vitest` and `@vitest/*` 5.0.1,
+  `eslint` 10.11.0, `@types/node` 26.6.2.
 
 Only affects users who opt in with `--date` or `date` in config; the default
 `none` is unchanged.

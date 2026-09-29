@@ -674,3 +674,66 @@ describe('File Templates', () => {
     });
   });
 });
+// The AI often writes the document's date into the name itself, and the
+// {date} slot then repeats it: "product-team-meeting-notes-2026-06-03-amir-2026-06-03".
+// Same fix as the personal name: strip it from the content when the slot is filled.
+describe('applyTemplate() — duplicate date stripping', () => {
+  const f = { path: '/x/a.pdf', name: 'a.pdf', extension: '.pdf', size: 1 } as FileInfo;
+  const iso = { personalName: 'amir', dateFormat: 'YYYY-MM-DD' as const };
+
+  it('strips the resolved date from the content when the slot shows it', () => {
+    expect(applyTemplate('product-team-meeting-notes-2026-06-03', 'document', iso, 'kebab-case', f, '2026-06-03'))
+      .toBe('product-team-meeting-notes-amir-2026-06-03');
+  });
+
+  it('strips the compact YYYYMMDD spelling too', () => {
+    expect(applyTemplate('product-team-meeting-notes-20260603', 'document', iso, 'kebab-case', f, '2026-06-03'))
+      .toBe('product-team-meeting-notes-amir-2026-06-03');
+  });
+
+  it('strips it when the date sits mid-name', () => {
+    expect(applyTemplate('notes-2026-06-03-team-sync', 'document',
+      { dateFormat: 'YYYYMMDD' as const }, 'kebab-case', f, '2026-06-03'))
+      .toBe('notes-team-sync-20260603');
+  });
+
+  it('keeps a different date in the content', () => {
+    expect(applyTemplate('contract-period-2024-03-12', 'document', iso, 'kebab-case', f, '2026-06-03'))
+      .toBe('contract-period-2024-03-12-amir-2026-06-03');
+  });
+
+  it('does not strip digits that are part of a longer number', () => {
+    expect(applyTemplate('reference-120260603', 'document', iso, 'kebab-case', f, '2026-06-03'))
+      .toBe('reference-120260603-amir-2026-06-03');
+  });
+
+  it('keeps the content date when the slot only shows the year, so no precision is lost', () => {
+    expect(applyTemplate('notes-2026-06-03', 'document',
+      { personalName: 'amir', dateFormat: 'YYYY' as const }, 'kebab-case', f, '2026-06-03'))
+      .toBe('notes-2026-06-03-amir-2026');
+  });
+
+  it('leaves the content alone when no date is rendered', () => {
+    expect(applyTemplate('notes-2026-06-03', 'document',
+      { personalName: 'amir', dateFormat: 'none' as const }, 'kebab-case', f, '2026-06-03'))
+      .toBe('notes-2026-06-03-amir');
+    expect(applyTemplate('notes-2026-06-03', 'document', iso, 'kebab-case', f, undefined))
+      .toBe('notes-2026-06-03-amir');
+  });
+
+  it('keeps the content when stripping would leave nothing', () => {
+    expect(applyTemplate('2026-06-03', 'document', iso, 'kebab-case', f, '2026-06-03'))
+      .toBe('2026-06-03-amir-2026-06-03');
+  });
+
+  it('works on metadata-sourced dates as well as AI-reported ones', () => {
+    const withMeta = { ...f, documentMetadata: { creationDate: new Date(2026, 5, 3) } } as FileInfo;
+    expect(applyTemplate('notes-2026-06-03', 'document', iso, 'kebab-case', withMeta, undefined))
+      .toBe('notes-amir-2026-06-03');
+  });
+
+  it('ignores templates without a {date} slot', () => {
+    expect(applyTemplate('notes-2026-06-03', 'general', iso, 'kebab-case', f, '2026-06-03'))
+      .toBe('notes-2026-06-03');
+  });
+});

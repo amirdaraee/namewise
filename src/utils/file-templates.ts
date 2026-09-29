@@ -226,6 +226,22 @@ export function applyTemplate(
     content = stripNameFromContent(content, templateOptions.personalName);
   }
 
+  // The date printed on the document wins; file metadata is a reasonable
+  // second for born-digital files, where creationDate is the authoring time.
+  // Nothing else is acceptable: stamping today's date onto a 2019 invoice
+  // makes the filename assert something false.
+  const dateFormat = templateOptions.dateFormat;
+  const dateToUse = dateFormat && dateFormat !== 'none'
+    ? parseDocumentDate(documentDate) ?? fileInfo?.documentMetadata?.creationDate
+    : undefined;
+
+  // The AI often writes that same date into the name as well; drop it from the
+  // content so the slot doesn't repeat it. A year-only slot carries less than
+  // the content does, so the content keeps its date then.
+  if (dateToUse && dateFormat !== 'YYYY' && template.pattern.includes('{date}')) {
+    content = stripDateFromContent(content, dateToUse);
+  }
+
   // Replace template variables
   result = result.replace('{content}', content);
 
@@ -233,15 +249,8 @@ export function applyTemplate(
     result = result.replace('{personalName}', templateOptions.personalName);
   }
 
-  if (templateOptions.dateFormat && templateOptions.dateFormat !== 'none') {
-    // The date printed on the document wins; file metadata is a reasonable
-    // second for born-digital files, where creationDate is the authoring time.
-    // Nothing else is acceptable: stamping today's date onto a 2019 invoice
-    // makes the filename assert something false.
-    const dateToUse = parseDocumentDate(documentDate) ?? fileInfo?.documentMetadata?.creationDate;
-    if (dateToUse) {
-      result = result.replace('{date}', formatDate(dateToUse, templateOptions.dateFormat));
-    }
+  if (dateToUse) {
+    result = result.replace('{date}', formatDate(dateToUse, dateFormat as Exclude<typeof dateFormat, 'none' | undefined>));
   }
 
   // Drop any token that was never filled — including an omitted {date} — then
@@ -277,6 +286,33 @@ function stripNameFromContent(content: string, personalName: string): string {
   }
 
   return kept.length > 0 ? kept.join('-') : content;
+}
+
+/**
+ * Remove every occurrence of `date` from the AI-generated content, spelled
+ * either YYYY-MM-DD (any separator) or YYYYMMDD. Tokens are compared whole, so
+ * the digits of a longer number (an invoice or policy number) never match.
+ * Returns the content unchanged when there is nothing to strip, or when
+ * stripping would leave nothing.
+ */
+function stripDateFromContent(content: string, date: Date): string {
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  const tokens = content.split(/[\s_-]+/).filter(Boolean);
+  const kept: string[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    if (tokens[i] === `${year}${month}${day}`) continue;
+    if (tokens[i] === year && tokens[i + 1] === month && tokens[i + 2] === day) {
+      i += 2; // skip the whole YYYY-MM-DD occurrence
+      continue;
+    }
+    kept.push(tokens[i]);
+  }
+
+  if (kept.length === tokens.length || kept.length === 0) return content;
+  return kept.join('-');
 }
 
 function formatDate(date: Date, format: 'YYYY-MM-DD' | 'YYYY' | 'YYYYMMDD'): string {

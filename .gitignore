@@ -183,3 +183,7 @@ test-*.ts
 *.backup
 *.tmp
 CLAUDE.md
+
+# Local AI/editor tooling
+.serena/
+.superpowers/

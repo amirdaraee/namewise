@@ -83,7 +83,7 @@
     "inquirer": "14.2.5",
     "mammoth": "1.13.0",
     "openai": "7.53.0",
-    "ora": "9.4.1",
+    "ora": "10.0.0",
     "pdfjs-dist": "6.4.299"
   },
   "optionalDependencies": {

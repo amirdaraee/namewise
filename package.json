@@ -74,7 +74,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "0.127.0",
     "chalk": "6.0.1",
-    "chokidar": "5.0.0",
+    "chokidar": "6.0.0",
     "commander": "15.1.0",
     "exceljs": "^4.4.0",
     "exifr": "7.1.3",
